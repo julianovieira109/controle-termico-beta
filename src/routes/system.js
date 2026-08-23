@@ -182,7 +182,7 @@ router.get("/tests",async(req,res)=>{
       {
         name:"Colunas críticas do banco",
         success:columnProblems.length===0,
-        detail:columnProblems.length?`Ausentes: ${columnProblems.join(" | ")}`:"Estrutura compatível com a V1.0.0."
+        detail:columnProblems.length?`Ausentes: ${columnProblems.join(" | ")}`:"Estrutura compatível com a V1.0.1 Beta."
       },
       {
         name:"Administrador atual",
