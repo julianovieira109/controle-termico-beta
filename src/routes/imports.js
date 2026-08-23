@@ -2195,7 +2195,7 @@ async function extractSeniorShiftPdfText(buffer,configuredCodes=[]){
 function normalizeSeniorShiftCode(value){
   const raw=String(value||"").trim();
   if(!raw)return "";
-  if(/^\d+$/.test(raw))return String(Number(raw));
+  if(/^\d+$/.test(raw))return raw.replace(/^0+(?=\d)/,"");
   return raw.toUpperCase();
 }
 
@@ -3140,7 +3140,7 @@ router.post("/shift-confirm",async(req,res,next)=>{
         SELECT id,name
         FROM shifts
         WHERE company_id=$1
-          AND REGEXP_REPLACE(COALESCE(senior_code,''), '^0+', '')=REGEXP_REPLACE($2, '^0+', '')
+          AND (CASE WHEN BTRIM(senior_code) ~ '^[0-9]+$' THEN (BTRIM(senior_code)::numeric)::text ELSE UPPER(BTRIM(senior_code)) END)=$2
         LIMIT 1
       `,[companyId,code]);
 
@@ -3175,10 +3175,10 @@ router.post("/shift-confirm",async(req,res,next)=>{
         SELECT id,name,weekly_days_off
         FROM shifts
         WHERE company_id=$1
-          AND REGEXP_REPLACE(COALESCE(senior_code,''), '^0+', '')=REGEXP_REPLACE($2, '^0+', '')
+          AND (CASE WHEN BTRIM(senior_code) ~ '^[0-9]+$' THEN (BTRIM(senior_code)::numeric)::text ELSE UPPER(BTRIM(senior_code)) END)=$2
           AND active=TRUE
         LIMIT 1
-      `,[companyId,String(row.shiftCode||"")]);
+      `,[companyId,normalizeSeniorShiftCode(row.shiftCode)]);
 
       if(!shift.rows[0]){
         failed++;

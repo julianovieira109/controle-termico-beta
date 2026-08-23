@@ -10,7 +10,7 @@ const tables={shifts:"shifts",job_roles:"job_roles",departments:"departments"};
 function normalizeSeniorShiftCodeLocal(value){
   const raw=String(value||"").trim();
   if(!raw)return "";
-  if(/^\d+$/.test(raw))return String(Number(raw));
+  if(/^\d+$/.test(raw))return raw.replace(/^0+(?=\d)/,"");
   return raw.toUpperCase();
 }
 
@@ -203,7 +203,7 @@ router.post("/shifts",requireAdmin,async(req,res,next)=>{
     res.status(201).json(rows[0]);
   }catch(error){
     if(error.code==="23505"){
-      return res.status(409).json({error:"Já existe um turno com esse nome para a empresa."});
+      return res.status(409).json({error:"Já existe um turno com esse código Senior para a empresa."});
     }
     next(error);
   }
@@ -260,7 +260,7 @@ router.put("/shifts/:id",requireAdmin,async(req,res,next)=>{
     res.json(rows[0]);
   }catch(error){
     if(error.code==="23505"){
-      return res.status(409).json({error:"Já existe um turno com esse nome para a empresa."});
+      return res.status(409).json({error:"Já existe um turno com esse código Senior para a empresa."});
     }
     next(error);
   }
@@ -277,7 +277,10 @@ router.post("/shifts/map-code",requireAdmin,async(req,res,next)=>{
     }
 
     const duplicate=await pool.query(
-      "SELECT id,name FROM shifts WHERE company_id=$1 AND senior_code=$2 AND id<>$3 LIMIT 1",
+      `SELECT id,name FROM shifts
+       WHERE company_id=$1
+         AND (CASE WHEN BTRIM(senior_code) ~ '^[0-9]+$' THEN (BTRIM(senior_code)::numeric)::text ELSE UPPER(BTRIM(senior_code)) END)=$2
+         AND id<>$3 LIMIT 1`,
       [companyId,code,shiftId]
     );
     if(duplicate.rows[0]){

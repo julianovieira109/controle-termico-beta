@@ -97,6 +97,10 @@ CREATE TABLE IF NOT EXISTS shifts (
   UNIQUE(company_id,name)
 );
 
+-- V1.0.3 Beta: nomes podem se repetir; códigos numéricos ignoram zeros à esquerda.
+ALTER TABLE shifts
+  DROP CONSTRAINT IF EXISTS shifts_company_id_name_key;
+
 CREATE TABLE IF NOT EXISTS job_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -552,7 +556,54 @@ CREATE INDEX IF NOT EXISTS idx_employees_registration ON employees(registration)
 CREATE INDEX IF NOT EXISTS idx_employees_period ON employees(admission_date,termination_date);
 CREATE INDEX IF NOT EXISTS idx_job_role_branch_policy_role ON job_role_branch_report_policies(job_role_id);
 CREATE INDEX IF NOT EXISTS idx_job_role_branch_policy_branch ON job_role_branch_report_policies(branch_id);
-CREATE INDEX IF NOT EXISTS idx_shifts_senior_code ON shifts(company_id,senior_code);
+DROP INDEX IF EXISTS idx_shifts_senior_code;
+DROP INDEX IF EXISTS uq_shifts_company_senior_code_exact;
+
+-- Consolida códigos equivalentes (0007, 007 e 7), preservando os vínculos.
+DO $$
+DECLARE
+  duplicate_group RECORD;
+  canonical_id UUID;
+BEGIN
+  FOR duplicate_group IN
+    SELECT company_id,(BTRIM(senior_code)::numeric)::text normalized_code
+    FROM shifts
+    WHERE senior_code IS NOT NULL AND BTRIM(senior_code) ~ '^[0-9]+$'
+    GROUP BY company_id,(BTRIM(senior_code)::numeric)::text
+    HAVING COUNT(*)>1
+  LOOP
+    SELECT id INTO canonical_id
+    FROM shifts
+    WHERE company_id=duplicate_group.company_id
+      AND BTRIM(senior_code) ~ '^[0-9]+$'
+      AND (BTRIM(senior_code)::numeric)::text=duplicate_group.normalized_code
+    ORDER BY LENGTH(BTRIM(senior_code))-LENGTH(LTRIM(BTRIM(senior_code),'0')) DESC,id
+    LIMIT 1;
+
+    UPDATE employees SET shift_id=canonical_id
+    WHERE shift_id IN (
+      SELECT id FROM shifts
+      WHERE company_id=duplicate_group.company_id
+        AND id<>canonical_id
+        AND BTRIM(senior_code) ~ '^[0-9]+$'
+        AND (BTRIM(senior_code)::numeric)::text=duplicate_group.normalized_code
+    );
+
+    DELETE FROM shifts
+    WHERE company_id=duplicate_group.company_id
+      AND id<>canonical_id
+      AND BTRIM(senior_code) ~ '^[0-9]+$'
+      AND (BTRIM(senior_code)::numeric)::text=duplicate_group.normalized_code;
+  END LOOP;
+
+  UPDATE shifts
+  SET senior_code=(BTRIM(senior_code)::numeric)::text
+  WHERE senior_code IS NOT NULL AND BTRIM(senior_code) ~ '^[0-9]+$';
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_shifts_company_senior_code_normalized
+  ON shifts(company_id,(CASE WHEN BTRIM(senior_code) ~ '^[0-9]+$' THEN (BTRIM(senior_code)::numeric)::text ELSE UPPER(BTRIM(senior_code)) END))
+  WHERE senior_code IS NOT NULL AND BTRIM(senior_code)<>'';
 CREATE INDEX IF NOT EXISTS idx_employee_days_off_employee ON employee_days_off(employee_id);
 CREATE INDEX IF NOT EXISTS idx_employee_days_off_date ON employee_days_off(off_date);
 CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id);

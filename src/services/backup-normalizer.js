@@ -21,10 +21,17 @@ function mergeCatalogRow(target,source){
   if(source.active===true)target.active=true;
 }
 
-function consolidateCatalog(rows,referenceCounts){
+function normalizeSeniorCode(value){
+  const raw=String(value||"").trim().toUpperCase();
+  if(!raw)return "";
+  if(/^\d+$/.test(raw))return raw.replace(/^0+(?=\d)/,"");
+  return raw;
+}
+
+function consolidateCatalog(rows,referenceCounts,keyForRow,canonicalRank){
   const groups=new Map();
   for(const row of rows){
-    const key=`${row.company_id||""}\u0000${row.name||""}`;
+    const key=keyForRow(row);
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(row);
   }
@@ -36,7 +43,13 @@ function consolidateCatalog(rows,referenceCounts){
   for(const group of groups.values()){
     let canonical=group[0];
     for(const candidate of group.slice(1)){
-      if((referenceCounts.get(candidate.id)||0)>(referenceCounts.get(canonical.id)||0)){
+      const candidateRank=canonicalRank
+        ?canonicalRank(candidate,referenceCounts)
+        :(referenceCounts.get(candidate.id)||0);
+      const canonicalValue=canonicalRank
+        ?canonicalRank(canonical,referenceCounts)
+        :(referenceCounts.get(canonical.id)||0);
+      if(candidateRank>canonicalValue){
         canonical=candidate;
       }
     }
@@ -88,8 +101,23 @@ function normalizeBackupData(input){
 
   const shiftResult=consolidateCatalog(
     data.shifts||[],
-    countReferences(employees,"shift_id")
+    countReferences(employees,"shift_id"),
+    row=>{
+      const code=normalizeSeniorCode(row.senior_code);
+      return code
+        ? `${row.company_id||""}\u0000code\u0000${code}`
+        : `${row.company_id||""}\u0000sem-codigo\u0000${row.id||""}`;
+    },
+    (row,references)=>{
+      const raw=String(row.senior_code||"").trim();
+      const normalized=normalizeSeniorCode(raw);
+      const leadingZeroPriority=/^\d+$/.test(raw)?Math.max(0,raw.length-normalized.length):0;
+      return leadingZeroPriority*1000000+(references.get(row.id)||0);
+    }
   );
+  for(const shift of shiftResult.rows){
+    shift.senior_code=normalizeSeniorCode(shift.senior_code)||null;
+  }
   data.shifts=shiftResult.rows;
   stats.shifts=shiftResult.removed;
   remap(employees,"shift_id",shiftResult.idMap);
@@ -98,7 +126,11 @@ function normalizeBackupData(input){
   for(const [id,count] of countReferences(policies,"job_role_id")){
     roleReferences.set(id,(roleReferences.get(id)||0)+count);
   }
-  const roleResult=consolidateCatalog(data.job_roles||[],roleReferences);
+  const roleResult=consolidateCatalog(
+    data.job_roles||[],
+    roleReferences,
+    row=>`${row.company_id||""}\u0000${row.name||""}`
+  );
   data.job_roles=roleResult.rows;
   stats.job_roles=roleResult.removed;
   remap(employees,"job_role_id",roleResult.idMap);
@@ -106,7 +138,8 @@ function normalizeBackupData(input){
 
   const departmentResult=consolidateCatalog(
     data.departments||[],
-    countReferences(employees,"department_id")
+    countReferences(employees,"department_id"),
+    row=>`${row.company_id||""}\u0000${row.name||""}`
   );
   data.departments=departmentResult.rows;
   stats.departments=departmentResult.removed;
