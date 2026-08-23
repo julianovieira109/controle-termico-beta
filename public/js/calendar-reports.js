@@ -329,6 +329,7 @@ document.querySelectorAll(".calendar-tab").forEach(btn=>{
 });
 
 let reportEmployees=[];
+window.thermalRestSettings={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,variationMinutes:15,cycleDays:31,restCount:3};
 
 function reportMonthDays(monthValue){
   const [year,month]=monthValue.split("-").map(Number);
@@ -484,9 +485,8 @@ function buildThermalSheet(employee,month,thermalPlan){
       return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="7">${escapeHtml(status)}</td></tr>`;
     }
     const rests=thermalPlan?.get(`${employee.id}|${d.iso}`)||[];
-    const cells=rests.length===3
-      ? rests.map(rest=>`<td>${ThermalSchedule.formatMinutes(rest.start)}</td><td>${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("")
-      : "<td></td><td></td><td></td><td></td><td></td><td></td>";
+    const generated=rests.map(rest=>`<td>${ThermalSchedule.formatMinutes(rest.start)}</td><td>${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("");
+    const cells=generated+"<td></td><td></td>".repeat(Math.max(0,3-rests.length));
     return `<tr>
       <td>${d.br}</td>
       <td>${d.weekName}</td>
@@ -572,6 +572,10 @@ async function prepareReports(){
   if(!companies.length && currentUser.role==="ADMIN") await loadCompanies();
   if(!branches.length && currentUser.role==="ADMIN") await loadBranches();
   if(!catalogs.shifts.length) await loadCatalogs();
+  try{window.thermalRestSettings=await api("/api/settings/thermal-rest");}catch{}
+  if($("report-thermal-mode-note"))$("report-thermal-mode-note").innerHTML=thermalRestSettings.mode==="MANUAL"
+    ?"<strong>Repouso térmico manual:</strong> os campos serão gerados em branco. Altere em Configurações → Repouso automático."
+    :"<strong>Repouso térmico automático:</strong> os horários serão preenchidos conforme as regras de Configurações. A refeição permanece manual.";
 
   reportEmployees=(await api("/api/reports/employees"))
     .filter(employeeCanGenerateReports);
@@ -784,7 +788,9 @@ $("report-generate").onclick=()=>{
   }
 
   const monthDays=reportMonthDays(month);
-  const thermalPlan=ThermalSchedule.buildMonthPlan(reportEmployees,monthDays);
+  const thermalPlan=thermalRestSettings.mode==="MANUAL"
+    ?new Map()
+    :ThermalSchedule.buildMonthPlan(reportEmployees,monthDays,thermalRestSettings);
   let html="";
   let thermalCount=0;
   let mealCount=0;

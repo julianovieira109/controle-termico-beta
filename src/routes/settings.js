@@ -9,6 +9,26 @@ function normalizeSettingValue(value){
   return value;
 }
 
+const thermalRestDefaults={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,variationMinutes:15,cycleDays:31,restCount:3};
+function normalizeThermalRest(value={}){
+  const integer=(key,min,max)=>Math.max(min,Math.min(max,Number.parseInt(value[key],10)||thermalRestDefaults[key]));
+  return {
+    mode:String(value.mode||"").toUpperCase()==="MANUAL"?"MANUAL":"AUTOMATIC",
+    workMinutes:integer("workMinutes",30,240),
+    restMinutes:integer("restMinutes",5,60),
+    variationMinutes:integer("variationMinutes",0,30),
+    cycleDays:integer("cycleDays",1,31),
+    restCount:integer("restCount",1,3)
+  };
+}
+
+router.get("/thermal-rest",authenticate,async(_req,res,next)=>{
+  try{
+    const {rows}=await pool.query(`SELECT setting_value FROM system_settings WHERE setting_key='thermal-rest' AND company_id IS NULL AND branch_id IS NULL ORDER BY updated_at DESC,id DESC LIMIT 1`);
+    res.json(normalizeThermalRest({...thermalRestDefaults,...(rows[0]?.setting_value||{})}));
+  }catch(e){next(e);}
+});
+
 router.get("/public",async(_req,res,next)=>{
   try{
     const {rows}=await pool.query(`
@@ -128,7 +148,8 @@ router.put("/:key",authenticate,async(req,res,next)=>{
 
     const companyId=req.body?.companyId||null;
     const branchId=req.body?.branchId||null;
-    const value=normalizeSettingValue(req.body?.value);
+    let value=normalizeSettingValue(req.body?.value);
+    if(key.toLowerCase()==="thermal-rest")value=normalizeThermalRest(value);
 
     await client.query("BEGIN");
 

@@ -38,7 +38,10 @@
     return {start,breakStart,breakEnd,end};
   }
 
-  function baseThermalRests(description){
+  function baseThermalRests(description,config={}){
+    const workMinutes=Number(config.workMinutes)||REST_AFTER_MINUTES;
+    const restMinutes=Number(config.restMinutes)||REST_DURATION_MINUTES;
+    const restCount=Math.max(1,Math.min(3,Number(config.restCount)||3));
     const schedule=parseShiftSchedule(description);
     if(!schedule)return [];
     const periods=[
@@ -48,13 +51,13 @@
     const rests=[];
     for(const period of periods){
       let workCursor=period.start;
-      while(workCursor+REST_AFTER_MINUTES+REST_DURATION_MINUTES<=period.end&&rests.length<3){
-        const start=workCursor+REST_AFTER_MINUTES;
-        const end=start+REST_DURATION_MINUTES;
+      while(workCursor+workMinutes+restMinutes<=period.end&&rests.length<restCount){
+        const start=workCursor+workMinutes;
+        const end=start+restMinutes;
         rests.push({start,end,periodStart:period.start,periodEnd:period.end});
         workCursor=end;
       }
-      if(rests.length===3)break;
+      if(rests.length===restCount)break;
     }
     return rests;
   }
@@ -69,10 +72,11 @@
     return tuple;
   }
 
-  function applyVariation(baseRests,offsets){
+  function applyVariation(baseRests,offsets,variationMinutes=MAX_VARIATION_MINUTES){
     return baseRests.map((rest,index)=>{
-      const minimum=Math.max(-MAX_VARIATION_MINUTES,rest.periodStart-rest.start);
-      const maximum=Math.min(MAX_VARIATION_MINUTES,rest.periodEnd-rest.end);
+      const maximumVariation=Math.max(0,Math.min(30,Number(variationMinutes)||0));
+      const minimum=Math.max(-maximumVariation,rest.periodStart-rest.start);
+      const maximum=Math.min(maximumVariation,rest.periodEnd-rest.end);
       const requested=Number(offsets[index]||0);
       const offset=Math.max(minimum,Math.min(maximum,requested));
       return {start:rest.start+offset,end:rest.end+offset,offset};
@@ -88,7 +92,7 @@
     return rests.map(rest=>`${formatMinutes(rest.start)}-${formatMinutes(rest.end)}`).join("|");
   }
 
-  function buildMonthPlan(employees,monthDays){
+  function buildMonthPlan(employees,monthDays,config={}){
     const ordered=(Array.isArray(employees)?employees:[])
       .slice()
       .sort((a,b)=>String(a.id||a.registration||"").localeCompare(String(b.id||b.registration||"")));
@@ -96,14 +100,16 @@
 
     for(const day of monthDays||[]){
       const used=new Set();
-      const cycleDay=(Number(day.day)-1)%31;
+      const cycleDays=Math.max(1,Math.min(31,Number(config.cycleDays)||31));
+      const cycleDay=(Number(day.day)-1)%cycleDays;
       ordered.forEach((employee,employeeIndex)=>{
-        const base=baseThermalRests(employee.shift_description);
-        if(base.length<3)return;
+        const restCount=Math.max(1,Math.min(3,Number(config.restCount)||3));
+        const base=baseThermalRests(employee.shift_description,config);
+        if(base.length<restCount)return;
         let selected=null;
         for(let attempt=0;attempt<COMBINATION_COUNT;attempt++){
           const tupleIndex=employeeIndex+cycleDay*149+attempt;
-          const candidate=applyVariation(base,tupleForIndex(tupleIndex));
+          const candidate=applyVariation(base,tupleForIndex(tupleIndex),config.variationMinutes??MAX_VARIATION_MINUTES);
           const key=scheduleKey(candidate);
           if(!used.has(key)){
             used.add(key);

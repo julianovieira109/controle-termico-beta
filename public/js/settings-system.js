@@ -1148,6 +1148,53 @@ document.addEventListener("keydown",event=>{
   }
 });
 
+async function loadThermalRestSettings(){
+  if(!catalogs.shifts.length)await loadCatalogs();
+  const config=await api("/api/settings/thermal-rest");
+  window.thermalRestSettings=config;
+  $("thermal-rest-mode").value=config.mode;
+  $("thermal-work-minutes").value=config.workMinutes;
+  $("thermal-duration-minutes").value=config.restMinutes;
+  $("thermal-variation-minutes").value=config.variationMinutes;
+  $("thermal-cycle-days").value=config.cycleDays;
+  $("thermal-rest-count").value=config.restCount;
+  renderThermalShiftList(config);
+}
+
+function renderThermalShiftList(config=window.thermalRestSettings||{}){
+  const body=$("thermal-shifts-list");
+  if(!body)return;
+  body.innerHTML=(catalogs.shifts||[]).map(shift=>{
+    const rests=ThermalSchedule.baseThermalRests(shift.description,config);
+    const preview=rests.length
+      ?rests.map((rest,index)=>`R${index+1}: ${ThermalSchedule.formatMinutes(rest.start)}–${ThermalSchedule.formatMinutes(rest.end)}`).join(" · ")
+      :"Não foi possível calcular";
+    return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>${escapeHtml(preview)}</td><td>${rests.length>=Number(config.restCount||3)?"Apto":"Revisar horário"}</td><td><button type="button" class="action-btn thermal-edit-shift" data-id="${shift.id}">Editar horário</button></td></tr>`;
+  }).join("")||'<tr><td colspan="6">Nenhum turno cadastrado.</td></tr>';
+  body.querySelectorAll(".thermal-edit-shift").forEach(button=>button.addEventListener("click",()=>{
+    document.querySelector('[data-settings-tab="shifts"]')?.click();
+    setTimeout(()=>window.editShift?.(button.dataset.id),0);
+  }));
+}
+
+if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
+  event.preventDefault();
+  const value={
+    mode:$("thermal-rest-mode").value,
+    workMinutes:Number($("thermal-work-minutes").value),
+    restMinutes:Number($("thermal-duration-minutes").value),
+    variationMinutes:Number($("thermal-variation-minutes").value),
+    cycleDays:Number($("thermal-cycle-days").value),
+    restCount:Number($("thermal-rest-count").value)
+  };
+  const result=await api("/api/settings/thermal-rest",{method:"PUT",body:JSON.stringify({value})});
+  window.thermalRestSettings=result.value;
+  $("thermal-rest-feedback").textContent=result.value.mode==="MANUAL"
+    ?"Modo manual salvo. As próximas fichas terão os horários em branco."
+    :"Modo automático e regras salvos com sucesso.";
+  renderThermalShiftList(result.value);
+};
+
 document.addEventListener("keydown",event=>{
   if(event.key==="Escape"&&!$("user-modal")?.hidden){
     resetUserForm();
@@ -2119,6 +2166,7 @@ document.querySelectorAll(".settings-tab").forEach(button=>{
       if(button.dataset.settingsTab==="profiles")await loadUserProfilesSettings();
       if(button.dataset.settingsTab==="senior-models")await loadSeniorIntelligenceModels();
       if(button.dataset.settingsTab==="job-reports")await loadJobReportPolicies();
+      if(button.dataset.settingsTab==="thermal-rest")await loadThermalRestSettings();
       if(button.dataset.settingsTab==="security-access")await window.loadSecurityAccess?.();
     }catch(error){
       console.error("[SETTINGS_TAB_PROFILES]",error);

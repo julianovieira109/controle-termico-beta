@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.1.0-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.1.0-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.1.0-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.1.0-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.1.0-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.1.0-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.2.0-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.2.0-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.2.0-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.2.0-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.2.0-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.2.0-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -255,7 +255,7 @@
       <span class="sidebar-nav-heading">Ajuda e suporte</span>
       <button class="nav-btn nav-btn-support" data-view="manual" title="Manual do Sistema"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></svg></span><span class="nav-label">Manual do Sistema</span></button>
     </nav>
-    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.1.0 Beta</small></div>
+    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.2.0 Beta</small></div>
   </aside>
 
   <main class="main">
@@ -966,8 +966,8 @@
             <input type="month" id="report-month">
           </label>
 
-          <div class="full manual-note info report-automatic-policy">
-            <strong>Repouso automático:</strong> três intervalos de 20 minutos, após cada período de 1h40 de trabalho, com variação de −15 a +15 minutos distribuída pelos 31 dias. A refeição permanece manual.
+          <div class="full manual-note info report-automatic-policy" id="report-thermal-mode-note">
+            <strong>Repouso térmico:</strong> o modo automático ou manual é definido em Configurações → Repouso automático. A refeição permanece manual.
           </div>
 
           <div class="full actions">
@@ -1171,6 +1171,7 @@
         <button class="settings-tab admin-only master-only" data-settings-tab="security-access">Segurança e acessos</button>
         <button class="settings-tab calendar-access-only" data-settings-tab="calendar">Feriados e folgas</button>
         <button class="settings-tab admin-only" data-settings-tab="shifts">Turnos</button>
+        <button class="settings-tab admin-only" data-settings-tab="thermal-rest">Repouso automático</button>
         <button class="settings-tab admin-only" data-settings-tab="job-reports">Cargos e relatórios</button>
         <button class="settings-tab admin-only" data-settings-tab="senior-models">Leitor Senior</button>
         <button class="settings-tab admin-only" data-settings-tab="profiles">Perfis de usuário</button>
@@ -1646,6 +1647,26 @@
               </table>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div id="settings-thermal-rest" class="admin-only" hidden>
+        <div class="panel">
+          <div class="panel-head"><div><h3>Regra do repouso térmico</h3><p class="hint">Escolha o preenchimento automático ou manual e ajuste os parâmetros usados nas próximas fichas.</p></div></div>
+          <form id="thermal-rest-form" class="form-grid">
+            <label>Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="MANUAL">Manual — campos em branco</option></select></label>
+            <label>Minutos trabalhados antes do repouso<input id="thermal-work-minutes" type="number" min="30" max="240" value="100"></label>
+            <label>Duração do repouso (minutos)<input id="thermal-duration-minutes" type="number" min="5" max="60" value="20"></label>
+            <label>Variação para mais ou menos (minutos)<input id="thermal-variation-minutes" type="number" min="0" max="30" value="15"></label>
+            <label>Dias sem repetir a combinação<input id="thermal-cycle-days" type="number" min="1" max="31" value="31"></label>
+            <label>Quantidade de repousos<select id="thermal-rest-count"><option value="3">3 repousos</option><option value="2">2 repousos</option><option value="1">1 repouso</option></select></label>
+            <div class="full actions"><button class="primary" type="submit">Salvar regras</button></div>
+            <p id="thermal-rest-feedback" class="feedback full"></p>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h3>Turnos cadastrados</h3><p class="hint">Confira os horários e abra a edição quando precisar corrigir uma jornada.</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Código</th><th>Turno</th><th>Horário</th><th>Repousos-base</th><th>Situação</th><th>Ação</th></tr></thead><tbody id="thermal-shifts-list"></tbody></table></div>
         </div>
       </div>
 
@@ -2190,12 +2211,12 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.1.0-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.1.0-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.1.0-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.1.0-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.1.0-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.1.0-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.1.0-beta.1"></script>
+  <script src="/js/core.js?v=1.2.0-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.2.0-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.2.0-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.2.0-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.2.0-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.2.0-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.2.0-beta.1"></script>
 </body>
 </html>
