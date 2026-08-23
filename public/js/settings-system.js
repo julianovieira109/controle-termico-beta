@@ -1169,12 +1169,8 @@ function renderThermalShiftList(config=window.thermalRestSettings||{}){
     const preview=rests.length
       ?rests.map((rest,index)=>`R${index+1}: ${ThermalSchedule.formatMinutes(rest.start)}–${ThermalSchedule.formatMinutes(rest.end)}`).join(" · ")
       :"Não foi possível calcular";
-    return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>${escapeHtml(preview)}</td><td>${rests.length>=Number(config.restCount||3)?"Apto":"Revisar horário"}</td><td><button type="button" class="action-btn thermal-edit-shift" data-id="${shift.id}">Editar horário</button></td></tr>`;
-  }).join("")||'<tr><td colspan="6">Nenhum turno cadastrado.</td></tr>';
-  body.querySelectorAll(".thermal-edit-shift").forEach(button=>button.addEventListener("click",()=>{
-    document.querySelector('[data-settings-tab="shifts"]')?.click();
-    setTimeout(()=>window.editShift?.(button.dataset.id),0);
-  }));
+    return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>${escapeHtml(preview)}</td><td>${rests.length>=Number(config.restCount||3)?"Apto":"Revisar horário"}</td></tr>`;
+  }).join("")||'<tr><td colspan="5">Nenhum turno cadastrado.</td></tr>';
 }
 
 if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
@@ -1189,6 +1185,7 @@ if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
   };
   const result=await api("/api/settings/thermal-rest",{method:"PUT",body:JSON.stringify({value})});
   window.thermalRestSettings=result.value;
+  $("thermal-rest-feedback").className="feedback full success";
   $("thermal-rest-feedback").textContent=result.value.mode==="MANUAL"
     ?"Modo manual salvo. As próximas fichas terão os horários em branco."
     :"Modo automático e regras salvos com sucesso.";
