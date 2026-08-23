@@ -1071,3 +1071,10 @@
   border-color:#8f6a24;
   color:#ffd98a;
 }
+
+/* V1.2.2 Beta — horários térmicos discretamente maiores na tela. */
+#report-output .thermal-report-table tbody tr:not(.non-work-row) td.thermal-time-cell{
+  font-size:var(--thermal-time-font-size,7.2pt)!important;
+  font-weight:600!important;
+  line-height:1.05!important;
+}

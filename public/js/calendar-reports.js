@@ -329,7 +329,7 @@ document.querySelectorAll(".calendar-tab").forEach(btn=>{
 });
 
 let reportEmployees=[];
-window.thermalRestSettings={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,variationMinutes:15,cycleDays:31,restCount:3};
+window.thermalRestSettings={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 
 function reportMonthDays(monthValue){
   const [year,month]=monthValue.split("-").map(Number);
@@ -485,8 +485,8 @@ function buildThermalSheet(employee,month,thermalPlan){
       return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="7">${escapeHtml(status)}</td></tr>`;
     }
     const rests=thermalPlan?.get(`${employee.id}|${d.iso}`)||[];
-    const generated=rests.map(rest=>`<td>${ThermalSchedule.formatMinutes(rest.start)}</td><td>${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("");
-    const cells=generated+"<td></td><td></td>".repeat(Math.max(0,3-rests.length));
+    const generated=rests.map(rest=>`<td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.start)}</td><td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("");
+    const cells=generated+'<td class="thermal-time-cell"></td><td class="thermal-time-cell"></td>'.repeat(Math.max(0,3-rests.length));
     return `<tr>
       <td>${d.br}</td>
       <td>${d.weekName}</td>
@@ -573,6 +573,7 @@ async function prepareReports(){
   if(!branches.length && currentUser.role==="ADMIN") await loadBranches();
   if(!catalogs.shifts.length) await loadCatalogs();
   try{window.thermalRestSettings=await api("/api/settings/thermal-rest");}catch{}
+  document.documentElement.style.setProperty("--thermal-time-font-size",`${Number(thermalRestSettings.fontSizePt||7.2)}pt`);
   if($("report-thermal-mode-note"))$("report-thermal-mode-note").innerHTML=thermalRestSettings.mode==="MANUAL"
     ?"<strong>Repouso térmico manual:</strong> os campos serão gerados em branco. Altere em Configurações → Repouso automático."
     :"<strong>Repouso térmico automático:</strong> os horários serão preenchidos conforme as regras de Configurações. A refeição permanece manual.";

@@ -1158,6 +1158,8 @@ async function loadThermalRestSettings(){
   $("thermal-variation-minutes").value=config.variationMinutes;
   $("thermal-cycle-days").value=config.cycleDays;
   $("thermal-rest-count").value=config.restCount;
+  $("thermal-font-size").value=config.fontSizePt;
+  document.documentElement.style.setProperty("--thermal-time-font-size",`${config.fontSizePt}pt`);
   renderThermalShiftList(config);
 }
 
@@ -1181,10 +1183,12 @@ if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
     restMinutes:Number($("thermal-duration-minutes").value),
     variationMinutes:Number($("thermal-variation-minutes").value),
     cycleDays:Number($("thermal-cycle-days").value),
-    restCount:Number($("thermal-rest-count").value)
+    restCount:Number($("thermal-rest-count").value),
+    fontSizePt:Number($("thermal-font-size").value)
   };
   const result=await api("/api/settings/thermal-rest",{method:"PUT",body:JSON.stringify({value})});
   window.thermalRestSettings=result.value;
+  document.documentElement.style.setProperty("--thermal-time-font-size",`${result.value.fontSizePt}pt`);
   $("thermal-rest-feedback").className="feedback full success";
   $("thermal-rest-feedback").textContent=result.value.mode==="MANUAL"
     ?"Modo manual salvo. As próximas fichas terão os horários em branco."
