@@ -85,7 +85,7 @@ app.use((error,_req,res,_next)=>{
 });
 
 const port=Number(process.env.PORT||3000);
-const displayVersion=APP_VERSION==="1.0.0"?"1.0.0 Oficial":APP_VERSION.replace(/\.0-beta$/," Beta").replace(/-beta$/," Beta");
+const displayVersion=APP_VERSION==="1.0.0"?"1.0.0 Oficial":APP_VERSION.replace(/-beta(?:\.\d+)?$/," Beta");
 app.listen(port,"0.0.0.0",()=>{
   console.log(`Controle Térmico v${displayVersion} online na porta ${port}`);
 });

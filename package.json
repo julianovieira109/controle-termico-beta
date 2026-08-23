@@ -1,6 +1,6 @@
 {
   "name": "controle-termico-online",
-  "version": "1.0.0",
+  "version": "1.0.1-beta.1",
   "private": true,
   "description": "Sistema web de controle administrativo de repouso térmico e refeição",
   "main": "src/server.js",
@@ -27,8 +27,8 @@
     "pdf2json": "3.1.6",
     "pg": "8.16.3"
   },
-  "releaseChannel": "official",
-  "homologatedFrom": "1.63.13-beta",
+  "releaseChannel": "beta",
+  "homologatedFrom": "1.0.0-official",
   "distribution": "development-clean",
   "basedOn": "1.0.12-beta"
 }

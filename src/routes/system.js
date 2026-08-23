@@ -3,6 +3,7 @@ const multer=require("multer");
 const crypto=require("crypto");
 const pool=require("../db/pool");
 const audit=require("../db/audit");
+const {normalizeBackupData}=require("../services/backup-normalizer");
 const {authenticate,requireAdmin,requireMasterAdmin}=require("../middleware/auth");
 
 const router=express.Router();
@@ -407,6 +408,8 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
       return res.status(400).json({error:"Arquivo de backup incompatível."});
     }
 
+    const normalizedBackup=normalizeBackupData(backup.data);
+
     const tables=await existingTables(client);
 
     await client.query("BEGIN");
@@ -419,7 +422,7 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
 
     for(const table of RESTORE_ORDER){
       if(!tables.has(table))continue;
-      const rows=Array.isArray(backup.data[table])?backup.data[table]:[];
+      const rows=Array.isArray(normalizedBackup.data[table])?normalizedBackup.data[table]:[];
       if(!rows.length)continue;
 
       const validColumns=new Set(await tableColumns(client,table));
@@ -445,6 +448,7 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
       message:"Backup restaurado com sucesso. Entre novamente no sistema.",
       generatedAt:backup.generatedAt||null,
       tablesRestored:Object.keys(backup.data),
+      duplicatesResolved:normalizedBackup.stats,
       requiresRelogin:true
     });
   }catch(error){
