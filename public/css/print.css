@@ -1,0 +1,1203 @@
+/* =========================================================
+   V1.12 BETA — CABEÇALHO ADMINISTRATIVO ALINHADO
+   ========================================================= */
+
+/* Cabeçalho principal: logo à esquerda, título perfeitamente centralizado. */
+.report-header.report-header-clean{
+  display:grid!important;
+  grid-template-columns:34mm 1fr 34mm!important;
+  align-items:center!important;
+  min-height:18mm!important;
+  padding:2.4mm 3mm!important;
+  border:1px solid #9aa3ad!important;
+  border-top:4px solid #245b7a!important;
+  box-sizing:border-box!important;
+}
+
+.report-header.report-header-clean .report-header-brand{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  min-width:0!important;
+}
+
+.report-header.report-header-clean .report-header-brand .report-logo{
+  max-width:28mm!important;
+  max-height:11mm!important;
+  object-fit:contain!important;
+}
+
+.report-header.report-header-clean .report-header-center{
+  grid-column:2!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  min-width:0!important;
+}
+
+.report-header.report-header-clean .report-header-center h1{
+  margin:0!important;
+  color:#1f2937!important;
+  font-size:12pt!important;
+  line-height:1.1!important;
+  font-weight:800!important;
+  letter-spacing:.015em!important;
+}
+
+/* Quadro administrativo: 3 colunas fixas, com alinhamento por linha. */
+.administrative-identification{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.65fr) minmax(0,.9fr) minmax(0,.8fr)!important;
+  gap:0!important;
+  margin:1.7mm 0 1.8mm!important;
+  border:1px solid #aeb6bf!important;
+  border-radius:4px!important;
+  overflow:hidden!important;
+  background:#fff!important;
+  box-sizing:border-box!important;
+}
+
+.administrative-identification .report-field{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  min-height:8.2mm!important;
+  padding:1.2mm 1.5mm!important;
+  background:#fff!important;
+  border-right:1px solid #d3d8dd!important;
+  border-bottom:1px solid #d3d8dd!important;
+  box-sizing:border-box!important;
+  min-width:0!important;
+}
+
+/* Fecha as bordas à direita em cada linha. */
+.administrative-identification .report-reference-field,
+.administrative-identification .report-shift-field{
+  border-right:0!important;
+}
+
+/* Cargo em largura total. */
+.administrative-identification .report-role-field{
+  grid-column:1 / -1!important;
+  border-right:0!important;
+  border-bottom:0!important;
+  min-height:7.5mm!important;
+}
+
+/* Segunda linha termina antes do cargo. */
+.administrative-identification .report-employee-field,
+.administrative-identification .report-registration-field,
+.administrative-identification .report-shift-field{
+  border-bottom:1px solid #d3d8dd!important;
+}
+
+/* Tipografia administrativa */
+.report-field-label{
+  display:block!important;
+  margin-bottom:.55mm!important;
+  color:#66717c!important;
+  font-size:5.5pt!important;
+  line-height:1!important;
+  font-weight:800!important;
+  letter-spacing:.055em!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+}
+
+.report-field-value{
+  display:block!important;
+  color:#111827!important;
+  font-size:7.1pt!important;
+  line-height:1.15!important;
+  font-weight:650!important;
+  overflow-wrap:anywhere!important;
+}
+
+/* Campos-chave com destaque sutil. */
+.report-employee-field .report-field-value{
+  font-size:7.3pt!important;
+  font-weight:750!important;
+}
+
+.report-company-field .report-field-value{
+  font-weight:700!important;
+}
+
+.report-registration-field .report-field-value,
+.report-shift-field .report-field-value,
+.report-reference-field .report-field-value{
+  font-weight:700!important;
+}
+
+/* Alinhamento horizontal exato com a tabela. */
+.report-identification,
+.report-table{
+  width:100%!important;
+  margin-left:0!important;
+  margin-right:0!important;
+  box-sizing:border-box!important;
+}
+
+/* Mantém 31 dias na mesma página com o novo cabeçalho. */
+@media print{
+  .report-sheet{
+    width:200mm!important;
+    height:287mm!important;
+    min-height:287mm!important;
+    max-height:287mm!important;
+    padding:4.5mm!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+  }
+
+  .report-header.report-header-clean{
+    grid-template-columns:32mm 1fr 32mm!important;
+    min-height:16.5mm!important;
+    padding:2.1mm 2.8mm!important;
+    margin-bottom:1.4mm!important;
+  }
+
+  .report-header.report-header-clean .report-header-brand .report-logo{
+    max-width:27mm!important;
+    max-height:10.5mm!important;
+  }
+
+  .report-header.report-header-clean .report-header-center h1{
+    font-size:10.9pt!important;
+  }
+
+  .administrative-identification{
+    margin:0 0 1.45mm!important;
+  }
+
+  .administrative-identification .report-field{
+    min-height:7.2mm!important;
+    padding:.85mm 1.25mm!important;
+  }
+
+  .administrative-identification .report-role-field{
+    min-height:6.5mm!important;
+  }
+
+  .report-field-label{
+    margin-bottom:.35mm!important;
+    font-size:5.1pt!important;
+  }
+
+  .report-field-value{
+    font-size:6.45pt!important;
+    line-height:1.08!important;
+  }
+
+  .report-employee-field .report-field-value{
+    font-size:6.65pt!important;
+  }
+
+  .month-days-31.thermal-report-sheet .thermal-report-table tbody td{
+    height:5.95mm!important;
+    min-height:5.95mm!important;
+    padding:.5mm .6mm!important;
+    font-size:6pt!important;
+  }
+
+  .month-days-30.thermal-report-sheet .thermal-report-table tbody td{
+    height:6.15mm!important;
+    min-height:6.15mm!important;
+  }
+
+  .month-days-29.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-28.thermal-report-sheet .thermal-report-table tbody td{
+    height:6.4mm!important;
+    min-height:6.4mm!important;
+  }
+
+  .month-days-31.meal-report-sheet .meal-report-table tbody td{
+    height:6.1mm!important;
+    min-height:6.1mm!important;
+  }
+}
+
+
+/* =========================================================
+   V1.14 BETA — MAIOR LEGIBILIDADE NA IMPRESSÃO
+   Repouso Térmico + Refeição
+   ========================================================= */
+@media print {
+
+  /* Título das duas fichas */
+  .thermal-report-sheet .report-header-center h1,
+  .meal-report-sheet .report-header-center h1{
+    font-size:12pt!important;
+    line-height:1.05!important;
+  }
+
+  /* Identificação administrativa */
+  .thermal-report-sheet .report-field-label,
+  .meal-report-sheet .report-field-label{
+    font-size:5.7pt!important;
+    line-height:1!important;
+  }
+
+  .thermal-report-sheet .report-field-value,
+  .meal-report-sheet .report-field-value{
+    font-size:7.15pt!important;
+    line-height:1.08!important;
+  }
+
+  .thermal-report-sheet .report-employee-field .report-field-value,
+  .meal-report-sheet .report-employee-field .report-field-value{
+    font-size:7.35pt!important;
+  }
+
+  /* Cabeçalhos principais das tabelas */
+  .thermal-report-sheet .report-table thead th,
+  .meal-report-sheet .report-table thead th{
+    font-size:6.55pt!important;
+    line-height:1.05!important;
+    font-weight:800!important;
+  }
+
+  /* Subcabeçalhos SAÍDA / RETORNO */
+  .thermal-report-sheet .report-table thead tr:nth-child(2) th,
+  .meal-report-sheet .report-table thead tr:nth-child(2) th{
+    font-size:5.9pt!important;
+    font-weight:800!important;
+  }
+
+  /* Conteúdo das linhas: datas, dias e campos */
+  .thermal-report-sheet .report-table tbody td,
+  .meal-report-sheet .report-table tbody td{
+    font-size:6.55pt!important;
+    line-height:1.05!important;
+  }
+
+  /* Data e dia um pouco mais destacados */
+  .thermal-report-sheet .report-table tbody td:nth-child(1),
+  .thermal-report-sheet .report-table tbody td:nth-child(2),
+  .meal-report-sheet .report-table tbody td:nth-child(1),
+  .meal-report-sheet .report-table tbody td:nth-child(2){
+    font-size:6.7pt!important;
+    font-weight:650!important;
+  }
+
+  /* Folga / sem jornada */
+  .thermal-report-sheet .off-day,
+  .thermal-report-sheet .day-off,
+  .thermal-report-sheet td[colspan].off,
+  .meal-report-sheet .off-day,
+  .meal-report-sheet .day-off,
+  .meal-report-sheet td[colspan].off{
+    font-size:6.65pt!important;
+    font-weight:800!important;
+  }
+
+  /* Preserva 31 dias em uma única folha A4 */
+  .month-days-31.thermal-report-sheet .thermal-report-table tbody td{
+    height:5.9mm!important;
+    min-height:5.9mm!important;
+    padding:.42mm .55mm!important;
+  }
+
+  .month-days-31.meal-report-sheet .meal-report-table tbody td{
+    height:6.0mm!important;
+    min-height:6.0mm!important;
+    padding:.45mm .6mm!important;
+  }
+
+  .month-days-30.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-30.meal-report-sheet .meal-report-table tbody td{
+    height:6.1mm!important;
+    min-height:6.1mm!important;
+  }
+}
+
+
+/* =========================================================
+   V1.15 BETA - IMPRESSAO MAIS PREENCHIDA E MENOS NEGRITO
+   Repouso Termico + Refeicao
+   ========================================================= */
+@media print{
+  /* Aproveita melhor a area util da folha A4. */
+  .thermal-report-sheet,
+  .meal-report-sheet{
+    width:204mm!important;
+    height:289mm!important;
+    min-height:289mm!important;
+    max-height:289mm!important;
+    padding:2.5mm!important;
+  }
+
+  .thermal-report-sheet .report-header.report-header-clean,
+  .meal-report-sheet .report-header.report-header-clean{
+    min-height:16mm!important;
+    padding:2.2mm 3mm!important;
+    margin-bottom:1.7mm!important;
+  }
+
+  .thermal-report-sheet .administrative-identification,
+  .meal-report-sheet .administrative-identification{
+    margin-bottom:1.8mm!important;
+  }
+
+  .thermal-report-sheet .administrative-identification>div,
+  .meal-report-sheet .administrative-identification>div{
+    min-height:7mm!important;
+    padding:1.1mm 1.5mm!important;
+  }
+
+  /* Informacoes preenchidas sem negrito excessivo. */
+  .thermal-report-sheet .report-field-value,
+  .meal-report-sheet .report-field-value,
+  .thermal-report-sheet .report-employee-field .report-field-value,
+  .meal-report-sheet .report-employee-field .report-field-value,
+  .thermal-report-sheet .report-company-field .report-field-value,
+  .meal-report-sheet .report-company-field .report-field-value,
+  .thermal-report-sheet .report-registration-field .report-field-value,
+  .meal-report-sheet .report-registration-field .report-field-value,
+  .thermal-report-sheet .report-shift-field .report-field-value,
+  .meal-report-sheet .report-shift-field .report-field-value,
+  .thermal-report-sheet .report-reference-field .report-field-value,
+  .meal-report-sheet .report-reference-field .report-field-value{
+    font-weight:500!important;
+  }
+
+  .thermal-report-sheet .report-field-label,
+  .meal-report-sheet .report-field-label{
+    font-weight:600!important;
+  }
+
+  /* Cabecalho da tabela continua destacado, mas menos pesado. */
+  .thermal-report-sheet .report-table thead th,
+  .meal-report-sheet .report-table thead th,
+  .thermal-report-sheet .report-table thead tr:nth-child(2) th,
+  .meal-report-sheet .report-table thead tr:nth-child(2) th{
+    font-weight:600!important;
+  }
+
+  /* Datas e dias nao precisam de negrito. */
+  .thermal-report-sheet .report-table tbody td,
+  .meal-report-sheet .report-table tbody td,
+  .thermal-report-sheet .report-table tbody td:nth-child(1),
+  .thermal-report-sheet .report-table tbody td:nth-child(2),
+  .meal-report-sheet .report-table tbody td:nth-child(1),
+  .meal-report-sheet .report-table tbody td:nth-child(2){
+    font-weight:400!important;
+  }
+
+  /* Folga fica apenas moderadamente destacada. */
+  .thermal-report-sheet .report-table tbody tr.non-work-row>td,
+  .meal-report-sheet .report-table tbody tr.non-work-row>td{
+    font-weight:600!important;
+  }
+
+  /* Usa mais a altura da pagina sem ultrapassar uma folha. */
+  .month-days-31.thermal-report-sheet .thermal-report-table tbody td{
+    height:6.35mm!important;
+    min-height:6.35mm!important;
+    padding:.52mm .58mm!important;
+  }
+  .month-days-31.meal-report-sheet .meal-report-table tbody td{
+    height:6.4mm!important;
+    min-height:6.4mm!important;
+    padding:.55mm .65mm!important;
+  }
+
+  .month-days-30.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-30.meal-report-sheet .meal-report-table tbody td{
+    height:6.55mm!important;
+    min-height:6.55mm!important;
+  }
+
+  .month-days-29.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-28.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-29.meal-report-sheet .meal-report-table tbody td,
+  .month-days-28.meal-report-sheet .meal-report-table tbody td{
+    height:6.8mm!important;
+    min-height:6.8mm!important;
+  }
+}
+
+
+/* V1.16 BETA - DATAS MAIORES NA IMPRESSAO */
+@media print{
+  .thermal-report-sheet .report-table tbody td:nth-child(1),
+  .meal-report-sheet .report-table tbody td:nth-child(1){
+    font-size:7.6pt!important;
+    line-height:1.05!important;
+    font-weight:500!important;
+  }
+  .thermal-report-sheet .report-table thead tr:first-child th:first-child,
+  .meal-report-sheet .report-table thead tr:first-child th:first-child{
+    font-size:7.1pt!important;
+    font-weight:600!important;
+  }
+}
+
+
+/* =========================================================
+   V1.23 BETA — LEITOR INTELIGENTE SENIOR
+   ========================================================= */
+.senior-intelligence-card{
+  margin:12px 0;
+  padding:14px 16px;
+  border:1px solid #cbd5e1;
+  border-left:5px solid #64748b;
+  border-radius:10px;
+  background:#f8fafc;
+}
+.senior-intelligence-card.alta{
+  border-left-color:#15803d;
+  background:#f0fdf4;
+}
+.senior-intelligence-card.media{
+  border-left-color:#b7791f;
+  background:#fffbeb;
+}
+.senior-intelligence-card.baixa{
+  border-left-color:#b91c1c;
+  background:#fef2f2;
+}
+.senior-intelligence-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.senior-intelligence-head>div{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.senior-intelligence-kicker{
+  font-size:10px;
+  letter-spacing:.08em;
+  font-weight:700;
+  color:#64748b;
+}
+.senior-confidence-badge{
+  display:inline-flex;
+  min-width:54px;
+  min-height:34px;
+  align-items:center;
+  justify-content:center;
+  border-radius:18px;
+  background:#fff;
+  border:1px solid #cbd5e1;
+  font-weight:800;
+}
+.senior-intelligence-card p{
+  margin:8px 0 0;
+}
+.senior-intelligence-card details{
+  margin-top:8px;
+}
+.senior-intelligence-card ul{
+  margin:7px 0 0 18px;
+  padding:0;
+}
+.senior-intelligence-card li{
+  margin:3px 0;
+}
+.intelligence-summary{
+  border-color:#94a3b8!important;
+}
+
+
+/* =========================================================
+   V1.25 BETA — PAINEL DO LEITOR INTELIGENTE SENIOR
+   ========================================================= */
+.senior-model-hero{
+  border-top:4px solid #245b7a;
+}
+#settings-senior-models .shift-import-summary{
+  margin-top:12px;
+}
+#settings-senior-models .shift-import-summary article{
+  min-width:140px;
+}
+#settings-senior-models table small{
+  color:#64748b;
+}
+@media(max-width:900px){
+  #settings-senior-models .admin-two-column{
+    grid-template-columns:1fr!important;
+  }
+}
+
+
+/* =========================================================
+   V1.27 BETA — APROVEITAMENTO TOTAL DA FOLHA A4
+   Ajuste exclusivo de impressão: Repouso Térmico + Refeição
+   ========================================================= */
+@page{
+  size:A4 portrait;
+  margin:4mm;
+}
+
+@media print{
+  html,body{
+    width:210mm!important;
+    height:297mm!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+  }
+
+  #report-output{
+    position:absolute!important;
+    left:0!important;
+    top:0!important;
+    width:202mm!important;
+    margin:0!important;
+    padding:0!important;
+  }
+
+  .thermal-report-sheet,
+  .meal-report-sheet{
+    width:202mm!important;
+    height:289mm!important;
+    min-height:289mm!important;
+    max-height:289mm!important;
+    margin:0 auto!important;
+    padding:1.8mm 2mm 1.5mm!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+  }
+
+  /* Cabeçalho continua compacto para entregar a área útil à tabela. */
+  .thermal-report-sheet .report-header.report-header-clean,
+  .meal-report-sheet .report-header.report-header-clean{
+    min-height:15.5mm!important;
+    padding:2mm 2.5mm!important;
+    margin-bottom:1.3mm!important;
+  }
+
+  .thermal-report-sheet .administrative-identification,
+  .meal-report-sheet .administrative-identification{
+    margin-bottom:1.35mm!important;
+  }
+
+  .thermal-report-sheet .administrative-identification>div,
+  .meal-report-sheet .administrative-identification>div{
+    min-height:6.7mm!important;
+    padding:1mm 1.35mm!important;
+  }
+
+  .thermal-report-sheet .report-table,
+  .meal-report-sheet .report-table{
+    width:100%!important;
+    margin:0!important;
+  }
+
+  /* Linhas maiores: a tabela passa a ocupar praticamente toda a A4. */
+  .month-days-31.thermal-report-sheet .thermal-report-table tbody td{
+    height:7.72mm!important;
+    min-height:7.72mm!important;
+    padding:.55mm .62mm!important;
+  }
+
+  .month-days-31.meal-report-sheet .meal-report-table tbody td{
+    height:7.82mm!important;
+    min-height:7.82mm!important;
+    padding:.58mm .70mm!important;
+  }
+
+  .month-days-30.thermal-report-sheet .thermal-report-table tbody td{
+    height:7.98mm!important;
+    min-height:7.98mm!important;
+  }
+
+  .month-days-30.meal-report-sheet .meal-report-table tbody td{
+    height:8.08mm!important;
+    min-height:8.08mm!important;
+  }
+
+  .month-days-29.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-29.meal-report-sheet .meal-report-table tbody td{
+    height:8.34mm!important;
+    min-height:8.34mm!important;
+  }
+
+  .month-days-28.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-28.meal-report-sheet .meal-report-table tbody td{
+    height:8.62mm!important;
+    min-height:8.62mm!important;
+  }
+
+  /* Mantém leitura confortável sem voltar ao excesso de negrito. */
+  .thermal-report-sheet .report-table tbody td,
+  .meal-report-sheet .report-table tbody td{
+    font-size:6.6pt!important;
+    line-height:1.05!important;
+    font-weight:400!important;
+  }
+
+  .thermal-report-sheet .report-table tbody td:nth-child(1),
+  .meal-report-sheet .report-table tbody td:nth-child(1){
+    font-size:7.8pt!important;
+    font-weight:500!important;
+  }
+
+  .thermal-report-sheet .report-table tbody td:nth-child(2),
+  .meal-report-sheet .report-table tbody td:nth-child(2){
+    font-size:6.8pt!important;
+  }
+
+  .thermal-report-sheet .report-table tbody tr.non-work-row>td,
+  .meal-report-sheet .report-table tbody tr.non-work-row>td{
+    font-weight:600!important;
+  }
+}
+
+
+/* =========================================================
+   V1.28 BETA — ACABAMENTO FINAL DAS FICHAS A4
+   Linhas, bordas, alinhamento e 31 dias visíveis
+   ========================================================= */
+@media print{
+  /*
+   * Não corta a última linha. A folha continua com altura mínima A4,
+   * mas o conteúdo não fica escondido por max-height/overflow.
+   */
+  .thermal-report-sheet,
+  .meal-report-sheet{
+    min-height:289mm!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding:1.8mm 2mm 1.8mm!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Cabeçalho principal: contorno mais definido e uniforme. */
+  .thermal-report-sheet .report-header.report-header-clean,
+  .meal-report-sheet .report-header.report-header-clean{
+    border:0.75pt solid #7c8995!important;
+    border-top:3.2mm solid #245b7a!important;
+    border-radius:0!important;
+    min-height:15.3mm!important;
+    margin-bottom:1.4mm!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Quadro de identificação administrativo mais limpo. */
+  .thermal-report-sheet .administrative-identification,
+  .meal-report-sheet .administrative-identification{
+    border:0.75pt solid #8995a0!important;
+    border-radius:1.2mm!important;
+    overflow:hidden!important;
+    margin-bottom:1.4mm!important;
+  }
+
+  .thermal-report-sheet .administrative-identification .report-field,
+  .meal-report-sheet .administrative-identification .report-field{
+    border-right:0.45pt solid #c0c7ce!important;
+    border-bottom:0.45pt solid #c0c7ce!important;
+    background:#fff!important;
+  }
+
+  .thermal-report-sheet .administrative-identification .report-reference-field,
+  .thermal-report-sheet .administrative-identification .report-shift-field,
+  .meal-report-sheet .administrative-identification .report-reference-field,
+  .meal-report-sheet .administrative-identification .report-shift-field{
+    border-right:0!important;
+  }
+
+  .thermal-report-sheet .administrative-identification .report-role-field,
+  .meal-report-sheet .administrative-identification .report-role-field{
+    border-right:0!important;
+    border-bottom:0!important;
+  }
+
+  /*
+   * Tabela: borda externa um pouco mais forte; linhas internas finas.
+   * Isso deixa a ficha mais profissional sem ficar pesada.
+   */
+  .thermal-report-sheet .report-table,
+  .meal-report-sheet .report-table{
+    border-collapse:collapse!important;
+    border:0.9pt solid #74818d!important;
+    table-layout:fixed!important;
+  }
+
+  .thermal-report-sheet .report-table th,
+  .thermal-report-sheet .report-table td,
+  .meal-report-sheet .report-table th,
+  .meal-report-sheet .report-table td{
+    border:0.42pt solid var(--report-border,#64748b)!important;
+    vertical-align:middle!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Cabeçalhos com cinza muito claro e linhas mais definidas. */
+  .thermal-report-sheet .report-table thead th,
+  .meal-report-sheet .report-table thead th{
+    background:var(--report-header-bg,#eef2f6)!important;
+    color:var(--report-header-text,#111827)!important;
+    border-color:var(--report-border,#64748b)!important;
+    font-weight:600!important;
+  }
+
+  /* Divisórias principais do Repouso Térmico. */
+  .thermal-report-sheet .thermal-report-table th:nth-child(2),
+  .thermal-report-sheet .thermal-report-table td:nth-child(2){
+    border-right:0.8pt solid var(--report-border,#64748b)!important;
+  }
+
+  .thermal-report-sheet .thermal-report-table tbody tr:not(.non-work-row) td:nth-child(4),
+  .thermal-report-sheet .thermal-report-table tbody tr:not(.non-work-row) td:nth-child(6),
+  .thermal-report-sheet .thermal-report-table tbody tr:not(.non-work-row) td:nth-child(8){
+    border-right:0.8pt solid var(--report-border,#64748b)!important;
+  }
+
+  .thermal-report-sheet .thermal-report-table thead tr:first-child th:nth-child(3),
+  .thermal-report-sheet .thermal-report-table thead tr:first-child th:nth-child(4),
+  .thermal-report-sheet .thermal-report-table thead tr:first-child th:nth-child(5){
+    border-right:0.8pt solid var(--report-border,#64748b)!important;
+  }
+
+  /* Assinatura começa com uma divisória mais clara. */
+  .thermal-report-sheet .thermal-report-table .col-signature,
+  .thermal-report-sheet .thermal-report-table tbody tr:not(.non-work-row) td:last-child,
+  .meal-report-sheet .meal-report-table .meal-col-signature,
+  .meal-report-sheet .meal-report-table tbody tr:not(.non-work-row) td:last-child{
+    border-left:0.8pt solid var(--report-border,#64748b)!important;
+  }
+
+  /* Folgas: cinza suave, sem bordas verticais fragmentadas. */
+  .thermal-report-sheet .report-table tbody tr.non-work-row>td,
+  .meal-report-sheet .report-table tbody tr.non-work-row>td{
+    background:var(--report-off-bg,#e8edf2)!important;
+    color:var(--report-off-text,#475569)!important;
+    border-top:var(--report-off-border-width,.65pt) solid var(--report-off-border,#87939e)!important;
+    border-bottom:var(--report-off-border-width,.65pt) solid var(--report-off-border,#87939e)!important;
+    font-weight:600!important;
+  }
+
+  /* Alturas recalibradas: 31 dias ficam inteiros e a folha continua bem preenchida. */
+  .month-days-31.thermal-report-sheet .thermal-report-table tbody td{
+    height:7.05mm!important;
+    min-height:7.05mm!important;
+    padding:.48mm .58mm!important;
+  }
+
+  .month-days-31.meal-report-sheet .meal-report-table tbody td{
+    height:7.14mm!important;
+    min-height:7.14mm!important;
+    padding:.52mm .66mm!important;
+  }
+
+  .month-days-30.thermal-report-sheet .thermal-report-table tbody td{
+    height:7.28mm!important;
+    min-height:7.28mm!important;
+  }
+
+  .month-days-30.meal-report-sheet .meal-report-table tbody td{
+    height:7.38mm!important;
+    min-height:7.38mm!important;
+  }
+
+  .month-days-29.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-29.meal-report-sheet .meal-report-table tbody td{
+    height:7.62mm!important;
+    min-height:7.62mm!important;
+  }
+
+  .month-days-28.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-28.meal-report-sheet .meal-report-table tbody td{
+    height:7.90mm!important;
+    min-height:7.90mm!important;
+  }
+
+  /* Datas e dias centralizados com espaçamento consistente. */
+  .thermal-report-sheet .report-table tbody td:nth-child(1),
+  .meal-report-sheet .report-table tbody td:nth-child(1){
+    white-space:nowrap!important;
+    text-align:center!important;
+    font-size:7.65pt!important;
+    letter-spacing:.005em!important;
+  }
+
+  .thermal-report-sheet .report-table tbody td:nth-child(2),
+  .meal-report-sheet .report-table tbody td:nth-child(2){
+    text-align:center!important;
+    font-size:6.8pt!important;
+  }
+
+  /* Garante que uma ficha completa não seja quebrada no meio. */
+  .thermal-report-sheet,
+  .meal-report-sheet,
+  .thermal-report-sheet .report-table,
+  .meal-report-sheet .report-table{
+    break-inside:avoid!important;
+    page-break-inside:avoid!important;
+  }
+}
+
+
+/* =========================================================
+   V1.30 BETA — preserva a proteção contra o tema original antes da
+   personalização visual ser aplicada.
+   ========================================================= */
+html.visual-loading body{
+  visibility:hidden;
+}
+html.visual-ready body{
+  visibility:visible;
+}
+@media print{
+  html.visual-loading body,
+  html.visual-ready body{
+    visibility:visible!important;
+  }
+}
+
+/* =========================================================
+   V1.34 BETA — EXPERIÊNCIA MÓVEL
+   Somente apresentação e navegação; não altera regras do sistema.
+   ========================================================= */
+.nav-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  min-width:22px;
+  height:22px;
+  font-size:16px;
+  line-height:1;
+}
+.nav-label{min-width:0}
+
+@media(max-width:900px){
+  body.mobile-menu-open{overflow:hidden!important}
+
+  .mobile-menu-overlay{
+    display:block;
+    background:rgba(8,24,38,.62);
+    backdrop-filter:blur(3px);
+  }
+  .mobile-menu-overlay[hidden]{display:none!important}
+
+  .sidebar{
+    width:min(86vw,320px)!important;
+    max-width:320px!important;
+    padding:16px 14px 22px!important;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+  }
+  .sidebar.mobile-open{transform:translateX(0)!important}
+  .sidebar .sidebar-brand{
+    min-height:48px;
+    padding-right:48px;
+  }
+  .sidebar .sidebar-brand>span{
+    display:block!important;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-weight:700;
+  }
+  .sidebar nav{
+    gap:7px;
+    margin-top:28px!important;
+  }
+  .sidebar .nav-btn{
+    display:flex!important;
+    align-items:center;
+    width:100%;
+    min-height:50px;
+    padding:12px 14px;
+    gap:12px;
+    border:1px solid transparent;
+    font-size:15px;
+    font-weight:650;
+    text-align:left;
+  }
+  .sidebar .nav-btn .nav-label{display:block!important}
+  .sidebar .nav-btn.active{
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.7);
+    box-shadow:0 5px 14px rgba(0,0,0,.12);
+  }
+  .sidebar .nav-btn:active{transform:scale(.985)}
+
+  .main{padding:10px!important}
+  .topbar{
+    border-radius:12px!important;
+    margin-bottom:12px!important;
+    box-shadow:0 4px 16px rgba(15,23,42,.06);
+  }
+  .mobile-menu-button{
+    width:44px;
+    min-width:44px;
+    height:44px;
+  }
+  .topbar-left #page-title{max-width:42vw!important}
+  #scope-text{display:none}
+  .user-actions{gap:6px!important}
+  #user-name{display:none}
+  #logout{min-height:42px;padding:9px 13px!important}
+
+  .panel,.hero{
+    padding:16px!important;
+    border-radius:14px!important;
+  }
+  .hero h3{font-size:23px!important}
+  .cards{gap:10px!important}
+  .cards article{padding:16px!important}
+  .cards strong{font-size:28px!important}
+
+  input,select,textarea,button{
+    min-height:44px;
+    font-size:16px;
+  }
+  input[type="checkbox"],input[type="radio"]{
+    min-height:20px;
+    min-width:20px;
+  }
+  .actions,.form-actions,.modal-actions{
+    flex-wrap:wrap;
+  }
+  .table-wrap{
+    width:100%;
+    overflow-x:auto;
+    overscroll-behavior-inline:contain;
+    -webkit-overflow-scrolling:touch;
+    border-radius:10px;
+  }
+  .table-wrap table{min-width:720px}
+  th,td{padding:10px 9px}
+}
+
+@media(max-width:560px){
+  .main{padding:8px!important}
+  .topbar{padding:8px!important}
+  .topbar-left{gap:8px!important}
+  .topbar-left #page-title{max-width:48vw!important;font-size:17px!important}
+  .panel,.hero{padding:14px!important}
+  .cards{grid-template-columns:1fr!important}
+  .actions>button,
+  .form-actions>button,
+  .modal-actions>button{
+    flex:1 1 100%;
+    width:100%;
+  }
+}
+
+@media print{
+  .nav-icon{display:none!important}
+}
+
+
+
+/* =========================================================
+   V1.0.0 BETA — CORES PERSONALIZADAS AUTORITATIVAS
+   Este bloco precisa permanecer no final do arquivo para que
+   regras históricas de impressão não sobrescrevam a configuração.
+   ========================================================= */
+@media print{
+  .thermal-report-sheet .report-table th,
+  .thermal-report-sheet .report-table td,
+  .meal-report-sheet .report-table th,
+  .meal-report-sheet .report-table td{
+    border-color:var(--report-border,#64748b)!important;
+  }
+
+  .thermal-report-sheet .report-table thead th,
+  .meal-report-sheet .report-table thead th,
+  .thermal-report-sheet .report-table thead tr:nth-child(2) th,
+  .meal-report-sheet .report-table thead tr:nth-child(2) th{
+    background:var(--report-header-bg,#eef2f6)!important;
+    color:var(--report-header-text,#111827)!important;
+    border-color:var(--report-border,#64748b)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .thermal-report-sheet .report-table tbody tr.non-work-row>td,
+  .meal-report-sheet .report-table tbody tr.non-work-row>td{
+    background:var(--report-off-bg,#e8edf2)!important;
+    color:var(--report-off-text,#475569)!important;
+    border-top:var(--report-off-border-width,.65pt) solid var(--report-off-border,#87939e)!important;
+    border-bottom:var(--report-off-border-width,.65pt) solid var(--report-off-border,#87939e)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+}
+
+
+/* =========================================================
+   V1.0.0 BETA — PERSONALIZAÇÃO COMPLETA NA IMPRESSÃO/PDF
+   Deve permanecer no final para vencer regras históricas.
+   ========================================================= */
+@media print{
+  .thermal-report-sheet,
+  .meal-report-sheet{
+    background:var(--report-sheet-bg,#ffffff)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+  .thermal-report-sheet .report-header,
+  .meal-report-sheet .report-header{
+    background:var(--report-title-area-bg,#ffffff)!important;
+    border-color:var(--report-title-border,#64748b)!important;
+    border-top-color:var(--report-top-bar,#154c79)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+  .thermal-report-sheet .report-header-center h1,
+  .meal-report-sheet .report-header-center h1{
+    color:var(--report-title-text,#111827)!important;
+  }
+  .thermal-report-sheet .report-identification,
+  .meal-report-sheet .report-identification,
+  .thermal-report-sheet .report-identification>div,
+  .meal-report-sheet .report-identification>div{
+    background:var(--report-identification-bg,#ffffff)!important;
+    border-color:var(--report-identification-border,#cbd5e1)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+  .thermal-report-sheet .report-identification .report-field-label,
+  .meal-report-sheet .report-identification .report-field-label{
+    color:var(--report-identification-label,#475569)!important;
+  }
+  .thermal-report-sheet .report-identification .report-field-value,
+  .meal-report-sheet .report-identification .report-field-value{
+    color:var(--report-identification-text,#111827)!important;
+  }
+  .thermal-report-sheet .report-table tbody tr:not(.non-work-row)>td,
+  .meal-report-sheet .report-table tbody tr:not(.non-work-row)>td{
+    background:var(--report-row-bg,#ffffff)!important;
+    color:var(--report-row-text,#111827)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+}
+
+
+/* =========================================================
+   V1.0.0 BETA — IMPRESSÃO MOBILE / iOS
+   Evita desaparecimento de linhas finas no Safari/AirPrint.
+   ========================================================= */
+@media print{
+  .thermal-report-sheet .report-table,
+  .meal-report-sheet .report-table{
+    width:100%!important;
+    border-collapse:collapse!important;
+    border-spacing:0!important;
+    table-layout:fixed!important;
+    border:0.75pt solid var(--report-border,#64748b)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .thermal-report-sheet .report-table thead th,
+  .thermal-report-sheet .report-table tbody td,
+  .meal-report-sheet .report-table thead th,
+  .meal-report-sheet .report-table tbody td{
+    border-top:0.75pt solid var(--report-border,#64748b)!important;
+    border-right:0.75pt solid var(--report-border,#64748b)!important;
+    border-bottom:0.75pt solid var(--report-border,#64748b)!important;
+    border-left:0.75pt solid var(--report-border,#64748b)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Reinstala bordas que regras antigas removiam em células de assinatura. */
+  .thermal-report-sheet .report-table td:last-child,
+  .thermal-report-sheet .report-table th:last-child,
+  .meal-report-sheet .report-table td:last-child,
+  .meal-report-sheet .report-table th:last-child,
+  .meal-report-table td.meal-signature-cell{
+    border-right:0.75pt solid var(--report-border,#64748b)!important;
+  }
+
+  .thermal-report-sheet .report-table tbody tr:not(.non-work-row)>td,
+  .meal-report-sheet .report-table tbody tr:not(.non-work-row)>td{
+    border-color:var(--report-border,#64748b)!important;
+  }
+
+  /* FOLGA continua usando sua configuração própria, mas nunca perde contorno lateral. */
+  .thermal-report-sheet .report-table tbody tr.non-work-row>td,
+  .meal-report-sheet .report-table tbody tr.non-work-row>td{
+    border-left:0.75pt solid var(--report-border,#64748b)!important;
+    border-right:0.75pt solid var(--report-border,#64748b)!important;
+    border-top:var(--report-off-border-width,.65pt) solid var(--report-off-border,#87939e)!important;
+    border-bottom:var(--report-off-border-width,.65pt) solid var(--report-off-border,#87939e)!important;
+  }
+
+  /* Quadro de identificação também recebe espessura mínima estável no iOS. */
+  .thermal-report-sheet .report-identification,
+  .meal-report-sheet .report-identification,
+  .thermal-report-sheet .report-identification>div,
+  .meal-report-sheet .report-identification>div{
+    border-color:var(--report-identification-border,#cbd5e1)!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+}
+
+
+/* =========================================================
+   V1.0.0 BETA — CORREÇÃO DE PAGINAÇÃO
+   Restaura a geometria A4 estável da V1.63.9.
+   Mantém as bordas reforçadas da V1.63.8.
+   ========================================================= */
+@page{
+  size:A4 portrait;
+  margin:4mm;
+}
+
+@media print{
+  html,
+  body{
+    width:210mm!important;
+    height:297mm!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    background:#ffffff!important;
+  }
+
+  #report-output{
+    position:absolute!important;
+    left:0!important;
+    top:0!important;
+    width:202mm!important;
+    max-width:202mm!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+  }
+
+  .thermal-report-sheet,
+  .meal-report-sheet{
+    width:202mm!important;
+    height:289mm!important;
+    min-height:289mm!important;
+    max-height:289mm!important;
+    margin:0 auto!important;
+    padding:1.8mm 2mm 1.5mm!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid-page!important;
+    page-break-after:always!important;
+    break-after:page!important;
+  }
+
+  .thermal-report-sheet:last-child,
+  .meal-report-sheet:last-child{
+    page-break-after:auto!important;
+    break-after:auto!important;
+  }
+
+  /* A tabela de refeição deve permanecer dentro da mesma folha da ficha. */
+  .meal-report-sheet .meal-report-table{
+    page-break-inside:avoid!important;
+    break-inside:avoid-page!important;
+  }
+}

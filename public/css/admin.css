@@ -1,0 +1,1299 @@
+/* =========================================================
+   V7.41 — MELHOR APROVEITAMENTO VERTICAL DO A4
+   Mantém uma ficha por página e amplia a área de preenchimento.
+   ========================================================= */
+
+@media print{
+  /* Repouso: mais espaço para escrever horários manualmente. */
+  .thermal-report-table tbody td{
+    height:5.45mm!important;
+    padding:.35mm .5mm!important;
+    font-size:6pt!important;
+  }
+
+  /* Refeição: linhas ainda maiores para assinatura diária. */
+  .meal-report-table tbody td{
+    height:5.65mm!important;
+    padding:.4mm .55mm!important;
+    font-size:6.1pt!important;
+  }
+
+  /* Mantém rodapé compacto para preservar uma única folha. */
+  .report-note{
+    margin-top:1.5mm!important;
+  }
+
+  .report-footer-signatures{
+    margin-top:3.8mm!important;
+  }
+
+  .app-footer-brand{
+    margin-top:1.3mm!important;
+  }
+}
+
+
+/* V7.45 — Perfis de usuário em modal */
+#profile-modal .app-modal-dialog{
+  width:min(620px,calc(100vw - 32px));
+}
+#profile-modal .form-grid{
+  grid-template-columns:1fr;
+}
+#profile-modal .actions{
+  justify-content:flex-end;
+}
+
+
+/* V7.47 — permissões por perfil */
+.profile-permissions{
+  padding:14px;
+  border:1px solid #dbe2ea;
+  border-radius:12px;
+  background:#f8fafc;
+}
+.profile-permission-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+.profile-permission-grid label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px;
+  border:1px solid #dbe2ea;
+  border-radius:9px;
+  background:#fff;
+  font-weight:600;
+}
+@media(max-width:720px){
+  .profile-permission-grid{grid-template-columns:1fr}
+}
+
+
+/* V7.54 — Códigos Senior dinâmicos */
+.unknown-codes-list{display:grid;gap:10px}
+.unknown-code-row{
+  display:grid;
+  grid-template-columns:minmax(200px,1fr) minmax(220px,320px) auto;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border:1px solid #dbe2ea;
+  border-radius:10px;
+  background:#f8fafc;
+}
+.unknown-code-row>div{display:flex;flex-direction:column;gap:3px}
+.unknown-code-row span{color:#64748b;font-size:12px}
+@media(max-width:760px){.unknown-code-row{grid-template-columns:1fr}}
+
+
+/* =========================================================
+   V7.57 — RESPONSIVIDADE PARA CELULARES E TABLETS
+   ========================================================= */
+
+.mobile-menu-overlay{
+  position:fixed;
+  inset:0;
+  z-index:850;
+  background:rgba(15,23,42,.48);
+  backdrop-filter:blur(1px);
+}
+
+@media(max-width:900px){
+  body{
+    overflow-x:hidden;
+  }
+
+  .app-shell,
+  #app{
+    min-width:0!important;
+  }
+
+  .sidebar{
+    position:fixed!important;
+    top:0;
+    left:0;
+    bottom:0;
+    z-index:900!important;
+    width:min(82vw,300px)!important;
+    min-width:0!important;
+    max-width:300px!important;
+    transform:translateX(-105%);
+    transition:transform .22s ease;
+    box-shadow:0 18px 45px rgba(15,23,42,.28);
+  }
+
+  .sidebar.mobile-open{
+    transform:translateX(0);
+  }
+
+  .sidebar.collapsed{
+    width:min(82vw,300px)!important;
+  }
+
+  .main{
+    width:100%!important;
+    min-width:0!important;
+    margin-left:0!important;
+  }
+
+  .topbar{
+    position:sticky;
+    top:0;
+    z-index:700;
+    min-height:58px;
+    padding:10px 12px!important;
+    gap:8px;
+    background:var(--card);
+  }
+
+  .topbar h1,
+  #page-title{
+    font-size:18px!important;
+    line-height:1.2;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  #menu-toggle{
+    display:inline-flex!important;
+    align-items:center;
+    justify-content:center;
+    min-width:42px;
+    min-height:42px;
+    border-radius:10px;
+  }
+
+  #user-name{
+    max-width:42vw;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:12px;
+  }
+
+  .content,
+  main,
+  .main-content{
+    width:100%!important;
+    min-width:0!important;
+    padding:12px!important;
+  }
+
+  .view{
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .panel,
+  .card,
+  .report-card{
+    width:100%!important;
+    min-width:0!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    padding:14px!important;
+    border-radius:12px!important;
+  }
+
+  .panel-head,
+  .section-head,
+  .employee-toolbar,
+  .employee-filter-grid,
+  .filter-grid,
+  .form-actions,
+  .modal-actions,
+  .report-controls,
+  .settings-tabs,
+  .calendar-tabs,
+  .company-tabs{
+    flex-wrap:wrap!important;
+  }
+
+  .panel-head,
+  .section-head{
+    gap:10px;
+    align-items:flex-start!important;
+  }
+
+  .panel-head>button,
+  .section-head>button,
+  .panel-head .primary,
+  .section-head .primary{
+    width:100%;
+  }
+
+  .form-grid,
+  .compact-form,
+  .employee-filter-grid,
+  .filter-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  .form-grid label,
+  .form-grid .full,
+  .compact-form label{
+    grid-column:1/-1!important;
+    min-width:0!important;
+  }
+
+  input,
+  select,
+  textarea,
+  button{
+    max-width:100%;
+  }
+
+  input,
+  select,
+  textarea{
+    width:100%!important;
+    min-width:0!important;
+    font-size:16px!important; /* evita zoom automático no iPhone */
+  }
+
+  button{
+    min-height:42px;
+    touch-action:manipulation;
+  }
+
+  .settings-tabs,
+  .calendar-tabs,
+  .company-tabs,
+  .employee-tabs{
+    display:flex!important;
+    width:100%;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:4px;
+    scrollbar-width:thin;
+  }
+
+  .settings-tab,
+  .calendar-tab,
+  .company-tab,
+  .employee-tab{
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+
+  .table-wrap{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch;
+    border-radius:10px;
+  }
+
+  table{
+    width:max-content!important;
+    min-width:100%!important;
+  }
+
+  th,td{
+    white-space:nowrap;
+  }
+
+  td:nth-child(2),
+  td:nth-child(3){
+    white-space:normal;
+    min-width:140px;
+  }
+
+  .app-modal{
+    padding:10px!important;
+    align-items:flex-end!important;
+  }
+
+  .app-modal-dialog{
+    width:100%!important;
+    max-width:none!important;
+    max-height:92vh!important;
+    margin:0!important;
+    border-radius:18px 18px 10px 10px!important;
+    overflow-y:auto!important;
+  }
+
+  .app-modal-header{
+    position:sticky;
+    top:0;
+    z-index:2;
+    background:var(--card);
+    padding-bottom:10px;
+  }
+
+  .modal-close{
+    min-width:42px;
+    min-height:42px;
+  }
+
+  .dashboard-grid,
+  .summary-grid,
+  .stats-grid{
+    grid-template-columns:1fr 1fr!important;
+    gap:10px!important;
+  }
+
+  .dashboard-grid article,
+  .summary-grid article,
+  .stats-grid article{
+    min-width:0!important;
+  }
+
+  .bulk-shift-bar,
+  .employee-bulk-bar{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  .bulk-shift-bar button,
+  .employee-bulk-bar button{
+    width:100%!important;
+  }
+
+  .report-sheet{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:0!important;
+    margin:10px 0 20px!important;
+    padding:10px!important;
+    overflow-x:auto!important;
+  }
+
+  .report-header{
+    grid-template-columns:1fr!important;
+    text-align:center;
+    gap:8px;
+  }
+
+  .report-header-company{
+    align-items:center;
+  }
+
+  .report-identification{
+    grid-template-columns:1fr!important;
+  }
+
+  .report-identification>div{
+    border-right:0!important;
+    border-bottom:1px solid #dbe2ea!important;
+  }
+
+  .report-identification>div:last-child{
+    border-bottom:0!important;
+  }
+
+  .report-table{
+    min-width:720px!important;
+  }
+
+  .unknown-code-row{
+    grid-template-columns:1fr!important;
+  }
+
+  .profile-permission-grid{
+    grid-template-columns:1fr!important;
+  }
+}
+
+@media(max-width:560px){
+  .dashboard-grid,
+  .summary-grid,
+  .stats-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  .topbar{
+    align-items:center;
+  }
+
+  #user-name{
+    display:none;
+  }
+
+  .content,
+  main,
+  .main-content{
+    padding:8px!important;
+  }
+
+  .panel,
+  .card,
+  .report-card{
+    padding:12px!important;
+  }
+
+  .panel h2,
+  .panel h3,
+  .section-head h3{
+    font-size:17px!important;
+  }
+
+  .hint,
+  small{
+    line-height:1.35;
+  }
+
+  .weekday-grid{
+    grid-template-columns:1fr 1fr!important;
+  }
+
+  .form-actions,
+  .modal-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    width:100%;
+  }
+
+  .form-actions button,
+  .modal-actions button{
+    width:100%!important;
+  }
+}
+
+
+/* V7.58 — botão do menu móvel fica no cabeçalho */
+.topbar-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.mobile-menu-button{
+  display:none;
+  border:0;
+  background:var(--p);
+  color:#fff;
+  width:42px;
+  min-width:42px;
+  height:42px;
+  border-radius:10px;
+  font-size:22px;
+  line-height:1;
+  cursor:pointer;
+}
+
+@media(max-width:900px){
+  .mobile-menu-button{
+    display:inline-flex!important;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 42px;
+  }
+
+  /* O botão antigo continua dentro do menu e não precisa aparecer no celular. */
+  #menu-toggle{
+    display:none!important;
+  }
+
+  .topbar-left{
+    flex:1 1 auto;
+    min-width:0;
+  }
+
+  .topbar-left>div{
+    min-width:0;
+  }
+
+  .topbar-left #page-title{
+    max-width:55vw;
+  }
+}
+
+
+/* =========================================================
+   V7.59 — IMPRESSÃO A4 CORRETA TAMBÉM PELO CELULAR
+   Este bloco precisa ficar por último para vencer as regras responsivas.
+   ========================================================= */
+@page{
+  size:A4 portrait;
+  margin:5mm;
+}
+
+@media print{
+  html,body{
+    width:210mm!important;
+    min-width:210mm!important;
+    max-width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    overflow:visible!important;
+  }
+
+  #app{
+    display:block!important;
+    width:210mm!important;
+    min-width:210mm!important;
+    max-width:210mm!important;
+  }
+
+  .sidebar,
+  .topbar,
+  .mobile-menu-overlay,
+  .mobile-menu-button,
+  .no-print,
+  .report-group-title,
+  .report-controls,
+  .report-filter-panel{
+    display:none!important;
+  }
+
+  .main,
+  main,
+  .main-content,
+  .content{
+    display:block!important;
+    width:210mm!important;
+    min-width:210mm!important;
+    max-width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+  }
+
+  .view{
+    display:none!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+  }
+
+  #reports{
+    display:block!important;
+    width:210mm!important;
+    min-width:210mm!important;
+    max-width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+  }
+
+  #report-output{
+    display:block!important;
+    width:210mm!important;
+    min-width:210mm!important;
+    max-width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+  }
+
+  .report-sheet{
+    box-sizing:border-box!important;
+    display:block!important;
+    width:200mm!important;
+    min-width:200mm!important;
+    max-width:200mm!important;
+    height:287mm!important;
+    min-height:287mm!important;
+    max-height:287mm!important;
+    margin:0!important;
+    padding:5mm!important;
+    border:0!important;
+    border-radius:0!important;
+    overflow:hidden!important;
+    break-after:page!important;
+    page-break-after:always!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .report-sheet:last-child{
+    break-after:auto!important;
+    page-break-after:auto!important;
+  }
+
+  .report-header{
+    display:grid!important;
+    grid-template-columns:31mm minmax(0,1fr) 36mm!important;
+    align-items:center!important;
+    min-height:18mm!important;
+    margin:0 0 2mm!important;
+    padding:2.1mm 2.5mm!important;
+    gap:0!important;
+    text-align:initial!important;
+  }
+
+  .report-header-brand .report-logo{
+    max-width:27mm!important;
+    max-height:10.5mm!important;
+  }
+
+  .report-header-center h1{
+    font-size:11pt!important;
+  }
+
+  .report-header-subtitle{
+    margin-top:.8mm!important;
+    font-size:5.9pt!important;
+  }
+
+  .report-header-company{
+    align-items:flex-start!important;
+  }
+
+  .report-header-company strong{
+    font-size:5.9pt!important;
+  }
+
+  .report-header-company span{
+    font-size:4.9pt!important;
+  }
+
+  .report-identification{
+    display:grid!important;
+    grid-template-columns:1.35fr 1fr 1fr!important;
+    margin:0 0 2mm!important;
+    overflow:hidden!important;
+  }
+
+  .report-identification>div{
+    min-height:7.2mm!important;
+    padding:1.1mm 1.5mm!important;
+    border-right:1px solid #dbe2ea!important;
+    border-bottom:1px solid #dbe2ea!important;
+    font-size:6.4pt!important;
+  }
+
+  .report-identification>div:nth-child(3n){
+    border-right:0!important;
+  }
+
+  .report-identification>div:nth-last-child(-n+3){
+    border-bottom:0!important;
+  }
+
+  .report-identification .report-reference{
+    grid-column:1/-1!important;
+    min-height:6.6mm!important;
+    border-right:0!important;
+    border-bottom:0!important;
+  }
+
+  .report-table,
+  .thermal-report-table,
+  .meal-report-table{
+    display:table!important;
+    table-layout:fixed!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:visible!important;
+    border-collapse:collapse!important;
+  }
+
+  .report-table thead{
+    display:table-header-group!important;
+  }
+
+  .report-table tbody{
+    display:table-row-group!important;
+  }
+
+  .report-table tr{
+    display:table-row!important;
+  }
+
+  .report-table th,
+  .report-table td{
+    display:table-cell!important;
+    white-space:normal!important;
+    min-width:0!important;
+    max-width:none!important;
+  }
+
+  .report-table thead th{
+    padding:.8mm .55mm!important;
+    font-size:5.5pt!important;
+  }
+
+  .thermal-report-table tbody td{
+    height:5.45mm!important;
+    padding:.35mm .5mm!important;
+    font-size:6pt!important;
+  }
+
+  .meal-report-table tbody td{
+    height:5.65mm!important;
+    padding:.4mm .55mm!important;
+    font-size:6.1pt!important;
+  }
+
+  .thermal-report-table .col-date{width:12%!important}
+  .thermal-report-table .col-day{width:8%!important}
+  .thermal-report-table .col-time{width:7.2%!important}
+  .thermal-report-table .col-signature{width:36.8%!important}
+
+  .meal-report-table .meal-col-date{width:18%!important}
+  .meal-report-table .meal-col-day{width:12%!important}
+  .meal-report-table .meal-col-signature{width:70%!important}
+
+  .report-note{
+    margin:1.5mm 0 0!important;
+    padding:1.1mm 1.4mm!important;
+    font-size:5.1pt!important;
+  }
+
+  .report-footer-signatures{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:13mm!important;
+    margin:3.8mm 3mm 0!important;
+  }
+
+  .report-footer-signatures>div{
+    min-height:7mm!important;
+    padding-top:1.5mm!important;
+    font-size:5.8pt!important;
+  }
+
+  .app-footer-brand{
+    margin-top:1.3mm!important;
+    font-size:4.8pt!important;
+  }
+
+  /* Nunca deixar as regras de celular alterarem a geometria A4 durante a impressão. */
+  .panel,
+  .card,
+  .report-card{
+    max-width:none!important;
+  }
+}
+
+
+/* =========================================================
+   V1.8 BETA — NOVO LAYOUT DE IMPRESSÃO
+   ========================================================= */
+
+.report-header.report-header-clean{
+  display:grid!important;
+  grid-template-columns:120px minmax(0,1fr) 120px!important;
+  align-items:center!important;
+  min-height:74px!important;
+  padding:12px 14px!important;
+}
+.report-header.report-header-clean::after{
+  content:"";
+  display:block;
+}
+.report-header.report-header-clean .report-header-center{
+  grid-column:2;
+}
+.report-header.report-header-clean .report-header-center h1{
+  margin:0!important;
+}
+.report-header-subtitle,
+.report-header-company{
+  display:none!important;
+}
+
+.report-table tbody tr,
+.report-table tbody td,
+.non-work-row td,
+.thermal-report-table tbody tr,
+.thermal-report-table tbody td,
+.meal-report-table tbody tr,
+.meal-report-table tbody td{
+  background:#ffffff!important;
+  color:#111111!important;
+}
+.non-work-row td{
+  font-weight:700!important;
+}
+
+.thermal-report-table tbody td{
+  height:29px!important;
+  padding:5px 4px!important;
+}
+.meal-report-table tbody td{
+  height:30px!important;
+  padding:6px 5px!important;
+}
+
+.report-note,
+.report-footer-signatures,
+.app-footer-brand{
+  display:none!important;
+}
+
+@media print{
+  .report-header.report-header-clean{
+    grid-template-columns:30mm minmax(0,1fr) 30mm!important;
+    min-height:17mm!important;
+    padding:2.5mm 3mm!important;
+  }
+
+  .report-header.report-header-clean .report-header-brand .report-logo{
+    max-width:27mm!important;
+    max-height:12mm!important;
+  }
+
+  .report-header.report-header-clean .report-header-center h1{
+    font-size:12pt!important;
+    line-height:1.1!important;
+  }
+
+  .thermal-report-table tbody td{
+    height:6.75mm!important;
+    padding:.8mm .8mm!important;
+    background:#fff!important;
+    color:#111!important;
+  }
+
+  .meal-report-table tbody td{
+    height:6.9mm!important;
+    padding:.9mm .8mm!important;
+    background:#fff!important;
+    color:#111!important;
+  }
+
+  .non-work-row td{
+    background:#fff!important;
+    color:#111!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .report-note,
+  .report-footer-signatures,
+  .app-footer-brand,
+  .report-header-subtitle,
+  .report-header-company{
+    display:none!important;
+  }
+}
+
+
+/* =========================================================
+   V1.9 BETA — AJUSTE FINO DO LAYOUT DE IMPRESSÃO
+   ========================================================= */
+
+.report-table thead th{
+  background:#f2f4f6!important;
+  color:#111!important;
+  font-weight:700!important;
+}
+
+.report-table tbody tr:not(.non-work-row) td{
+  background:#fff!important;
+  color:#111!important;
+}
+
+.non-work-row td{
+  background:#f5f6f7!important;
+  color:#111!important;
+  font-weight:700!important;
+}
+
+.thermal-report-table tbody td{
+  height:34px!important;
+  padding:6px 5px!important;
+  vertical-align:middle!important;
+}
+
+.meal-report-table tbody td{
+  height:35px!important;
+  padding:6px 6px!important;
+  vertical-align:middle!important;
+}
+
+.thermal-report-table .col-date{width:10%!important}
+.thermal-report-table .col-day{width:7%!important}
+.thermal-report-table .col-time{width:7.15%!important}
+.thermal-report-table .col-signature{width:40.1%!important}
+
+.meal-report-table .meal-col-date{width:15%!important}
+.meal-report-table .meal-col-day{width:10%!important}
+.meal-report-table .meal-col-signature{width:75%!important}
+
+.report-table td.signature-cell,
+.meal-report-table td.meal-signature-cell{
+  min-width:0!important;
+}
+
+.report-table thead th:last-child{
+  background:#eef1f4!important;
+}
+
+.non-work-row td[colspan]{
+  text-align:center!important;
+  letter-spacing:.01em!important;
+}
+
+@media print{
+  .report-table thead th{
+    background:#f2f4f6!important;
+    color:#111!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .non-work-row td{
+    background:#f5f6f7!important;
+    color:#111!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .thermal-report-table tbody td{
+    height:7.25mm!important;
+    padding:1mm .9mm!important;
+  }
+
+  .meal-report-table tbody td{
+    height:7.35mm!important;
+    padding:1mm 1mm!important;
+  }
+
+  .thermal-report-table .col-date{width:10%!important}
+  .thermal-report-table .col-day{width:7%!important}
+  .thermal-report-table .col-time{width:7.15%!important}
+  .thermal-report-table .col-signature{width:40.1%!important}
+
+  .meal-report-table .meal-col-date{width:15%!important}
+  .meal-report-table .meal-col-day{width:10%!important}
+  .meal-report-table .meal-col-signature{width:75%!important}
+}
+
+
+/* =========================================================
+   V1.10 BETA — IMPRESSÃO FORÇADA / CACHE-BUST
+   ========================================================= */
+
+.print-head{
+  background:#e9ecef!important;
+  color:#111!important;
+  font-weight:800!important;
+}
+
+.print-sign-head{
+  background:#e5e8eb!important;
+}
+
+.report-table tbody tr:not(.non-work-row)>td{
+  background:#fff!important;
+}
+
+.report-table tbody tr.non-work-row>td{
+  background:#eeeeee!important;
+  color:#111!important;
+  font-weight:800!important;
+}
+
+/* Repouso: assinatura maior e horários com espaço real de escrita. */
+.thermal-report-table{
+  table-layout:fixed!important;
+}
+.thermal-report-table .col-date{width:9.5%!important}
+.thermal-report-table .col-day{width:6.5%!important}
+.thermal-report-table .col-time{width:7.3%!important}
+.thermal-report-table .col-signature{width:40.2%!important}
+
+.thermal-report-table tbody td{
+  height:36px!important;
+  min-height:36px!important;
+  padding:7px 5px!important;
+  vertical-align:middle!important;
+}
+
+.thermal-report-table td.signature-cell{
+  padding-left:8px!important;
+  padding-right:8px!important;
+}
+
+/* Refeição: máximo espaço para assinatura completa. */
+.meal-report-table{
+  table-layout:fixed!important;
+}
+.meal-report-table .meal-col-date{width:14%!important}
+.meal-report-table .meal-col-day{width:9%!important}
+.meal-report-table .meal-col-signature{width:77%!important}
+
+.meal-report-table tbody td{
+  height:37px!important;
+  min-height:37px!important;
+  padding:7px 6px!important;
+}
+
+@media print{
+  .print-head{
+    background:#e9ecef!important;
+    color:#111!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .print-sign-head{
+    background:#e5e8eb!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .report-table tbody tr.non-work-row>td{
+    background:#eeeeee!important;
+    color:#111!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .report-table tbody tr:not(.non-work-row)>td{
+    background:#fff!important;
+  }
+
+  .thermal-report-table tbody td{
+    height:7.55mm!important;
+    min-height:7.55mm!important;
+    padding:1.1mm .9mm!important;
+  }
+
+  .thermal-report-table .col-date{width:9.5%!important}
+  .thermal-report-table .col-day{width:6.5%!important}
+  .thermal-report-table .col-time{width:7.3%!important}
+  .thermal-report-table .col-signature{width:40.2%!important}
+
+  .meal-report-table tbody td{
+    height:7.65mm!important;
+    min-height:7.65mm!important;
+    padding:1.1mm 1mm!important;
+  }
+
+  .meal-report-table .meal-col-date{width:14%!important}
+  .meal-report-table .meal-col-day{width:9%!important}
+  .meal-report-table .meal-col-signature{width:77%!important}
+}
+
+/* V1.45 — Configuração administrativa dos canais de suporte */
+.support-settings-panel{max-width:900px}.support-channel-preview{padding:16px;border:1px solid var(--line);border-radius:13px;background:#f7fafc}.support-channel-preview>strong{display:block;margin-bottom:10px;color:var(--heading)}.support-channel-preview>div{display:flex;flex-wrap:wrap;gap:9px}.support-channel-preview span{display:inline-flex;align-items:center;min-height:34px;padding:7px 11px;border:1px solid #d5dde3;border-radius:999px;background:#fff;color:var(--muted);font-size:12px;font-weight:750}.support-channel-preview span.configured{border-color:#a8d6b8;background:#eaf8ef;color:#176c37}.theme-dark .support-channel-preview{background:#172733}.theme-dark .support-channel-preview span{background:#203746}.theme-dark .support-channel-preview span.configured{background:#173d2b;color:#9ce4b5}
+
+
+/* =========================================================
+   V1.11 BETA — LAYOUT ADMINISTRATIVO DE IMPRESSÃO
+   ========================================================= */
+
+.report-sheet{
+  font-family:Arial,Helvetica,sans-serif!important;
+}
+
+.report-header.report-header-clean{
+  border:1px solid #9aa3ad!important;
+  border-top:4px solid #245b7a!important;
+  background:#fff!important;
+  min-height:66px!important;
+  padding:10px 14px!important;
+}
+
+.report-header.report-header-clean .report-header-center h1{
+  color:#1f2937!important;
+  font-size:18px!important;
+  font-weight:800!important;
+  letter-spacing:.015em!important;
+}
+
+.administrative-identification{
+  border:1px solid #b8c0c8!important;
+  border-radius:4px!important;
+  overflow:hidden!important;
+  background:#fff!important;
+  margin-top:8px!important;
+}
+
+.administrative-identification>div{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:2px!important;
+  min-height:42px!important;
+  padding:6px 8px!important;
+  background:#fff!important;
+  border-color:#d2d7dc!important;
+}
+
+.report-field-label{
+  display:block!important;
+  color:#66717c!important;
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:800!important;
+  letter-spacing:.055em!important;
+  text-transform:uppercase!important;
+}
+
+.report-field-value{
+  display:block!important;
+  color:#111827!important;
+  font-size:11px!important;
+  line-height:1.15!important;
+  font-weight:600!important;
+}
+
+.report-table{
+  border-collapse:collapse!important;
+  border:1px solid #7f8993!important;
+}
+
+.report-table th,
+.report-table td{
+  border-color:#8f99a3!important;
+}
+
+.print-head{
+  background:#edf0f2!important;
+  color:#20262d!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+  letter-spacing:.025em!important;
+}
+
+.print-sign-head{
+  background:#e8ecef!important;
+}
+
+.report-table tbody tr:not(.non-work-row)>td{
+  background:#fff!important;
+  color:#111!important;
+}
+
+.report-table tbody tr.non-work-row>td{
+  background:#f1f2f3!important;
+  color:#2c333a!important;
+  font-weight:800!important;
+}
+
+.thermal-report-table{
+  table-layout:fixed!important;
+}
+.thermal-report-table .col-date{width:10%!important}
+.thermal-report-table .col-day{width:6%!important}
+.thermal-report-table .col-time{width:7.7%!important}
+.thermal-report-table .col-signature{width:37.8%!important}
+
+.meal-report-table{
+  table-layout:fixed!important;
+}
+.meal-report-table .meal-col-date{width:14%!important}
+.meal-report-table .meal-col-day{width:9%!important}
+.meal-report-table .meal-col-signature{width:77%!important}
+
+.thermal-report-table tbody td{
+  height:31px!important;
+  padding:5px 4px!important;
+}
+.meal-report-table tbody td{
+  height:32px!important;
+  padding:5px 5px!important;
+}
+
+@media print{
+  .report-sheet{
+    box-sizing:border-box!important;
+    width:200mm!important;
+    height:287mm!important;
+    min-height:287mm!important;
+    max-height:287mm!important;
+    padding:4.5mm!important;
+    overflow:hidden!important;
+  }
+
+  .report-header.report-header-clean{
+    min-height:15mm!important;
+    padding:2mm 3mm!important;
+    margin-bottom:1.5mm!important;
+  }
+
+  .report-header.report-header-clean .report-header-center h1{
+    font-size:11.2pt!important;
+  }
+
+  .administrative-identification{
+    margin:0 0 1.6mm!important;
+  }
+
+  .administrative-identification>div{
+    min-height:6.7mm!important;
+    padding:1mm 1.4mm!important;
+  }
+
+  .report-field-label{
+    font-size:5.4pt!important;
+  }
+
+  .report-field-value{
+    font-size:6.7pt!important;
+  }
+
+  .report-table thead th{
+    padding:.8mm .55mm!important;
+    font-size:5.7pt!important;
+    line-height:1.05!important;
+    background:#edf0f2!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  .report-table tbody tr.non-work-row>td{
+    background:#f1f2f3!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  /* 31 dias precisam caber integralmente em uma página A4. */
+  .month-days-31.thermal-report-sheet .thermal-report-table tbody td{
+    height:6.15mm!important;
+    min-height:6.15mm!important;
+    padding:.55mm .65mm!important;
+    font-size:6.2pt!important;
+  }
+
+  .month-days-30.thermal-report-sheet .thermal-report-table tbody td{
+    height:6.35mm!important;
+    min-height:6.35mm!important;
+    padding:.6mm .65mm!important;
+    font-size:6.2pt!important;
+  }
+
+  .month-days-29.thermal-report-sheet .thermal-report-table tbody td,
+  .month-days-28.thermal-report-sheet .thermal-report-table tbody td{
+    height:6.6mm!important;
+    min-height:6.6mm!important;
+    padding:.65mm .65mm!important;
+    font-size:6.2pt!important;
+  }
+
+  .month-days-31.meal-report-sheet .meal-report-table tbody td{
+    height:6.3mm!important;
+    min-height:6.3mm!important;
+    padding:.65mm .8mm!important;
+    font-size:6.3pt!important;
+  }
+
+  .month-days-30.meal-report-sheet .meal-report-table tbody td{
+    height:6.5mm!important;
+    min-height:6.5mm!important;
+    padding:.7mm .8mm!important;
+    font-size:6.3pt!important;
+  }
+
+  .month-days-29.meal-report-sheet .meal-report-table tbody td,
+  .month-days-28.meal-report-sheet .meal-report-table tbody td{
+    height:6.75mm!important;
+    min-height:6.75mm!important;
+    padding:.75mm .8mm!important;
+    font-size:6.3pt!important;
+  }
+
+  .thermal-report-table .col-date{width:10%!important}
+  .thermal-report-table .col-day{width:6%!important}
+  .thermal-report-table .col-time{width:7.7%!important}
+  .thermal-report-table .col-signature{width:37.8%!important}
+
+  .meal-report-table .meal-col-date{width:14%!important}
+  .meal-report-table .meal-col-day{width:9%!important}
+  .meal-report-table .meal-col-signature{width:77%!important}
+}

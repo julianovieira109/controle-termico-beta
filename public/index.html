@@ -1,0 +1,2200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<script>
+(function(){
+  try{
+    var cached=localStorage.getItem("controleTermicoVisual")||
+               localStorage.getItem("visualSettings")||
+               localStorage.getItem("themeSettings");
+    if(cached){
+      var v=JSON.parse(cached);
+      window.__controleTermicoVisualCache=v;
+      document.documentElement.classList.add("visual-loading");
+      var r=document.documentElement;
+      var primary=v.primaryColor||v.corPrimaria||v.primary;
+      var menu=v.menuColor||v.secondaryColor||v.corSecundaria||v.secondary;
+      if(primary){r.style.setProperty("--p",primary);r.style.setProperty("--brand-primary",primary);}
+      if(menu){r.style.setProperty("--d",menu);r.style.setProperty("--brand-secondary",menu);}
+      if(v.backgroundColor)r.style.setProperty("--bg",v.backgroundColor);
+      if(v.cardColor)r.style.setProperty("--card",v.cardColor);
+      if(v.headingColor)r.style.setProperty("--heading",v.headingColor);
+      if(v.linkColor)r.style.setProperty("--link",v.linkColor);
+      if(v.fontFamily)r.style.setProperty("--font-family",v.fontFamily);
+    }else{
+      document.documentElement.classList.add("visual-ready");
+    }
+  }catch(e){document.documentElement.classList.add("visual-ready");}
+})();
+</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Controle Térmico</title>
+  <link id="app-favicon" rel="icon" href="data:,">
+  <meta id="theme-color-meta" name="theme-color" content="#154c79">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.0">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.0">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.0">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.0">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.0">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.0">
+</head>
+<body>
+<section id="login-screen" class="login-screen">
+  <div class="login-brand">
+    <div class="brand-mark" id="brand-mark"><span id="brand-mark-text">RT</span><img id="brand-logo-image" alt="Logo" hidden></div>
+    <span class="eyebrow" id="brand-subtitle">Sistema administrativo</span>
+    <h1 id="brand-title">Controle Térmico</h1>
+    <p id="brand-description" hidden></p>
+    <div class="login-brand-status" aria-hidden="true">
+      <span><i></i>Acesso protegido</span>
+      <span><i></i>Gestão integrada</span>
+      <span><i></i>Ambiente online</span>
+    </div>
+    <div class="login-tech-lines" aria-hidden="true"><span></span><span></span><span></span></div>
+  </div>
+
+  <div class="login-area">
+    <form id="login-form" class="login-card">
+        <span class="eyebrow">Acesso seguro</span>
+        <h2>Entrar no sistema</h2>
+
+        <label class="login-label" for="email">E-mail</label>
+        <div class="login-input-wrap">
+          <span class="login-field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M4 6.75h16v10.5H4z"></path>
+              <path d="m4.75 7.5 7.25 5.25 7.25-5.25"></path>
+            </svg>
+          </span>
+          <input id="email" type="email" required autocomplete="username" placeholder="Digite seu e-mail">
+        </div>
+
+        <label class="login-label" for="password">Senha</label>
+        <div class="login-input-wrap">
+          <span class="login-field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <rect x="5" y="10" width="14" height="10" rx="2"></rect>
+              <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+            </svg>
+          </span>
+          <input id="password" type="password" required autocomplete="current-password" placeholder="Digite sua senha">
+          <button type="button" class="password-toggle" data-password-eye="#password" aria-label="Mostrar senha" title="Mostrar senha">
+            <svg class="eye-open" viewBox="0 0 24 24" focusable="false">
+              <path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5S2.5 12 2.5 12Z"></path>
+              <circle cx="12" cy="12" r="2.5"></circle>
+            </svg>
+            <svg class="eye-closed" viewBox="0 0 24 24" focusable="false" hidden>
+              <path d="m3 3 18 18"></path>
+              <path d="M10.6 7.1A10.8 10.8 0 0 1 12 7c6 0 9.5 5 9.5 5a15.9 15.9 0 0 1-2.4 2.8"></path>
+              <path d="M6.2 6.2A16.5 16.5 0 0 0 2.5 12s3.5 5 9.5 5a10.8 10.8 0 0 0 3.3-.5"></path>
+              <path d="M10.2 10.2a2.5 2.5 0 0 0 3.6 3.6"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="login-options">
+          <label class="remember-option">
+            <input id="remember-email" type="checkbox">
+            <span>Lembrar e-mail</span>
+          </label>
+          <button type="button" class="forgot-link" id="forgot-open">Esqueci minha senha</button>
+        </div>
+
+        <button class="primary login-submit">Entrar</button>
+        <p id="login-feedback" class="feedback login-feedback"></p>
+
+        <div class="login-card-footer">
+          <span>Controle Térmico</span>
+          <span>Versão 1.0.0 Oficial</span>
+        </div>
+      </form>
+
+    <form id="forgot-form" class="login-card forgot-recovery-card" hidden>
+      <header class="forgot-recovery-header">
+        <span class="forgot-recovery-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M7 10V8a5 5 0 0 1 10 0v2"></path>
+            <rect x="4" y="10" width="16" height="11" rx="3"></rect>
+            <path d="M12 14v3"></path>
+          </svg>
+        </span>
+        <div>
+          <span class="eyebrow">Recuperação de acesso</span>
+          <h2>Esqueci minha senha</h2>
+          <p>Informe o e-mail cadastrado para receber um código de segurança.</p>
+        </div>
+      </header>
+
+      <div class="forgot-support-notice">
+        <span aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 10v6M12 7h.01"></path>
+          </svg>
+        </span>
+        <p id="forgot-support-message">Enviaremos um código de 6 números para o seu e-mail. O código é válido por 15 minutos.</p>
+      </div>
+
+      <div class="forgot-email-field">
+        <label class="login-label" for="forgot-email">E-mail cadastrado</label>
+        <div class="login-input-wrap">
+          <span class="login-field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M4 6.75h16v10.5H4z"></path>
+              <path d="m4.75 7.5 7.25 5.25 7.25-5.25"></path>
+            </svg>
+          </span>
+          <input id="forgot-email" type="email" required autocomplete="username" placeholder="Digite seu e-mail">
+        </div>
+      </div>
+
+      <div id="forgot-turnstile" class="forgot-turnstile" hidden></div>
+
+      <div class="forgot-recovery-actions">
+        <button class="primary forgot-instructions-button" id="forgot-email-send" hidden>
+          <span>Enviar código por e-mail</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"></path></svg>
+        </button>
+        <div class="forgot-recovery-divider"><span>acesso administrativo de contingência</span></div>
+        <button type="button" class="secondary forgot-master-button" id="forgot-master-open">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="8" cy="15" r="3"></circle><path d="m10.2 12.8 7.3-7.3 2 2-1.5 1.5 1.5 1.5-2 2-1.5-1.5-3.6 3.6"></path></svg>
+          <span>Tenho um código Master</span>
+        </button>
+        <button type="button" class="forgot-back-button" id="forgot-back">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"></path></svg>
+          <span>Voltar para o acesso</span>
+        </button>
+      </div>
+      <p id="forgot-feedback" class="feedback forgot-recovery-feedback" aria-live="polite"></p>
+    </form>
+
+    <form id="email-reset-form" class="login-card forgot-recovery-card email-reset-card" hidden>
+      <header class="forgot-recovery-header">
+        <span class="forgot-recovery-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M4 6.75h16v10.5H4z"></path><path d="m4.75 7.5 7.25 5.25 7.25-5.25"></path></svg>
+        </span>
+        <div>
+          <span class="eyebrow">Código de segurança</span>
+          <h2>Crie uma nova senha</h2>
+          <p>Digite o código enviado ao seu e-mail. Ele é válido por 15 minutos.</p>
+        </div>
+      </header>
+
+      <div class="email-reset-account">
+        <span>E-mail da recuperação</span>
+        <strong id="email-reset-account"></strong>
+      </div>
+      <input id="email-reset-email" type="email" hidden aria-hidden="true">
+
+      <div class="email-reset-fields">
+        <label class="login-label" for="email-reset-code">Código de 6 números</label>
+        <input id="email-reset-code" class="email-reset-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required>
+
+        <label class="login-label" for="email-reset-password">Nova senha</label>
+        <div class="login-input-wrap">
+          <span class="login-field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></span>
+          <input id="email-reset-password" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo de 8 caracteres" required>
+          <button type="button" class="password-toggle" data-password-eye="#email-reset-password" aria-label="Mostrar senha" title="Mostrar senha">
+            <svg class="eye-open" viewBox="0 0 24 24" focusable="false"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5S2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+            <svg class="eye-closed" viewBox="0 0 24 24" focusable="false" hidden><path d="m3 3 18 18"></path><path d="M10.6 7.1A10.8 10.8 0 0 1 12 7c6 0 9.5 5 9.5 5a15.9 15.9 0 0 1-2.4 2.8"></path><path d="M6.2 6.2A16.5 16.5 0 0 0 2.5 12s3.5 5 9.5 5a10.8 10.8 0 0 0 3.3-.5"></path></svg>
+          </button>
+        </div>
+
+        <label class="login-label" for="email-reset-confirm">Confirmar nova senha</label>
+        <div class="login-input-wrap">
+          <span class="login-field-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m6 12 4 4 8-8"></path><rect x="3" y="3" width="18" height="18" rx="4"></rect></svg></span>
+          <input id="email-reset-confirm" type="password" minlength="8" autocomplete="new-password" placeholder="Repita a nova senha" required>
+        </div>
+      </div>
+
+      <div class="forgot-recovery-actions">
+        <button class="primary" id="email-reset-submit">Alterar minha senha</button>
+        <button type="button" class="secondary" id="email-reset-resend">Enviar outro código</button>
+        <button type="button" class="forgot-back-button" id="email-reset-back">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"></path></svg>
+          <span>Voltar para o acesso</span>
+        </button>
+      </div>
+      <p id="email-reset-feedback" class="feedback forgot-recovery-feedback" aria-live="polite"></p>
+    </form>
+
+    <form id="reset-form" class="login-card" hidden>
+      <span class="eyebrow">Nova senha</span>
+      <h2>Recuperar acesso Master</h2>
+      <label>E-mail do Master<input id="reset-email" type="email" required></label>
+      <label>Código de recuperação<input id="reset-token" autocomplete="one-time-code" required placeholder="RTM-XXXX-XXXX-XXXX"></label>
+      <label>Nova senha<input id="reset-password" type="password" minlength="8" required></label>
+      <label>Confirmar<input id="reset-confirm" type="password" minlength="8" required></label>
+      <button class="primary">Salvar nova senha</button>
+      <button type="button" class="secondary" id="reset-back">Voltar</button>
+      <p id="reset-feedback" class="feedback"></p>
+      <div id="reset-new-codes" class="recovery-result" hidden></div>
+    </form>
+  </div>
+</section>
+
+<div id="app" class="app" hidden>
+    <div id="mobile-menu-overlay" class="mobile-menu-overlay" hidden></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="mini-mark" id="sidebar-logo"><span id="sidebar-logo-text">RT</span><img id="sidebar-logo-image" alt="Logo" hidden></div>
+      <div class="sidebar-brand-copy"><span id="sidebar-system-name">Controle Térmico</span><small>Gestão operacional</small></div>
+    </div>
+    <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Recolher menu" title="Recolher menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <nav class="sidebar-nav-main" aria-label="Menu principal">
+      <span class="sidebar-nav-heading">Menu principal</span>
+      <button class="nav-btn active" data-view="dashboard" data-permission="dashboard.view" aria-current="page" title="Painel"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9h13v-9"/><path d="M9.5 19v-5h5v5"/></svg></span><span class="nav-label">Painel</span></button>
+      <button class="nav-btn admin-only" data-view="companies" title="Empresas e filiais"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V5h10v15"/><path d="M14 10h6v10"/><path d="M8 9h2M8 13h2M8 17h2M17 14h1M17 17h1"/></svg></span><span class="nav-label">Empresas</span></button>
+      <button class="nav-btn admin-only" data-view="users" title="Usuários"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3"/><path d="M4.5 19c.5-3.2 2.3-5 5.5-5 1.4 0 2.5.3 3.4 1"/><path d="M17.5 13.5v6M14.5 16.5h6"/></svg></span><span class="nav-label">Usuários</span></button>
+      <button class="nav-btn" data-view="employees" data-permission="employees.view" title="Colaboradores"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M3.5 19c.5-3.3 2.3-5 5.5-5s5 1.7 5.5 5M14 15c.8-.7 1.8-1 3-1 2.3 0 3.6 1.3 4 3.7"/></svg></span><span class="nav-label">Colaboradores</span></button>
+      <button class="nav-btn" data-view="reports" data-permission="reports.view" title="Relatórios"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h4M9 12h7M9 16h7"/></svg></span><span class="nav-label">Relatórios</span></button>
+      <button class="nav-btn" data-view="settings" data-permission="settings.view" title="Configurações"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></span><span class="nav-label">Configurações</span></button>
+    </nav>
+    <nav class="sidebar-nav-support" aria-label="Ajuda">
+      <span class="sidebar-nav-heading">Ajuda e suporte</span>
+      <button class="nav-btn nav-btn-support" data-view="manual" title="Manual do Sistema"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></svg></span><span class="nav-label">Manual do Sistema</span></button>
+    </nav>
+    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.0 Oficial</small></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button type="button" id="mobile-menu-button" class="mobile-menu-button" aria-label="Abrir menu" title="Abrir menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div><h2 id="page-title">Painel</h2><p id="scope-text">Visão geral do sistema</p></div>
+      </div>
+      <div class="user-actions"><span id="user-name"></span><button type="button" id="my-password-open" class="ghost">Minha senha</button><button id="logout" class="ghost">Sair</button></div>
+    </header>
+
+    <section id="dashboard" class="view active">
+      <div class="hero"><span class="eyebrow">Bem-vindo</span><h3 id="welcome-title">Controle Térmico Online</h3><p>Base oficial reorganizada.</p></div>
+      <div id="pending-shift-alert" class="pending-alert" hidden>
+        <div>
+          <span class="pending-icon">!</span>
+          <div>
+            <strong id="pending-shift-title">Colaboradores sem turno</strong>
+            <p id="pending-shift-text">Existem colaboradores aguardando definição de turno.</p>
+          </div>
+        </div>
+        <button type="button" class="secondary" id="open-missing-shift">Ver colaboradores</button>
+      </div>
+      <div class="cards">
+        <article><span>Colaboradores</span><strong id="sum-employees">0</strong></article>
+        <article><span>Empresas</span><strong id="sum-companies">0</strong></article>
+        <article><span>Filiais</span><strong id="sum-branches">0</strong></article>
+        <article><span>Usuários</span><strong id="sum-users">0</strong></article>
+        <article class="pending-card" id="missing-shift-card"><span>Sem turno</span><strong id="sum-missing-shift">0</strong><small>Requer atenção</small></article>
+      </div>
+    </section>
+
+    <section id="companies" class="view admin-only">
+        <div class="module-tabs">
+          <button type="button" class="module-tab active" data-company-tab="companies-tab">Empresas</button>
+          <button type="button" class="module-tab" data-company-tab="branches-tab">Filiais</button>
+        </div>
+
+        <div id="companies-tab" class="company-tab-panel">
+          <div class="summary-strip">
+            <article><span>Total de empresas</span><strong id="company-total-count">0</strong></article>
+            <article><span>Empresas ativas</span><strong id="company-active-count">0</strong></article>
+            <article><span>Empresas inativas</span><strong id="company-inactive-count">0</strong></article>
+            <article><span>Total de filiais</span><strong id="branch-total-count">0</strong></article>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Empresas cadastradas</h3>
+                <p class="hint">Cadastre uma nova empresa ou use Editar para abrir os dados já salvos.</p>
+              </div>
+              <button type="button" class="primary" id="company-new-button">+ Nova empresa</button>
+            </div>
+          </div>
+
+          <div id="company-modal" class="app-modal" hidden>
+            <div class="app-modal-backdrop" data-close-company-modal></div>
+            <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="company-modal-title">
+              <div class="app-modal-header">
+                <div>
+                  <span class="eyebrow">Cadastro de empresa</span>
+                  <h3 id="company-modal-title">Nova empresa</h3>
+                </div>
+                <button type="button" class="modal-close" data-close-company-modal aria-label="Fechar">×</button>
+              </div>
+
+              <form id="company-form" class="form-grid">
+                <input type="hidden" id="company-id">
+
+                <label>Razão social
+                  <input id="company-legal" required>
+                </label>
+
+                <label>Nome fantasia
+                  <input id="company-trade" required>
+                </label>
+
+                <label>CNPJ
+                  <input id="company-cnpj">
+                </label>
+
+                <label>Cidade
+                  <input id="company-city">
+                </label>
+
+                <label>Estado
+                  <input id="company-state" maxlength="2">
+                </label>
+
+                <label>Situação
+                  <select id="company-active">
+                    <option value="true">Ativa</option>
+                    <option value="false">Inativa</option>
+                  </select>
+                </label>
+
+                <div class="full actions modal-actions">
+                  <button class="primary" id="company-save-button">Salvar empresa</button>
+                  <button type="button" class="secondary" id="company-cancel">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Empresas cadastradas</h3>
+                <p class="hint">Pesquise pelo nome, razão social, CNPJ ou cidade.</p>
+              </div>
+              <input id="company-search" class="table-search" placeholder="Pesquisar empresas">
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-company-sort="trade_name">Empresa</th>
+                    <th data-company-sort="cnpj">CNPJ</th>
+                    <th data-company-sort="city">Cidade/UF</th>
+                    <th>Filiais</th>
+                    <th data-company-sort="active">Situação</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="companies-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="branches-tab" class="company-tab-panel" hidden>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Filiais cadastradas</h3>
+                <p class="hint">Cadastre uma nova filial ou use Editar para abrir os dados já salvos.</p>
+              </div>
+              <button type="button" class="primary" id="branch-new-button">+ Nova filial</button>
+            </div>
+          </div>
+
+          <div id="branch-modal" class="app-modal" hidden>
+            <div class="app-modal-backdrop" data-close-branch-modal></div>
+            <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="branch-modal-title">
+              <div class="app-modal-header">
+                <div>
+                  <span class="eyebrow">Cadastro de filial</span>
+                  <h3 id="branch-modal-title">Nova filial</h3>
+                </div>
+                <button type="button" class="modal-close" data-close-branch-modal aria-label="Fechar">×</button>
+              </div>
+
+              <form id="branch-form" class="form-grid">
+                <input type="hidden" id="branch-id">
+
+                <label class="full important-link-field">Empresa vinculada
+                  <select id="branch-company" required></select>
+                  <small>Somente empresas ativas aparecem nesta lista.</small>
+                </label>
+
+                <label>Nome da filial
+                  <input id="branch-name" required>
+                </label>
+
+                <label>CNPJ
+                  <input id="branch-cnpj">
+                </label>
+
+                <label>Código interno
+                  <input id="branch-code">
+                </label>
+
+                <label>Cidade
+                  <input id="branch-city">
+                </label>
+
+                <label>Estado
+                  <input id="branch-state" maxlength="2">
+                </label>
+
+                <label>Situação
+                  <select id="branch-active">
+                    <option value="true">Ativa</option>
+                    <option value="false">Inativa</option>
+                  </select>
+                </label>
+
+                <div class="full actions modal-actions">
+                  <button class="primary" id="branch-save-button">Salvar filial</button>
+                  <button type="button" class="secondary" id="branch-cancel">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Filiais cadastradas</h3>
+                <p class="hint">Filtre pela empresa vinculada ou pesquise por filial, CNPJ, cidade e código.</p>
+              </div>
+
+              <div class="branch-table-filters">
+                <select id="branch-company-filter">
+                  <option value="">Todas as empresas</option>
+                </select>
+                <input id="branch-search" class="table-search" placeholder="Pesquisar filiais">
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-branch-sort="name">Filial</th>
+                    <th data-branch-sort="company_name">Empresa vinculada</th>
+                    <th data-branch-sort="cnpj">CNPJ</th>
+                    <th data-branch-sort="internal_code">Código</th>
+                    <th data-branch-sort="city">Cidade/UF</th>
+                    <th data-branch-sort="employee_count">Colaboradores</th>
+                    <th data-branch-sort="rh_count">Usuários RH</th>
+                    <th data-branch-sort="active">Situação</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="branches-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    
+
+    <section id="users" class="view admin-only">
+        <div class="users-page-header">
+          <div>
+            <span class="eyebrow">Administração de acessos</span>
+            <h2>Usuários</h2>
+            <p>Cadastre usuários, defina a empresa e controle as filiais permitidas.</p>
+          </div>
+          <div class="actions">
+            <button type="button" class="secondary master-only" id="master-recovery-open">Códigos de recuperação</button>
+            <button type="button" class="primary" id="user-new-button">+ Novo usuário</button>
+          </div>
+        </div>
+
+        <div class="users-summary-grid">
+          <article><span>Total de usuários</span><strong id="users-total-count">0</strong></article>
+          <article><span>Usuários ativos</span><strong id="users-active-count">0</strong></article>
+          <article><span>Administradores</span><strong id="users-admin-count">0</strong></article>
+          <article><span>Usuários de RH</span><strong id="users-rh-count">0</strong></article>
+        </div>
+
+        <div id="user-modal" class="app-modal" hidden>
+          <div class="app-modal-backdrop" data-close-user-modal></div>
+          <div class="app-modal-dialog user-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+            <div class="app-modal-header">
+              <div>
+                <span class="eyebrow">Cadastro de usuário</span>
+                <h3 id="user-modal-title">Novo usuário</h3>
+              </div>
+              <button type="button" class="modal-close" data-close-user-modal aria-label="Fechar">×</button>
+            </div>
+
+            <form id="user-form" class="user-form-layout">
+              <input type="hidden" id="user-id">
+
+              <div class="user-form-main">
+                <div class="form-section-card">
+                  <div class="form-section-title">
+                    <span>1</span>
+                    <div><h4>Dados do usuário</h4><p>Informações básicas para acesso ao sistema.</p></div>
+                  </div>
+
+                  <div class="form-grid">
+                    <label>Nome<input id="user-fullname" required></label>
+                    <label>E-mail<input id="user-email" type="email" required></label>
+                    <label>Perfil
+                      <select id="user-role">
+                        <option value="">Carregando perfis...</option>
+                      </select>
+                    </label>
+                    <label>Situação
+                      <select id="user-active">
+                        <option value="true">Ativo</option>
+                        <option value="false">Inativo</option>
+                      </select>
+                    </label>
+                    <label id="user-company-label">Empresa<select id="user-company"></select></label>
+                    <label id="user-password-label">Senha inicial
+                      <div class="password-field">
+                        <input id="user-password" type="password" autocomplete="new-password">
+                        <button type="button" class="password-toggle compact" data-password-eye="#user-password" aria-label="Mostrar senha">
+                          <svg class="eye-open" viewBox="0 0 24 24"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5S2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+                          <svg class="eye-closed" viewBox="0 0 24 24" hidden><path d="m3 3 18 18"></path><path d="M6.2 6.2A16.5 16.5 0 0 0 2.5 12s3.5 5 9.5 5"></path></svg>
+                        </button>
+                      </div>
+                      <small>O usuário deverá substituí-la no primeiro acesso.</small>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-section-card" id="user-calendar-permission">
+                  <div class="form-section-title">
+                    <span>2</span>
+                    <div><h4>Permissões adicionais</h4><p>Controle o acesso às configurações especiais.</p></div>
+                  </div>
+                  <label class="permission-card">
+                    <input id="user-calendar-access" type="checkbox">
+                    <div><strong>Feriados e folgas</strong><span>Permitir configurar feriados automáticos e folgas adicionais.</span></div>
+                  </label>
+                </div>
+              </div>
+
+              <aside class="user-branches-panel" id="user-branches-area">
+                <div class="branches-panel-head">
+                    <div><h4>Filiais permitidas</h4><p>Marque onde este usuário Operacional / DP poderá trabalhar.</p></div>
+                  <label class="mark-all-option">
+                    <input id="user-select-all-branches" type="checkbox">
+                    <span>Marcar todas</span>
+                  </label>
+                </div>
+                <div id="user-branch-checks" class="user-branches-grid"></div>
+                <p id="user-branch-feedback" class="feedback" hidden>Selecione pelo menos uma filial.</p>
+              </aside>
+
+              <div class="user-form-actions">
+                <button class="primary" id="user-save-button">Cadastrar usuário</button>
+                <button type="button" class="secondary" id="user-cancel">Cancelar</button>
+                <span id="user-form-feedback" class="feedback"></span>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="panel users-table-panel">
+          <div class="users-table-header">
+            <div><h3>Usuários cadastrados</h3><p class="hint">Pesquise, filtre e gerencie os acessos existentes.</p></div>
+            <div class="users-filter-bar">
+              <div class="search-box"><span aria-hidden="true">⌕</span><input id="user-search" placeholder="Pesquisar nome, e-mail ou empresa"></div>
+              <select id="user-role-filter">
+                <option value="">Todos os perfis</option>
+                <option value="ADMIN">Administrador</option>
+                <option value="RH">RH</option>
+              </select>
+              <select id="user-status-filter">
+                <option value="">Todas as situações</option>
+                <option value="true">Ativos</option>
+                <option value="false">Inativos</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="users-table">
+              <thead><tr><th>Usuário</th><th>Perfil</th><th>Empresa</th><th>Filiais</th><th>Feriados/Folgas</th><th>Situação</th><th>Ações</th></tr></thead>
+              <tbody id="users-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    <section id="employees" class="view">
+      <div class="employee-tabs" role="tablist" aria-label="Módulos de colaboradores">
+        <button type="button" class="employee-tab active" data-employee-tab="register" role="tab" aria-selected="true">
+          <span>Cadastro e lista</span>
+        </button>
+        <button type="button" class="employee-tab" data-employee-tab="import" role="tab" aria-selected="false">
+          <span>Importar PDFs da Senior</span>
+        </button>
+        <button type="button" class="employee-tab" data-employee-tab="shift" id="open-shift-import" role="tab" aria-selected="false">
+          <span>Atualizar turnos dos colaboradores</span>
+        </button>
+      </div>
+
+      <div id="employee-register-area" class="employee-module-area" data-employee-module="register">
+      <div class="employee-module-intro">
+        <span class="eyebrow">Módulo de colaboradores</span>
+        <h2>Cadastro e lista</h2>
+        <p>Cadastre, pesquise, edite e acompanhe os colaboradores já existentes no sistema.</p>
+      </div>
+      <div class="panel employee-list-heading">
+        <div class="panel-head">
+          <div>
+            <h3 id="employee-list-title">Colaboradores ativos</h3>
+            <p class="hint" id="employee-list-description">Cadastre um novo colaborador ou use Editar para abrir os dados já salvos.</p>
+          </div>
+          <button type="button" class="primary" id="employee-new-button">+ Novo colaborador</button>
+        </div>
+      </div>
+
+      <div class="employee-status-navigation" role="tablist" aria-label="Situação dos colaboradores">
+        <button type="button" class="employee-status-tab active" data-employee-status-view="ATIVO" role="tab" aria-selected="true">Ativos <span id="employee-count-active">0</span></button>
+        <button type="button" class="employee-status-tab" data-employee-status-view="DEMITIDO" role="tab" aria-selected="false">Demitidos <span id="employee-count-dismissed">0</span></button>
+        <button type="button" class="employee-status-tab" data-employee-status-view="INACTIVE_GROUP" role="tab" aria-selected="false">Afastados/Inativos <span id="employee-count-inactive">0</span></button>
+        <button type="button" class="employee-status-tab" data-employee-status-view="ALL" role="tab" aria-selected="false">Todos <span id="employee-count-all">0</span></button>
+      </div>
+      <p class="hint employee-status-filter-hint">Os totais das situações acompanham a empresa e a filial selecionadas nos filtros abaixo.</p>
+
+      <div id="employee-modal" class="app-modal" hidden>
+        <div class="app-modal-backdrop" data-close-employee-modal></div>
+        <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="employee-modal-title">
+          <div class="app-modal-header">
+            <div>
+              <span class="eyebrow">Cadastro de colaborador</span>
+              <h3 id="employee-modal-title">Novo colaborador</h3>
+            </div>
+            <button type="button" class="modal-close" data-close-employee-modal aria-label="Fechar">×</button>
+          </div>
+
+          <form id="employee-form" class="form-grid">
+            <input type="hidden" id="employee-id">
+            <label>Empresa<select id="employee-company" required></select></label>
+            <label>Filial<select id="employee-branch" required></select></label>
+            <label>Nome<input id="employee-name" required></label>
+            <label>Matrícula<input id="employee-registration"></label>
+            <label>Admissão<input id="employee-admission" type="date"></label>
+            <label>Turno<select id="employee-shift"></select></label>
+            <label>Situação
+              <select id="employee-status">
+                <option value="ATIVO">Ativo</option>
+                <option value="INATIVO">Inativo</option>
+                <option value="DEMITIDO">Demitido</option>
+                <option value="AFASTADO">Afastado</option>
+              </select>
+            </label>
+            <label>Cargo<select id="employee-job-role"></select></label>
+            <label>Exceção de relatórios
+              <select id="employee-report-policy">
+                <option value="">Usar regra do cargo e da filial</option>
+                <option value="PENDING">Pendente — não gerar</option>
+                <option value="BOTH">Repouso térmico + refeição</option>
+                <option value="THERMAL_ONLY">Somente repouso térmico</option>
+                <option value="MEAL_ONLY">Somente refeição</option>
+                <option value="NONE">Não gerar relatórios</option>
+              </select>
+              <small>Use apenas quando este colaborador for uma exceção.</small>
+            </label>
+
+            <label class="full">Regra da folga semanal
+              <select id="employee-days-off-mode">
+                <option value="SHIFT">Usar a folga padrão do turno</option>
+                <option value="CUSTOM">Definir uma folga personalizada</option>
+              </select>
+              <small id="employee-days-off-hint">A folga será atualizada automaticamente quando o turno mudar.</small>
+            </label>
+
+            <div class="full" id="employee-weekly-days-off-field">
+              <span class="field-label">Dias de folga aplicados</span>
+              <div class="weekday-grid">
+                <label><input type="checkbox" data-weekday="0"> Domingo</label>
+                <label><input type="checkbox" data-weekday="1"> Segunda</label>
+                <label><input type="checkbox" data-weekday="2"> Terça</label>
+                <label><input type="checkbox" data-weekday="3"> Quarta</label>
+                <label><input type="checkbox" data-weekday="4"> Quinta</label>
+                <label><input type="checkbox" data-weekday="5"> Sexta</label>
+                <label><input type="checkbox" data-weekday="6"> Sábado</label>
+              </div>
+            </div>
+
+            <div class="full actions modal-actions">
+              <button class="primary" id="employee-save-button">Salvar colaborador</button>
+              <button type="button" class="secondary" id="employee-cancel">Cancelar</button>
+              <span id="employee-form-feedback" class="feedback"></span>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="panel">
+        <div id="dismissed-period-filters" class="dismissed-period-filters" hidden>
+          <div>
+            <span class="eyebrow">Arquivo de desligados</span>
+            <strong>Consultar demitidos por período</strong>
+            <small>Utilize o mês da leitura ou informe um intervalo personalizado.</small>
+          </div>
+          <label>Mês da demissão<input id="employee-dismissed-month" type="month"></label>
+          <label>Data inicial<input id="employee-termination-from" type="date"></label>
+          <label>Data final<input id="employee-termination-to" type="date"></label>
+          <button type="button" class="secondary" id="employee-clear-period">Limpar período</button>
+        </div>
+        <div class="employee-toolbar employee-filter-grid">
+          <input type="text" name="fake_username" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;width:0">
+          <input type="password" name="fake_password" autocomplete="current-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0;height:0;width:0">
+          <input id="employee-search"
+               name="employee_lookup"
+               type="search"
+               placeholder="Pesquisar nome ou matrícula"
+               autocomplete="off"
+               autocapitalize="off"
+               spellcheck="false"
+               inputmode="search">
+          <select id="employee-company-filter"><option value="">Todas as empresas</option></select>
+          <select id="employee-branch-filter"><option value="">Todas as filiais</option></select>
+          <select id="employee-shift-filter"><option value="">Todos os turnos</option></select>
+          <label class="filter-check" id="employee-missing-shift-filter-label"><input type="checkbox" id="employee-missing-shift-filter"> Mostrar somente sem turno</label>
+        </div>
+
+        <div id="bulk-shift-bar" class="bulk-shift-bar" hidden>
+          <strong><span id="bulk-selected-count">0</span> selecionado(s)</strong>
+          <button type="button" class="secondary" id="bulk-clear-selection">Limpar seleção</button>
+          <button type="button" class="danger-button" id="employee-bulk-delete-visible">Excluir selecionados</button>
+        </div>
+
+        <div class="employee-bulk-bar" id="employee-bulk-bar" hidden>
+          <div>
+            <strong id="employee-selected-count">0 selecionado(s)</strong>
+            <span>Use a seleção para excluir vários colaboradores de uma vez.</span>
+          </div>
+          <button type="button" class="danger-button" id="employee-bulk-delete">Excluir selecionados</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th><input type="checkbox" id="employee-select-all" title="Selecionar todos"></th><th>Colaborador</th><th>Empresa/Filial</th><th>Cargo</th><th>Turno</th><th>Admissão / Demissão</th><th>Situação</th><th>Ações</th></tr></thead>
+            <tbody id="employees-list"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+      <div id="employee-import-area" class="employee-module-area" data-employee-module="import" hidden>
+        <div class="employee-module-intro">
+          <span class="eyebrow">Integração Senior</span>
+          <h2>Importar PDFs da Senior</h2>
+          <p>Importe Admitidos, Demitidos ou a Relação completa de colaboradores sem misturar esta rotina com o cadastro manual.</p>
+        </div>
+        <div class="panel">
+          <h3>Importar relatório da Senior</h3>
+          <p class="hint">Envie a Relação de Admitidos ou de Demitidos em PDF. Novos admitidos ficam com o turno não definido.</p>
+
+          <form id="pdf-import-form" class="form-grid">
+            <label>Tipo do arquivo
+              <select id="pdf-import-type">
+                <option value="AUTO">Detectar automaticamente</option>
+                <option value="ADMITIDOS">Admitidos</option>
+                <option value="DEMITIDOS">Demitidos</option>
+                <option value="COLABORADORES">Relação completa de colaboradores</option>
+              </select>
+            </label>
+            <label>Empresa<select id="pdf-import-company" required></select></label>
+            <label>Filial<select id="pdf-import-branch" required></select></label>
+            <label class="full">Arquivo PDF<input id="pdf-import-file" type="file" accept="application/pdf" required></label>
+            <div class="full actions">
+              <button class="primary">Ler e conferir PDF</button>
+              <button type="button" class="secondary" id="pdf-import-clear">Limpar</button>
+            </div>
+          </form>
+
+          <div id="pdf-import-detection" class="import-detection" hidden></div>
+        </div>
+
+        <div class="panel" id="pdf-import-preview-panel" hidden>
+          <div class="panel-head">
+            <div>
+              <h3>Conferência da importação</h3>
+              <p id="pdf-import-summary" class="hint"></p>
+            </div>
+            <button type="button" class="primary" id="pdf-import-confirm">Confirmar importação</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead id="pdf-import-head"></thead>
+              <tbody id="pdf-import-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel senior-checklist-panel" id="pdf-checklist-panel" hidden>
+          <div class="panel-head">
+            <div>
+              <h3>Checklist Sistema × Lista Senior</h3>
+              <p class="hint" id="pdf-checklist-description">Comparação por matrícula, nome, cargo, situação e turno.</p>
+            </div>
+            <button type="button" class="secondary" id="pdf-checklist-print">Imprimir checklist</button>
+          </div>
+          <div class="checklist-summary" id="pdf-checklist-summary"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Origem</th><th>Matrícula</th><th>Colaborador</th><th>Cargo</th><th>Turno</th><th>Resultado</th><th>Detalhes</th></tr></thead>
+              <tbody id="pdf-checklist-body"></tbody>
+            </table>
+          </div>
+          <p class="checklist-safety">Esta checklist é somente para conferência. Nenhum colaborador é excluído, demitido ou inativado automaticamente.</p>
+        </div>
+
+        <div class="panel" id="pdf-missing-panel" hidden>
+          <h3>Colaboradores ativos que não aparecem no relatório</h3>
+          <p class="hint">Esta lista é apenas para conferência. O sistema não exclui nem demite automaticamente.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Matrícula</th><th>Colaborador</th><th>Situação atual</th></tr></thead>
+              <tbody id="pdf-missing-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <details class="panel import-history-details" id="pdf-import-history-details">
+          <summary>
+            <span>Histórico de importações</span>
+            <small>Mostrar/ocultar</small>
+          </summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Tipo</th><th>Arquivo</th><th>Empresa/Filial</th><th>Resultado</th><th>Usuário</th></tr></thead>
+              <tbody id="pdf-import-history"></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    
+        <div id="shift-import-panel" class="employee-module-area senior-shift-import" data-employee-module="shift" hidden>
+          <div class="employee-module-intro">
+            <span class="eyebrow">Integração Senior</span>
+            <h2>Atualizar turnos dos colaboradores</h2>
+            <p>Leia exclusivamente o PDF de escalas e confira os turnos antes de atualizar o cadastro.</p>
+          </div>
+          <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Atualizar turnos dos colaboradores</h3>
+              <p class="hint">Use o PDF de escala da Senior para localizar colaboradores já cadastrados pela matrícula e atualizar o campo Turno. Nenhum colaborador novo será criado.</p>
+            </div>
+            <button type="button" class="secondary" id="shift-import-close">Fechar</button>
+          </div>
+
+          <div class="form-grid">
+            <label>Empresa
+              <select id="shift-import-company"></select>
+            </label>
+            <label>Filial
+              <select id="shift-import-branch"></select>
+            </label>
+            <label class="full">Arquivo PDF
+              <input id="shift-import-file" type="file" accept="application/pdf,.pdf">
+            </label>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="primary" id="shift-import-read">Ler e conferir turnos</button>
+            <button type="button" class="secondary" id="shift-import-clear">Limpar</button>
+          </div>
+
+          <div id="shift-import-result" hidden>
+            <div class="shift-import-summary" id="shift-import-summary"></div>
+            <div id="shift-new-proposals" class="shift-new-proposals" hidden></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th><input id="shift-import-select-all" type="checkbox" checked></th>
+                    <th>Matrícula</th>
+                    <th>Nome no PDF</th>
+                    <th>Nome cadastrado</th>
+                    <th>Código</th>
+                    <th>Turno identificado</th>
+                    <th>Turno atual</th>
+                    <th>Novo turno</th>
+                    <th>Resultado</th>
+                  </tr>
+                </thead>
+                <tbody id="shift-import-body"></tbody>
+              </table>
+            </div>
+            <div class="actions shift-import-confirm-actions">
+              <button type="button" class="primary" id="shift-import-confirm">Atualizar turno no cadastro</button>
+            </div>
+          </div>
+          <p id="shift-import-feedback" class="feedback"></p>
+          </div>
+        </div>
+</section>
+
+    
+
+    <section id="reports" class="view">
+      <div class="panel no-print">
+        <h3>Impressão de fichas</h3>
+        <p class="hint">Gere fichas em branco para o colaborador preencher e assinar. Não existe lançamento manual no sistema.</p>
+
+        <div class="form-grid">
+          <label>Empresa
+            <select id="report-company"></select>
+          </label>
+
+          <label>Filial
+            <select id="report-branch"></select>
+          </label>
+
+          <label>Colaborador
+            <select id="report-employee-select">
+              <option value="">Selecione um colaborador</option>
+            </select>
+            <small id="report-employee-count" class="hint">0 colaborador(es) disponível(is)</small>
+          </label>
+
+          <label class="select-all-report">
+            <input type="checkbox" id="report-all-employees">
+            Selecionar todos os colaboradores filtrados
+          </label>
+
+          <label>Turno
+            <select id="report-shift"></select>
+          </label>
+
+          <label>Mês de referência
+            <input type="month" id="report-month">
+          </label>
+
+          <div class="full manual-note info report-automatic-policy">
+            <strong>Ficha automática:</strong> o sistema gera o tipo correto conforme a configuração individual, da filial e do cargo/função.
+          </div>
+
+          <div class="full actions">
+            <button type="button" id="report-generate" class="primary">Gerar ficha</button>
+            <button type="button" id="report-print" class="secondary">Imprimir</button>
+            <button type="button" id="report-clear" class="secondary">Limpar</button>
+          </div>
+          <p id="report-generation-summary" class="full feedback" aria-live="polite"></p>
+          <div id="report-skipped-details" class="full report-skipped-details" hidden aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div id="report-output"></div>
+    </section>
+
+    <button type="button" id="help-floating-launcher" class="help-floating-launcher" aria-label="Abrir Assistente Virtual" title="Abrir Assistente Virtual"><span>?</span><b>Ajuda</b></button>
+
+    <aside id="help" class="help-view help-floating-widget" hidden aria-label="Assistente Virtual flutuante">
+      <div class="help-phone-wrap">
+        <div class="help-phone" aria-label="Assistente virtual em formato de celular">
+          <div class="help-phone-speaker" aria-hidden="true"></div>
+          <header class="help-chat-header" id="help-drag-handle" title="Arraste para mover o Assistente">
+            <button type="button" class="help-header-button" id="help-back" hidden aria-label="Voltar" title="Voltar">‹</button>
+            <div class="help-avatar" aria-hidden="true">?</div>
+            <div class="help-agent">
+              <strong>Assistente Virtual</strong>
+              <span><i></i> Online • ajuda guiada</span>
+            </div>
+            <button type="button" class="help-header-button restart" id="help-restart" aria-label="Recomeçar conversa" title="Recomeçar conversa">↻</button>
+            <button type="button" class="help-header-button close" id="help-close" aria-label="Fechar assistente" title="Fechar assistente">×</button>
+          </header>
+          <div class="help-conversation" id="help-conversation" role="log" aria-live="polite"></div>
+          <div class="help-quick-label"><span>Escolha uma opção</span></div>
+          <div class="help-options" id="help-options" aria-label="Respostas rápidas"></div>
+          <div class="help-actions">
+            <button type="button" class="help-whatsapp-button" id="help-whatsapp" hidden>Falar pelo WhatsApp</button>
+            <button type="button" class="help-email-button" id="help-email" hidden>Enviar e-mail ao suporte</button>
+          </div>
+          <p class="help-privacy">O Assistente não altera cadastros. Revise a mensagem antes de enviá-la ao suporte.</p>
+          <div class="help-phone-home" aria-hidden="true"></div>
+        </div>
+      </div>
+    </aside>
+
+    <section id="manual" class="view manual-view">
+      <div class="manual-hero">
+        <div>
+          <span class="eyebrow">Central de ajuda</span>
+          <h2>Manual do Sistema</h2>
+          <p>Orientações ilustradas para utilizar o Controle Térmico com segurança, da entrada no sistema à emissão das fichas.</p>
+        </div>
+        <div class="manual-hero-mark" aria-hidden="true">?</div>
+      </div>
+
+      <div class="manual-toolbar panel">
+        <label class="manual-search-box"><span aria-hidden="true">⌕</span><input id="manual-search" type="search" placeholder="Pesquisar: importação, turno, relatório..." autocomplete="off"></label>
+        <button type="button" class="secondary" id="manual-expand-all">Abrir todos</button>
+        <button type="button" class="secondary" id="manual-print">Imprimir manual</button>
+      </div>
+
+      <div class="manual-layout">
+        <aside class="manual-index panel" aria-label="Índice do manual">
+          <strong>Índice rápido</strong>
+          <a href="#manual-access">1. Acesso e menu</a><a href="#manual-dashboard" data-help-permission="dashboard.view">2. Painel</a>
+          <a href="#manual-companies" data-help-permission="admin">3. Empresas e filiais</a><a href="#manual-users" data-help-permission="admin">4. Usuários e perfis</a>
+          <a href="#manual-employees" data-help-permission="employees.view">5. Colaboradores</a><a href="#manual-import" data-help-permission="imports.manage">6. Importação Senior</a>
+          <a href="#manual-shifts" data-help-permission="settings.view|imports.manage">7. Turnos</a><a href="#manual-reports" data-help-permission="reports.view">8. Relatórios</a>
+          <a href="#manual-settings" data-help-permission="settings.view|calendar.manage">9. Configurações</a><a href="#manual-safety">10. Segurança e suporte</a>
+          <small id="manual-profile-scope">O conteúdo é adaptado automaticamente às permissões do perfil.</small>
+        </aside>
+
+        <div class="manual-content" id="manual-content">
+          <p id="manual-no-results" class="manual-no-results" hidden>Nenhum assunto encontrado. Tente pesquisar outra palavra.</p>
+
+          <details class="manual-chapter" id="manual-access" open data-manual-keywords="login senha acesso sair menu celular perfil">
+            <summary><span class="manual-number">1</span><span><strong>Acesso e navegação</strong><small>Entrar, recuperar senha, usar o menu e sair</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-illustration login-illustration" aria-label="Ilustração da tela de entrada"><div class="illustration-window"><span class="illustration-logo">RT</span><i>Seu e-mail</i><i>••••••••</i><b>Entrar</b></div></div>
+              <h4>Como entrar</h4><ol><li>Informe o e-mail e a senha cadastrados.</li><li>Clique em <strong>Entrar</strong>.</li><li>Use <strong>Minha senha</strong> para trocar sua própria senha.</li><li>Se esquecer, clique em <strong>Esqueci minha senha</strong>, solicite o código por e-mail e crie uma nova senha. O WhatsApp e o Master permanecem como alternativas.</li></ol>
+              <h4>Recuperação por e-mail</h4><p>Informe o mesmo e-mail utilizado no cadastro. O sistema enviará um código de seis números, válido por 15 minutos e para uma única utilização. Digite o código, escolha uma senha com pelo menos oito caracteres e confirme. Após cinco tentativas incorretas, solicite outro código.</p>
+              <h4>Senha temporária</h4><p>O Administrador Master pode gerar uma senha temporária para qualquer usuário comum. No próximo acesso, o sistema exige a criação de uma senha pessoal antes de liberar as demais telas.</p>
+              <h4 data-help-permission="master">Códigos do Master</h4><p data-help-permission="master">Em <strong>Usuários → Códigos de recuperação</strong>, gere e guarde os códigos em local protegido. Cada código é de uso único, e uma recuperação cancela os anteriores e cria um novo conjunto.</p>
+              <h4>Como navegar</h4><p>Escolha uma função no menu lateral. No celular ou tablet, toque em <strong>☰</strong> para abrir o menu. O botão <strong>Sair</strong> encerra a sessão.</p>
+              <div class="manual-note info"><strong>Acesso por perfil:</strong> o Administrador recebe o manual completo. Os demais usuários visualizam somente os capítulos relacionados às funções autorizadas em seu perfil.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-dashboard" data-help-permission="dashboard.view" data-manual-keywords="painel totais resumo sem turno alerta colaboradores empresas filiais usuários">
+            <summary><span class="manual-number">2</span><span><strong>Painel</strong><small>Resumo geral e alertas que precisam de atenção</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-mini-dashboard" aria-label="Ilustração dos cartões do painel"><span><b>108</b>Colaboradores</span><span><b>5</b>Turnos</span><span class="warning"><b>2</b>Sem turno</span></div>
+              <p>O Painel apresenta os totais dentro do acesso do perfil. O cartão <strong>Sem turno</strong> identifica colaboradores que precisam ser corrigidos antes da geração das fichas.</p>
+              <div class="manual-note warning"><strong>Atenção:</strong> clique em “Ver colaboradores” para abrir a lista filtrada e definir os turnos pendentes.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-companies" data-help-permission="admin" data-manual-keywords="empresa filial cnpj código interno cidade administrador cadastrar editar inativar">
+            <summary><span class="manual-number">3</span><span><strong>Empresas e filiais</strong><small>Cadastros estruturais — acesso do Administrador</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-flow" aria-label="Vínculo entre empresa, filial e colaborador"><span>Empresa</span><i>→</i><span>Filial</span><i>→</i><span>Colaborador</span></div>
+              <h4>Empresa</h4><p>Use <strong>+ Nova empresa</strong> para cadastrar razão social, nome fantasia, CNPJ, cidade, estado e situação. Use <strong>Editar</strong> para corrigir os dados.</p>
+              <h4>Filial</h4><p>Abra a aba <strong>Filiais</strong>, selecione a empresa vinculada e informe nome, CNPJ, código interno, cidade e situação. O código interno ajuda o leitor Senior a reconhecer o destino do PDF.</p>
+              <div class="manual-note warning"><strong>Antes de inativar:</strong> confira usuários e colaboradores vinculados. Empresas inativas deixam de aparecer em novos cadastros.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-users" data-help-permission="admin" data-manual-keywords="usuário rh administrador perfil permissão filial senha acesso cadastrar editar excluir">
+            <summary><span class="manual-number">4</span><span><strong>Usuários e perfis</strong><small>Controle de acesso — funções do Administrador</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-permission-illustration" aria-label="Ilustração de permissões"><span>✓ Painel</span><span>✓ Colaboradores</span><span>✓ Relatórios</span><span>□ Backup</span></div>
+              <h4>Cadastrar usuário</h4><ol><li>Clique em <strong>+ Novo usuário</strong>.</li><li>Preencha nome, e-mail, perfil e senha inicial.</li><li>Para RH, escolha a empresa e marque as <strong>Filiais permitidas</strong>.</li><li>Ative, se necessário, <strong>Feriados e folgas</strong> e salve.</li><li>No primeiro acesso, o usuário será obrigado a criar sua senha pessoal.</li></ol>
+              <h4>Perfis personalizados</h4><p>Em <strong>Configurações → Perfis de usuário</strong>, defina permissões para Painel, Colaboradores, importação Senior, Relatórios, Configurações e calendário. O <strong>Administrador Master</strong> é exclusivo e não pode ser editado, bloqueado, excluído ou ter a senha alterada por outro usuário.</p>
+              <div class="manual-note danger"><strong>Segurança:</strong> conceda somente os acessos necessários e nunca compartilhe senhas.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-employees" data-help-permission="employees.view" data-manual-keywords="colaborador cadastro matrícula nome admissão cargo função situação ativo afastado demitido inativo editar excluir filtro">
+            <summary><span class="manual-number">5</span><span><strong>Colaboradores</strong><small>Cadastro, pesquisa, atualização, situação e exclusão</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-record-card" aria-label="Exemplo de cadastro"><b>Maria José Pontes da Silva</b><span>Matrícula: 000006407</span><span>Cargo: Analista de Controle de Qualidade</span><em>ATIVO</em></div>
+              <h4 data-help-permission="employees.manage">Novo cadastro</h4><ol data-help-permission="employees.manage"><li>Abra <strong>Colaboradores → Cadastro e lista</strong>.</li><li>Clique em <strong>+ Novo colaborador</strong>.</li><li>Selecione empresa e filial; informe nome, matrícula, admissão, turno, situação e cargo.</li><li>Mantenha <strong>Usar a folga padrão do turno</strong> ou escolha uma folga personalizada somente para exceções.</li><li>Confira a regra de relatórios e salve.</li></ol>
+              <h4>Localizar e corrigir</h4><p>Pesquise por nome ou matrícula e use os filtros de empresa, filial, turno ou <strong>somente sem turno</strong>. Use <strong>Editar</strong> para atualizar cargo, função, turno ou situação.</p>
+              <h4>Ativos, demitidos e afastados</h4><p>A lista abre em <strong>Ativos</strong>. Utilize as abas para consultar <strong>Demitidos</strong>, <strong>Afastados/Inativos</strong> ou <strong>Todos</strong>. Na área de Demitidos, filtre pela data do desligamento ou selecione um mês completo. Os totais das quatro abas são recalculados conforme a empresa e a filial selecionadas.</p>
+              <div class="manual-status-grid"><span><b>ATIVO</b> pode gerar ficha</span><span><b>INATIVO</b> não gera ficha</span><span><b>DEMITIDO</b> não gera ficha</span><span><b>AFASTADO</b> não gera ficha</span></div>
+              <div class="manual-note danger" data-help-permission="employees.manage"><strong>Exclusão definitiva:</strong> está disponível também na aba Demitidos, mediante confirmação. Use apenas para cadastro incorreto; se houver histórico vinculado, o sistema bloqueará a exclusão.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-import" data-help-permission="imports.manage" data-manual-keywords="pdf senior importação admitidos demitidos relação colaboradores checklist lista sistema atualizar cargo função readmissão nova matrícula histórico confiança">
+            <summary><span class="manual-number">6</span><span><strong>Importação de PDFs da Senior</strong><small>Leitura, conferência, checklist e atualização automática</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-flow import-flow" aria-label="Etapas da importação"><span>1. PDF</span><i>→</i><span>2. Conferir</span><i>→</i><span>3. Checklist</span><i>→</i><span>4. Confirmar</span></div>
+              <h4>Passo a passo</h4><ol><li>Abra <strong>Colaboradores → Importar PDFs da Senior</strong>.</li><li>Escolha o tipo ou deixe o sistema detectar; selecione empresa/filial e carregue o PDF.</li><li>Clique em <strong>Ler e conferir PDF</strong>.</li><li>Revise confiança, registros montados, não reconhecidos e o <strong>Checklist Sistema × Lista Senior</strong>.</li><li>Marque somente os registros corretos e confirme.</li></ol>
+              <div class="manual-import-types"><article><b>Admitidos</b><span>Cadastra novos vínculos.</span></article><article><b>Demitidos</b><span>Atualiza a situação.</span></article><article><b>Relação de Colaboradores</b><span>Cadastra ausentes e atualiza nome, cargo e função.</span></article></div>
+              <h4>Resultado</h4><ul><li><strong>Cadastrado:</strong> matrícula nova incluída.</li><li><strong>Atualizado:</strong> cadastro existente corrigido.</li><li><strong>Não processado:</strong> registro bloqueado ou incompleto.</li><li><strong>Possível readmissão:</strong> mesmo nome encontrado com matrícula nova.</li></ul>
+              <div class="manual-note warning"><strong>Readmissão:</strong> o sistema preserva a matrícula antiga e cria a nova. Confira se o vínculo anterior deve ser marcado como Demitido/Inativo.</div>
+              <div class="manual-note danger"><strong>Nunca confirme às cegas:</strong> mesmo com confiança alta, confira matrícula, nome, cargo e situação.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-shifts" data-help-permission="settings.view|imports.manage" data-manual-keywords="turno escala horário senior código 46 96 56 administrativo comercial cadastrar novo aplicar atualizar">
+            <summary><span class="manual-number">7</span><span><strong>Turnos e escalas</strong><small>Cadastro de turnos e atualização por PDF</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-shift-clock" aria-label="Exemplo de horário"><span>06:00</span><i></i><b>1º TURNO</b><i></i><span>14:20</span></div>
+              <h4 data-help-permission="admin">Cadastrar ou editar</h4><p data-help-permission="admin">Em <strong>Configurações → Turnos</strong>, selecione a empresa e informe nome, código Senior, descrição/horário e situação. O código permite a associação automática em futuras importações.</p>
+              <h4 data-help-permission="admin">Folga padrão</h4><p data-help-permission="admin">Na lista de turnos cadastrados, marque os dias da semana e clique em <strong>Salvar folga</strong>, sem precisar abrir o turno em Editar. A configuração inicial usa domingo para 1º, 2º, ADM e Comercial e sábado para o 3º turno. As fichas dos colaboradores que seguem a regra do turno são atualizadas automaticamente.</p>
+              <h4 data-help-permission="imports.manage">Atualizar por PDF</h4><ol data-help-permission="imports.manage"><li>Em Colaboradores, clique em <strong>Atualizar turnos dos colaboradores</strong>.</li><li>Selecione empresa/filial e o PDF da escala.</li><li>Clique em <strong>Ler e conferir turnos</strong>.</li><li>Confira cada matrícula e turno identificado.</li><li>Confirme somente os itens selecionados.</li></ol>
+              <p>Quando identifica um turno inexistente com código e horários completos, o leitor apresenta uma proposta de cadastro e associação.</p>
+              <div class="manual-note danger"><strong>Proteção:</strong> a atualização deve ocorrer por matrícula e item selecionado. Não aplique um único turno para toda a lista.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-reports" data-help-permission="reports.view" data-manual-keywords="relatório ficha impressão repouso térmico refeição refeitório mês turno todos colaboradores cargo permitido pendente imprimir">
+            <summary><span class="manual-number">8</span><span><strong>Relatórios e impressão</strong><small>Repouso térmico e Refeitório</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-report-preview" aria-label="Exemplo de ficha mensal"><b>FICHA MENSAL</b><span>Empresa • Filial • Colaborador • Matrícula</span><i></i><i></i><i></i><small>Assinatura do colaborador</small></div>
+              <h4>Gerar ficha</h4><ol><li>Escolha empresa e filial.</li><li>Selecione um colaborador ou <strong>Todos os colaboradores</strong>.</li><li>Se desejar, filtre por turno.</li><li>Escolha o mês/ano.</li><li>Clique em <strong>Gerar ficha</strong>, confira o resumo e depois clique em <strong>Imprimir</strong>.</li></ol>
+              <p>A ficha mostra empresa, filial, colaborador, matrícula, cargo, turno, dias, folgas/sem jornada e assinaturas.</p>
+              <div class="manual-note info"><strong>Tipo automático:</strong> não é necessário escolher “Tipo de ficha”. O sistema aplica a prioridade <strong>exceção individual → regra da filial → regra geral do cargo/função</strong> e gera Repouso Térmico, Refeição ou as duas fichas.</div>
+              <div class="manual-note info"><strong>Quem aparece:</strong> todos os colaboradores Ativos que atendem aos filtros de empresa, filial, mês e turno permanecem na lista. Inativos, Demitidos e Afastados não geram fichas.</div>
+              <div class="manual-note warning"><strong>Ficha não gerada?</strong> confira turno, cargo e <strong>Configurações → Cargos e relatórios</strong>. Após gerar, a tela apresenta nome, matrícula, cargo e motivo de cada colaborador sem ficha, facilitando a correção de regras pendentes, bloqueios e turnos ausentes.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-settings" data-help-permission="settings.view|calendar.manage" data-manual-keywords="configuração visual logo cor feriado folga turno cargo relatório leitor senior perfil backup restaurar teste dados duplicados zerar sistema histórico">
+            <summary><span class="manual-number">9</span><span><strong>Configurações</strong><small>Visual, suporte, calendário, cadastros e manutenção</small></span></summary>
+            <div class="manual-body">
+              <p>Esta seção mostra somente as configurações liberadas para o seu perfil.</p>
+              <div class="manual-settings-grid"><article data-help-permission="master"><b>🎨 Visual</b><span>Nome, logos, cores e tema — exclusivo do Master.</span></article><article data-help-permission="master"><b>☎ Suporte</b><span>WhatsApp, e-mail, responsável e horário.</span></article><article data-help-permission="master"><b>🔐 Segurança</b><span>Tentativas de acesso e senha temporária.</span></article><article data-help-permission="calendar.manage"><b>📅 Feriados e folgas</b><span>Calendário e folga individual.</span></article><article data-help-permission="admin"><b>⏱ Turnos</b><span>Códigos, nomes e horários.</span></article><article data-help-permission="admin"><b>▤ Cargos e relatórios</b><span>Tipos de ficha permitidos.</span></article><article data-help-permission="admin"><b>◇ Leitor Senior</b><span>Modelos, códigos e confiança.</span></article><article data-help-permission="admin"><b>👤 Perfis</b><span>Permissões personalizadas.</span></article><article data-help-permission="admin"><b>▣ Backup e dados</b><span>Testes, backup e duplicidades.</span></article></div>
+              <h4 data-help-permission="master">Contato do suporte</h4><p data-help-permission="master">Em <strong>Configurações → Suporte</strong>, somente o Administrador Master pode cadastrar WhatsApp, e-mail, responsável e horário. O Assistente exibe os canais configurados aos usuários.</p>
+              <h4 data-help-permission="master">Segurança e acessos</h4><p data-help-permission="master">Em <strong>Configurações → Segurança e acessos</strong>, o Master acompanha acessos e tentativas com senha incorreta. Quando um usuário não consegue recuperar a conta, o Master pode gerar uma senha temporária; no primeiro acesso, o sistema exige a criação de uma senha pessoal nova.</p>
+              <h4 data-help-permission="admin">Cargos e relatórios</h4><p data-help-permission="admin">A prioridade é: <strong>exceção do colaborador → regra da filial → regra geral do cargo</strong>. Cargo/função nova encontrada na importação é cadastrada como <strong>Pendente</strong> até o Administrador definir os relatórios permitidos.</p>
+              <h4 data-help-permission="admin">Perfil Coordenador</h4><p data-help-permission="admin">O perfil padrão <strong>Coordenador</strong> possui somente a permissão de Relatórios. Ao cadastrar o usuário, escolha a empresa e as filiais que ele poderá consultar.</p>
+              <h4 data-help-permission="calendar.manage">Feriados e folgas</h4><p data-help-permission="calendar.manage">Gere os feriados do ano, acrescente datas manuais ou marque folga específica. Essas informações aparecem nas fichas.</p>
+              <h4 data-help-permission="imports.manage">Histórico de importação</h4><p data-help-permission="imports.manage">Fica recolhido por padrão. Abra somente para consultar data, arquivo, tipo e resultado anterior.</p>
+              <div class="manual-note info" data-help-permission="admin"><strong>Backup:</strong> Administradores podem gerar e baixar a cópia de segurança, executar testes e corrigir duplicidades.</div>
+              <div class="manual-note danger" data-help-permission="master"><strong>Proteção Master:</strong> restaurar backup e “Zerar sistema” são ações exclusivas do Administrador Master.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-safety" data-manual-keywords="segurança dúvida problema duplicado matrícula diferente readmissão não aparece backup erro importação checklist suporte">
+            <summary><span class="manual-number">10</span><span><strong>Segurança e solução de dúvidas</strong><small>Conferências essenciais antes de confirmar</small></span></summary>
+            <div class="manual-body">
+              <div class="manual-checklist"><strong>Checklist antes de concluir</strong><label>✓ Empresa e filial corretas</label><label>✓ Matrículas e nomes conferidos</label><label>✓ Cargo, situação e turno revisados</label><label>✓ Não reconhecidos analisados</label><label>✓ Backup recente antes de alterações grandes</label></div>
+              <h4>Nome repetido</h4><p>Compare as matrículas. Diferentes podem indicar readmissão; mantenha a nova Ativa e corrija o vínculo antigo. Mesma matrícula repetida deve ser tratada em <strong>Backup e dados → Cadastros duplicados</strong>.</p>
+              <h4>Importação encontrou, mas não cadastrou</h4><p>Confira seleção, validação estrutural, empresa/filial e a justificativa mostrada no checklist.</p>
+              <h4>Relatório não mostra todos</h4><p>Confirme que estão Ativos, pertencem à filial, possuem turno e cargo com o relatório liberado.</p>
+              <h4>Assistente de Ajuda</h4><p>Abra pelo botão flutuante <strong>Ajuda</strong>, no canto inferior direito. No computador, segure o cabeçalho azul e arraste a janela para outro local da tela; a última posição fica guardada no navegador. A janela permanece aberta enquanto você navega por outras telas. Escolha primeiro uma categoria e depois a dúvida; use a seta para voltar, o símbolo circular para recomeçar e <strong>×</strong> para fechar sem apagar a conversa. Ao escolher o WhatsApp, a mensagem inclui seu nome, perfil, empresa, filial e as opções marcadas até chegar ao suporte, para você revisar antes do envio. No celular, o Assistente permanece como painel móvel sem arraste para não atrapalhar a rolagem.</p>
+              <h4>Ainda preciso de ajuda</h4><p>No fim da orientação, escolha <strong>Falar pelo WhatsApp</strong> ou <strong>Enviar e-mail ao suporte</strong>, conforme os canais cadastrados pelo Administrador. Avisos que orientam entrar em contato com o Suporte também mostram um botão direto para o WhatsApp. Em <strong>Esqueci minha senha</strong>, o usuário pode receber um código automático por e-mail ou solicitar uma senha temporária pelo número cadastrado.</p>
+              <div class="manual-note info"><strong>Boa prática:</strong> execute os testes após restauração ou atualização importante e guarde backups em local protegido.</div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section id="settings" class="view">
+      <div class="settings-tabs">
+        <button class="settings-tab active admin-only master-only" data-settings-tab="visual">Visual</button>
+        <button class="settings-tab admin-only master-only" data-settings-tab="support">Suporte</button>
+        <button class="settings-tab admin-only master-only" data-settings-tab="security-access">Segurança e acessos</button>
+        <button class="settings-tab calendar-access-only" data-settings-tab="calendar">Feriados e folgas</button>
+        <button class="settings-tab admin-only" data-settings-tab="shifts">Turnos</button>
+        <button class="settings-tab admin-only" data-settings-tab="job-reports">Cargos e relatórios</button>
+        <button class="settings-tab admin-only" data-settings-tab="senior-models">Leitor Senior</button>
+        <button class="settings-tab admin-only" data-settings-tab="profiles">Perfis de usuário</button>
+        <button class="settings-tab admin-only" data-settings-tab="data">Backup e dados</button>
+      </div>
+
+      <div id="settings-visual" class="admin-only master-only">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Identidade visual</h3>
+              <p class="hint">Personalize o nome, as imagens, as cores e os textos do sistema.</p>
+            </div>
+            <button type="button" class="secondary" id="identity-reset">Restaurar padrão</button>
+          </div>
+
+          <form id="settings-form" class="identity-form">
+            <div class="identity-section">
+              <h4>Informações gerais</h4>
+              <div class="form-grid">
+                <label>Nome do sistema<input id="setting-name" maxlength="60" placeholder="Transzilli Control"></label>
+                <label>Nome curto<input id="setting-short-name" maxlength="20" placeholder="TZ Control"></label>
+                <label class="full">Slogan<input id="setting-subtitle" maxlength="140" placeholder="Sistema de Controle de Repouso Térmico"></label>
+                <label>Nome da empresa<input id="setting-company-name" maxlength="100"></label>
+                <label>CNPJ<input id="setting-company-cnpj" maxlength="18"></label>
+                <label class="full">Endereço<input id="setting-company-address" maxlength="180"></label>
+                <label>Telefone<input id="setting-company-phone" maxlength="30"></label>
+                <label>E-mail<input id="setting-company-email" type="email" maxlength="120"></label>
+                <label>Site<input id="setting-company-site" maxlength="120"></label>
+                <label>Rodapé<input id="setting-footer" maxlength="140" placeholder="© 2026 Transzilli Control"></label>
+              </div>
+            </div>
+
+            <div class="identity-section">
+              <h4>Logos e imagens</h4>
+              <p class="hint">Use PNG, JPG, WEBP ou SVG. Imagens muito grandes serão armazenadas no banco e podem deixar o carregamento mais lento.</p>
+              <div class="upload-grid">
+                <label class="upload-card">Logo principal/login
+                  <input id="setting-logo-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+                  <img id="preview-logo" alt="Prévia da logo" hidden>
+                  <span id="preview-logo-empty">Nenhuma imagem</span>
+                  <button type="button" class="link-button remove-image" data-image-key="logoData">Remover</button>
+                </label>
+
+                <label class="upload-card">Logo do menu
+                  <input id="setting-menu-logo-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+                  <img id="preview-menu-logo" alt="Prévia da logo do menu" hidden>
+                  <span id="preview-menu-logo-empty">Nenhuma imagem</span>
+                  <button type="button" class="link-button remove-image" data-image-key="menuLogoData">Remover</button>
+                </label>
+
+                <label class="upload-card">Logo dos relatórios
+                  <input id="setting-report-logo-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+                  <img id="preview-report-logo" alt="Prévia da logo do relatório" hidden>
+                  <span id="preview-report-logo-empty">Nenhuma imagem</span>
+                  <button type="button" class="link-button remove-image" data-image-key="reportLogoData">Remover</button>
+                </label>
+
+                <label class="upload-card">Favicon da aba
+                  <input id="setting-favicon-file" type="file" accept="image/png,image/x-icon,image/svg+xml,image/webp">
+                  <img id="preview-favicon" alt="Prévia do favicon" hidden>
+                  <span id="preview-favicon-empty">Nenhuma imagem</span>
+                  <button type="button" class="link-button remove-image" data-image-key="faviconData">Remover</button>
+                </label>
+
+                <label class="upload-card full-upload">Imagem de fundo do login
+                  <input id="setting-login-background-file" type="file" accept="image/png,image/jpeg,image/webp">
+                  <img id="preview-login-background" alt="Prévia do fundo do login" hidden>
+                  <span id="preview-login-background-empty">Nenhuma imagem</span>
+                  <button type="button" class="link-button remove-image" data-image-key="loginBackgroundData">Remover</button>
+                </label>
+              </div>
+            </div>
+
+            <div class="identity-section">
+              <h4>Cores e tema</h4>
+              <div class="color-grid">
+                <label>Cor principal<input id="setting-primary" type="color" value="#154c79"></label>
+                <label>Cor secundária/menu<input id="setting-menu" type="color" value="#0e3554"></label>
+                <label>Cor de fundo<input id="setting-background" type="color" value="#f3f6f9"></label>
+                <label>Cor dos cartões<input id="setting-card" type="color" value="#ffffff"></label>
+                <label>Cor dos títulos<input id="setting-heading" type="color" value="#1f2937"></label>
+                <label>Cor dos links<input id="setting-link" type="color" value="#154c79"></label>
+                <label>Tema
+                  <select id="setting-theme">
+                    <option value="light">Claro</option>
+                    <option value="dark">Escuro</option>
+                    <option value="system">Automático</option>
+                  </select>
+                </label>
+                <label>Fonte
+                  <select id="setting-font">
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="'Segoe UI', sans-serif">Segoe UI</option>
+                    <option value="Roboto, Arial, sans-serif">Roboto</option>
+                    <option value="Verdana, sans-serif">Verdana</option>
+                    <option value="Tahoma, sans-serif">Tahoma</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="identity-section report-customization-section">
+              <div class="report-customization-heading">
+                <div>
+                  <h4>Personalização completa dos relatórios</h4>
+                  <p class="hint">Personalize as cores da ficha sem alterar medidas, posições ou o formato A4. As escolhas valem para Repouso Térmico, Refeitório e impressão/PDF.</p>
+                </div>
+                <button id="report-style-reset" class="ghost report-style-reset" type="button">Restaurar padrão</button>
+              </div>
+
+              <div class="report-style-group">
+                <h5>Ficha e título</h5>
+                <div class="report-color-grid">
+                  <label class="report-color-field">
+                  <span>Fundo da ficha</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-sheet" type="color" value="#ffffff" aria-label="Fundo da ficha">
+                    <code id="setting-report-sheet-code">#FFFFFF</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Faixa superior</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-top-bar" type="color" value="#154c79" aria-label="Faixa superior">
+                    <code id="setting-report-top-bar-code">#154C79</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Fundo da área do título</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-title-area" type="color" value="#ffffff" aria-label="Fundo da área do título">
+                    <code id="setting-report-title-area-code">#FFFFFF</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Texto do título</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-title-text" type="color" value="#111827" aria-label="Texto do título">
+                    <code id="setting-report-title-text-code">#111827</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Borda da área do título</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-title-border" type="color" value="#64748b" aria-label="Borda da área do título">
+                    <code id="setting-report-title-border-code">#64748B</code>
+                  </span>
+                </label>
+                </div>
+              </div>
+
+              <div class="report-style-group">
+                <h5>Identificação do colaborador</h5>
+                <div class="report-color-grid">
+                  <label class="report-color-field">
+                  <span>Fundo da identificação</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-identification" type="color" value="#ffffff" aria-label="Fundo da identificação">
+                    <code id="setting-report-identification-code">#FFFFFF</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Linhas da identificação</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-identification-border" type="color" value="#cbd5e1" aria-label="Linhas da identificação">
+                    <code id="setting-report-identification-border-code">#CBD5E1</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Rótulos: Empresa, Filial, Cargo...</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-identification-label" type="color" value="#475569" aria-label="Rótulos: Empresa, Filial, Cargo...">
+                    <code id="setting-report-identification-label-code">#475569</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Dados do colaborador</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-identification-text" type="color" value="#111827" aria-label="Dados do colaborador">
+                    <code id="setting-report-identification-text-code">#111827</code>
+                  </span>
+                </label>
+                </div>
+              </div>
+
+              <div class="report-style-group">
+                <h5>Tabela e linhas normais</h5>
+                <div class="report-color-grid">
+                  <label class="report-color-field">
+                  <span>Fundo do cabeçalho da tabela</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-header" type="color" value="#eef2f6" aria-label="Fundo do cabeçalho da tabela">
+                    <code id="setting-report-header-code">#EEF2F6</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Texto do cabeçalho da tabela</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-header-text" type="color" value="#111827" aria-label="Texto do cabeçalho da tabela">
+                    <code id="setting-report-header-text-code">#111827</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Linhas da tabela</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-border" type="color" value="#64748b" aria-label="Linhas da tabela">
+                    <code id="setting-report-border-code">#64748B</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Fundo das linhas normais</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-row" type="color" value="#ffffff" aria-label="Fundo das linhas normais">
+                    <code id="setting-report-row-code">#FFFFFF</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Texto das linhas normais</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-row-text" type="color" value="#111827" aria-label="Texto das linhas normais">
+                    <code id="setting-report-row-text-code">#111827</code>
+                  </span>
+                </label>
+                </div>
+              </div>
+
+              <div class="report-style-group">
+                <h5>Folga / sem jornada</h5>
+                <div class="report-color-grid">
+                  <label class="report-color-field">
+                  <span>Fundo da FOLGA</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-off" type="color" value="#e8edf2" aria-label="Fundo da FOLGA">
+                    <code id="setting-report-off-code">#E8EDF2</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Texto da FOLGA</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-off-text" type="color" value="#475569" aria-label="Texto da FOLGA">
+                    <code id="setting-report-off-text-code">#475569</code>
+                  </span>
+                </label>
+                  <label class="report-color-field">
+                  <span>Linha da FOLGA</span>
+                  <span class="report-color-control">
+                    <input id="setting-report-off-border" type="color" value="#87939e" aria-label="Linha da FOLGA">
+                    <code id="setting-report-off-border-code">#87939E</code>
+                  </span>
+                </label>
+                  <label class="report-color-field report-width-field">
+                    <span>Espessura da linha da FOLGA</span>
+                    <select id="setting-report-off-width">
+                      <option value="0.40">Fina</option>
+                      <option value="0.65">Padrão</option>
+                      <option value="0.90">Média</option>
+                      <option value="1.20">Forte</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div id="report-style-preview" class="report-style-preview report-full-preview" aria-label="Prévia completa das cores do relatório">
+                <div class="report-preview-caption">Prévia completa do relatório</div>
+                <div class="mini-report-sheet">
+                  <div class="mini-report-title">
+                    <span class="mini-logo">LOGO</span>
+                    <strong>FICHA DE CONTROLE DE REPOUSO TÉRMICO</strong>
+                  </div>
+                  <div class="mini-report-identification">
+                    <div><small>EMPRESA</small><b>EMPRESA EXEMPLO LTDA</b></div>
+                    <div><small>FILIAL</small><b>UNIDADE 01</b></div>
+                    <div><small>REFERÊNCIA</small><b>AGOSTO DE 2026</b></div>
+                    <div><small>COLABORADOR</small><b>COLABORADOR EXEMPLO</b></div>
+                    <div><small>MATRÍCULA</small><b>000001</b></div>
+                    <div><small>TURNO</small><b>1º TURNO</b></div>
+                    <div class="mini-role"><small>CARGO</small><b>AUXILIAR OPERACIONAL</b></div>
+                  </div>
+                  <table>
+                    <thead><tr><th>DATA</th><th>DIA</th><th>ASSINATURA</th></tr></thead>
+                    <tbody>
+                      <tr><td>01/09</td><td>SEG</td><td></td></tr>
+                      <tr class="non-work-row"><td colspan="3">FOLGA / SEM JORNADA</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="identity-section">
+              <h4>Pré-visualização</h4>
+              <div class="identity-preview" id="identity-preview">
+                <div class="preview-brand">
+                  <div class="preview-logo-box" id="identity-preview-logo">RT</div>
+                  <div>
+                    <strong id="identity-preview-name">Controle Térmico</strong>
+                    <small id="identity-preview-subtitle">Sistema administrativo</small>
+                  </div>
+                </div>
+                <div class="preview-card">
+                  <span>Exemplo de cartão</span>
+                  <strong>125</strong>
+                  <button type="button">Botão principal</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="primary" id="identity-save">Salvar identidade visual</button>
+              <span id="identity-feedback" class="feedback"></span>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="settings-support" class="admin-only master-only" hidden>
+        <div class="panel support-settings-panel">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">Ajuda e atendimento</span>
+              <h3>Contato do suporte</h3>
+              <p class="hint">Cadastre WhatsApp, e-mail ou os dois. O Assistente mostrará somente os canais preenchidos.</p>
+            </div>
+          </div>
+          <form id="support-settings-form" class="form-grid">
+            <label>Responsável pelo suporte
+              <input id="setting-support-name" maxlength="80" placeholder="Ex.: Suporte do Controle Térmico">
+            </label>
+            <label>Horário de atendimento
+              <input id="setting-support-hours" maxlength="100" placeholder="Ex.: segunda a sexta, 08h às 18h">
+            </label>
+            <label>WhatsApp com DDD
+              <input id="setting-support-whatsapp" inputmode="tel" maxlength="20" placeholder="Ex.: 62999999999">
+              <small>Informe somente o número com DDD. O código do Brasil será acrescentado automaticamente.</small>
+            </label>
+            <label>E-mail do suporte
+              <input id="setting-support-email" type="email" maxlength="120" placeholder="Ex.: suporte@empresa.com.br">
+              <small>O sistema abrirá o aplicativo de e-mail com a mensagem pronta.</small>
+            </label>
+            <label class="full">Mensagem da recuperação de senha
+              <textarea id="setting-support-password-help" maxlength="300" rows="3" placeholder="Caso tenha esquecido a sua senha, entre em contato com o Suporte."></textarea>
+              <small>Este informativo aparecerá na opção Esqueci minha senha.</small>
+            </label>
+            <div class="full support-channel-preview">
+              <strong>Canais disponíveis para o usuário</strong>
+              <div><span id="support-preview-whatsapp">WhatsApp não configurado</span><span id="support-preview-email">E-mail não configurado</span></div>
+            </div>
+            <div class="full actions">
+              <button type="submit" class="primary" id="support-settings-save">Salvar contato do suporte</button>
+            </div>
+            <p id="support-settings-feedback" class="feedback full"></p>
+          </form>
+        </div>
+      </div>
+
+      <div id="settings-security-access" class="admin-only master-only" hidden>
+        <div class="panel security-access-panel">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">Controle exclusivo do Master</span>
+              <h3>Segurança e acessos</h3>
+              <p class="hint">Acompanhe as tentativas registradas a partir desta versão e gere uma senha temporária somente quando necessário.</p>
+            </div>
+            <button type="button" class="secondary" id="security-access-refresh">Atualizar dados</button>
+          </div>
+
+          <div class="security-access-summary" aria-label="Resumo de segurança">
+            <article><span>Usuários monitorados</span><strong id="security-users-total">0</strong></article>
+            <article><span>Acessos realizados</span><strong id="security-success-total">0</strong></article>
+            <article><span>Senhas incorretas</span><strong id="security-failed-total">0</strong></article>
+            <article><span>Recuperações por e-mail</span><strong id="security-recovery-total">0</strong></article>
+          </div>
+
+          <div class="filters security-access-filters">
+            <label>Pesquisar usuário
+              <input id="security-access-search" type="search" placeholder="Nome ou e-mail">
+            </label>
+            <label>Situação
+              <select id="security-access-status">
+                <option value="">Todos</option>
+                <option value="active">Ativos</option>
+                <option value="inactive">Inativos</option>
+                <option value="attention">Com tentativa incorreta</option>
+                <option value="pending">Troca de senha pendente</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="table-wrap security-access-table-wrap">
+            <table class="security-access-table">
+              <thead><tr><th>Usuário</th><th>Acessos</th><th>Senha incorreta</th><th>Recuperações</th><th>Última tentativa</th><th>Ação do Master</th></tr></thead>
+              <tbody id="security-access-list"><tr><td colspan="6">Abra esta aba para carregar os registros.</td></tr></tbody>
+            </table>
+          </div>
+          <p class="manual-note info"><strong>Privacidade:</strong> o sistema registra somente o resultado, a data e o horário da tentativa. Nenhuma senha digitada é armazenada.</p>
+        </div>
+      </div>
+
+
+      
+      <div id="settings-shifts" class="admin-only" hidden>
+        <div class="admin-two-column">
+          <div class="panel">
+            <h3 id="shift-form-title">Cadastrar turno</h3>
+            <form id="shift-form" class="form-grid">
+              <input type="hidden" id="shift-id">
+              <label class="full">Empresa
+                <select id="shift-company" required></select>
+              </label>
+              <label>Nome do turno
+                <input id="shift-name" required placeholder="Ex.: 1º Turno">
+              </label>
+              <label>Código Senior
+                <input id="shift-senior-code" maxlength="20" placeholder="Ex.: 46">
+                <small>Ex.: 46 = 1º Turno, 96 = 2º Turno, 56 = 3º Turno.</small>
+              </label>
+              <label>Situação
+                <select id="shift-active">
+                  <option value="true">Ativo</option>
+                  <option value="false">Inativo</option>
+                </select>
+              </label>
+              <label class="full">Descrição
+                <input id="shift-description" maxlength="180" placeholder="Ex.: 06:00 às 14:20">
+              </label>
+              <div class="full">
+                <span class="field-label">Folga semanal padrão do turno</span>
+                <div class="weekday-grid shift-weekday-grid">
+                  <label><input type="checkbox" data-shift-weekday="0"> Domingo</label>
+                  <label><input type="checkbox" data-shift-weekday="1"> Segunda</label>
+                  <label><input type="checkbox" data-shift-weekday="2"> Terça</label>
+                  <label><input type="checkbox" data-shift-weekday="3"> Quarta</label>
+                  <label><input type="checkbox" data-shift-weekday="4"> Quinta</label>
+                  <label><input type="checkbox" data-shift-weekday="5"> Sexta</label>
+                  <label><input type="checkbox" data-shift-weekday="6"> Sábado</label>
+                </div>
+                <small>Ex.: 1º, 2º, ADM e Comercial no domingo; 3º turno no sábado.</small>
+              </div>
+              <div class="full actions">
+                <button class="primary" id="shift-save-button">Salvar turno</button>
+                <button type="button" class="secondary" id="shift-cancel">Cancelar</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel" id="senior-unknown-codes-panel" hidden>
+            <div class="panel-head">
+              <div>
+                <h3>Códigos Senior não reconhecidos</h3>
+                <p class="hint">Quando um PDF trouxer um código novo, vincule-o uma vez a um turno. Depois o sistema reconhecerá automaticamente.</p>
+              </div>
+            </div>
+            <div id="senior-unknown-codes-list" class="unknown-codes-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Turnos cadastrados</h3>
+                <p class="hint">Marque e salve a folga diretamente em cada turno já cadastrado. Use Editar para alterar os demais dados.</p>
+              </div>
+              <select id="shift-company-filter">
+                <option value="">Todas as empresas</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Turno</th><th>Código Senior</th><th>Empresa</th><th>Descrição</th><th>Folga padrão</th><th>Situação</th><th>Ações</th></tr>
+                </thead>
+                <tbody id="shifts-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="settings-job-reports" class="admin-only" hidden>
+        <div class="panel" id="job-role-form-panel" hidden>
+          <div class="panel-head">
+            <div>
+              <h3 id="job-role-form-title">Novo cargo</h3>
+              <p class="hint">Cadastre somente o nome real da função, sem salário, código de relatório ou texto de rodapé.</p>
+            </div>
+          </div>
+          <form id="job-role-form" class="form-grid">
+            <input type="hidden" id="job-role-id">
+            <label>Empresa
+              <select id="job-role-company" required></select>
+            </label>
+            <label>Filial da regra de relatórios
+              <select id="job-role-branch" required disabled>
+                <option value="">Selecione primeiro a empresa</option>
+              </select>
+            </label>
+            <label>Nome do cargo / função
+              <input id="job-role-name" maxlength="120" required placeholder="Ex.: Auxiliar de Expedição">
+            </label>
+            <label>Relatórios permitidos
+              <select id="job-role-policy"></select>
+            </label>
+            <label>Situação
+              <select id="job-role-active">
+                <option value="true">Ativo</option>
+                <option value="false">Inativo</option>
+              </select>
+            </label>
+            <div class="full actions">
+              <button type="submit" class="primary">Salvar cargo</button>
+              <button type="button" class="secondary" id="job-role-cancel">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Cargos e geração de relatórios</h3>
+              <p class="hint">Cadastre e gerencie os cargos reais. Cargos vinculados a colaboradores podem ser editados ou inativados, mas não excluídos.</p>
+            </div>
+            <div class="actions">
+              <label>Empresa
+                <select id="job-report-company-filter"><option value="">Selecione a empresa</option></select>
+              </label>
+              <label>Filial
+                <select id="job-report-branch-filter" disabled><option value="">Selecione primeiro a empresa</option></select>
+              </label>
+              <button type="button" class="primary" id="job-role-new">+ Novo cargo</button>
+            </div>
+          </div>
+          <div class="notice warning-notice">
+            A prioridade é: <strong>exceção do colaborador</strong> → <strong>regra da filial</strong> → <strong>regra geral do cargo</strong>. Cargos novos ficam pendentes até serem revisados.
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Cargo / função</th><th>Empresa</th><th>Colaboradores ativos</th><th>Relatórios permitidos</th><th>Situação</th><th>Ações</th></tr></thead>
+              <tbody id="job-report-policy-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+      <div id="settings-senior-models" class="admin-only" hidden>
+        <div class="panel senior-model-hero">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">Inteligência local</span>
+              <h3 id="senior-model-engine-name">Leitor Inteligente Senior</h3>
+              <p id="senior-model-engine-mode" class="hint">Processamento local — sem envio para IA externa</p>
+            </div>
+            <button id="senior-intelligence-refresh" type="button" class="secondary">Atualizar diagnóstico</button>
+          </div>
+          <div id="senior-models-summary" class="shift-import-summary"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Modelos de relatório reconhecidos</h3>
+              <p class="hint">Formatos que o sistema já sabe identificar e estruturar automaticamente.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Relatório</th><th>Campos reconhecidos</th><th>Comportamento</th><th>Status</th></tr>
+              </thead>
+              <tbody id="senior-models-reports-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Leitores disponíveis</h3>
+              <p class="hint">O sistema escolhe automaticamente o leitor mais adequado para cada PDF.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Leitor</th><th>Prioridade</th><th>Função</th><th>Usos confirmados</th><th>Último uso</th></tr>
+              </thead>
+              <tbody id="senior-models-readers-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="admin-two-column">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Códigos Senior aprendidos</h3>
+                <p class="hint">Associações salvas entre código da Senior e turno cadastrado.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Código</th><th>Turno</th><th>Horário</th><th>Empresa</th></tr>
+                </thead>
+                <tbody id="senior-models-codes-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Empresas e filiais reconhecíveis</h3>
+                <p class="hint">Filiais ativas que podem ser usadas nas travas de segurança das importações.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Empresa</th><th>Filial</th><th>Código interno</th><th>Status</th></tr>
+                </thead>
+                <tbody id="senior-models-branches-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Histórico de confiança</h3>
+              <p class="hint">As próximas importações registrarão leitor utilizado e nível de confiança para acompanhamento.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Data</th><th>Arquivo</th><th>Tipo</th><th>Empresa / Filial</th><th>Leitor</th><th>Confiança</th></tr>
+              </thead>
+              <tbody id="senior-models-confidence-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+      <div id="settings-profiles" hidden>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Perfis de usuário</h3>
+              <p class="hint">Cadastre e gerencie os perfis disponíveis. Administrador Master e Administrador são protegidos.</p>
+            </div>
+            <button type="button" class="primary" id="profile-new-button">+ Novo perfil</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Perfil</th><th>Acesso</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="profiles-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="profile-modal" class="app-modal" hidden>
+          <div class="app-modal-backdrop" data-close-profile-modal></div>
+          <div class="app-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+            <div class="app-modal-header">
+              <div>
+                <span class="eyebrow">Perfil de usuário</span>
+                <h3 id="profile-modal-title">Novo perfil</h3>
+              </div>
+              <button type="button" class="modal-close" data-close-profile-modal aria-label="Fechar">×</button>
+            </div>
+
+            <form id="profile-form" class="form-grid">
+              <input type="hidden" id="profile-id">
+
+              <label class="full">Nome do perfil
+                <input id="profile-name" maxlength="80" required placeholder="Ex.: Supervisor">
+              </label>
+
+              <label class="full">Tipo de acesso
+                <input id="profile-access-label" value="Personalizado" disabled>
+              </label>
+
+              <div class="full profile-permissions">
+                <strong>Permissões do perfil</strong>
+                <p class="hint">Marque somente as funções que este perfil poderá utilizar.</p>
+                <div class="profile-permission-grid">
+                  <label><input type="checkbox" data-profile-permission="dashboard.view"> Painel</label>
+                  <label><input type="checkbox" data-profile-permission="employees.view"> Ver colaboradores</label>
+                  <label><input type="checkbox" data-profile-permission="employees.manage"> Cadastrar/editar/excluir colaboradores</label>
+                  <label><input type="checkbox" data-profile-permission="imports.manage"> Importar PDFs da Senior</label>
+                  <label><input type="checkbox" data-profile-permission="reports.view"> Relatórios</label>
+                  <label><input type="checkbox" data-profile-permission="settings.view"> Configurações básicas</label>
+                  <label><input type="checkbox" data-profile-permission="calendar.manage"> Feriados e folgas</label>
+                </div>
+              </div>
+
+              <div class="full actions">
+                <button class="primary" id="profile-save">Cadastrar perfil</button>
+                <button type="button" class="secondary" id="profile-cancel">Cancelar</button>
+              </div>
+              <p id="profile-feedback" class="feedback full"></p>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div id="settings-data" class="admin-only" hidden>
+        <div class="panel non-master-admin-only" hidden>
+          <strong>Administrador com acesso protegido</strong>
+          <p class="hint">Você pode gerar backups, executar testes e corrigir duplicidades. Restaurar backup e zerar cadastros são funções exclusivas do Administrador Master.</p>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Teste do sistema</h3>
+              <p class="hint">Executa verificações seguras sem alterar nenhum cadastro.</p>
+            </div>
+            <button type="button" class="secondary" id="system-run-tests">Executar testes</button>
+          </div>
+          <div id="system-test-results" class="system-test-results">
+            Nenhum teste executado nesta sessão.
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Backup completo</h3>
+              <p class="hint">Baixa empresas, filiais, usuários, colaboradores, configurações, feriados, importações e auditoria.</p>
+            </div>
+            <button type="button" class="primary" id="system-backup">Gerar e baixar backup</button>
+          </div>
+          <div class="backup-warning">
+            O arquivo contém dados pessoais e hashes de senha. Guarde-o em local protegido.
+          </div>
+          <p id="system-backup-status" class="feedback"></p>
+        </div>
+
+        <div class="panel master-only">
+          <h3>Restaurar backup</h3>
+          <p class="hint">Substitui os dados atuais pelos dados existentes no arquivo selecionado.</p>
+          <form id="system-restore-form" class="form-grid">
+            <label class="full">Arquivo JSON
+              <input id="system-restore-file" type="file" accept="application/json,.json" required>
+            </label>
+            <label class="full">Confirmação
+              <input id="system-restore-confirmation" placeholder="Digite RESTAURAR BACKUP" required>
+            </label>
+            <div class="full actions">
+              <button class="secondary">Restaurar backup</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Cadastros duplicados</h3>
+              <p class="hint">Localize matrículas repetidas, escolha qual cadastro deve permanecer e remova somente os duplicados.</p>
+            </div>
+            <button type="button" class="secondary" id="duplicates-load">Verificar duplicados</button>
+          </div>
+
+          <div id="duplicates-summary" class="duplicates-summary" hidden></div>
+          <div id="duplicates-list" class="duplicates-list"></div>
+          <p id="duplicates-feedback" class="feedback"></p>
+        </div>
+
+        <div class="panel danger-zone master-only">
+          <h3>Zerar cadastros do sistema</h3>
+          <p>
+            Apaga empresas, filiais, usuários de RH, colaboradores, cargos, turnos,
+            feriados, importações e auditoria. Mantém somente o Administrador que
+            está conectado.
+          </p>
+
+          <label class="filter-check">
+            <input id="system-preserve-visual" type="checkbox" checked>
+            Preservar identidade visual global
+          </label>
+
+          <div class="form-grid">
+            <label>Senha do Administrador
+              <input id="system-reset-password" type="password" autocomplete="current-password">
+            </label>
+            <label>Frase de confirmação
+              <input id="system-reset-confirmation" placeholder="Digite ZERAR SISTEMA">
+            </label>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="danger-button" id="system-reset" disabled>
+              Zerar todos os cadastros
+            </button>
+            <span id="system-reset-status" class="feedback"></span>
+          </div>
+
+          <small>
+            O botão é liberado somente depois de gerar e baixar um backup nesta sessão.
+          </small>
+        </div>
+      </div>
+
+      <div id="settings-calendar" class="calendar-access-only" hidden>
+
+    
+      <div class="calendar-tabs no-print">
+        <button class="calendar-tab active" data-calendar-tab="holidays">Feriados</button>
+        <button class="calendar-tab" data-calendar-tab="days-off">Folgas por colaborador</button>
+      </div>
+
+      <div id="calendar-holidays">
+        <div class="panel">
+          <h3>Feriados do ano</h3>
+          <p class="hint">Ao trocar o ano, os feriados automáticos daquele ano serão gerados e exibidos imediatamente.</p>
+          <div class="holiday-year-bar">
+            <label>Ano
+              <select id="holiday-year"></select>
+            </label>
+            <button type="button" class="primary" id="holiday-generate">Atualizar feriados do ano</button>
+            <span id="holiday-generate-status" class="hint"></span>
+          </div>
+
+          <hr class="section-divider">
+
+          <h3>Acrescentar feriado manual</h3>
+          <form id="holiday-form" class="form-grid">
+            <input type="hidden" id="holiday-id">
+
+            <label>Empresa
+              <select id="holiday-company"></select>
+            </label>
+
+            <label>Filial
+              <select id="holiday-branch"></select>
+            </label>
+
+            <label>Data
+              <input id="holiday-date" type="date" required>
+            </label>
+
+            <label>Descrição
+              <input id="holiday-description" required placeholder="Ex.: Feriado municipal">
+            </label>
+
+            <label>Tipo
+              <select id="holiday-automatic">
+                <option value="false">Manual</option>
+                <option value="true">Automático</option>
+              </select>
+            </label>
+
+            <div class="full actions">
+              <button class="primary">Salvar feriado</button>
+              <button type="button" class="secondary" id="holiday-cancel">Cancelar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3 id="holiday-list-title">Feriados gerados</h3><span id="holiday-count" class="badge-count">0 feriados</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Data</th><th>Descrição</th><th>Empresa</th><th>Filial</th><th>Tipo</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="holiday-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="calendar-days-off" hidden>
+        <div class="panel">
+          <h3>Marcar folga em uma data específica</h3>
+          <form id="day-off-form" class="form-grid">
+            <label>Colaborador
+              <input id="day-off-employee" list="day-off-employee-list" placeholder="Digite o nome ou matrícula" required>
+              <datalist id="day-off-employee-list"></datalist>
+            </label>
+
+            <label>Data da folga
+              <input id="day-off-date" type="date" required>
+            </label>
+
+            <label>Motivo/descrição
+              <input id="day-off-description" value="Folga">
+            </label>
+
+            <div class="full actions">
+              <button class="primary">Marcar folga</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Data</th><th>Colaborador</th><th>Empresa/Filial</th><th>Descrição</th><th>Ação</th></tr>
+              </thead>
+              <tbody id="day-off-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="my-password-modal" class="app-modal" hidden>
+  <div class="app-modal-backdrop" data-close-my-password></div>
+  <div class="app-modal-dialog password-dialog" role="dialog" aria-modal="true" aria-labelledby="my-password-title">
+    <div class="app-modal-header">
+      <div><span class="eyebrow">Segurança da conta</span><h3 id="my-password-title">Trocar minha senha</h3></div>
+      <button type="button" class="modal-close" data-close-my-password aria-label="Fechar">×</button>
+    </div>
+    <p id="my-password-instruction" class="hint">Informe a senha atual e escolha uma nova senha com pelo menos 8 caracteres.</p>
+    <form id="my-password-form" class="form-grid">
+      <label class="full">Senha atual<input id="my-current-password" type="password" autocomplete="current-password" required></label>
+      <label>Nova senha<input id="my-new-password" type="password" minlength="8" autocomplete="new-password" required></label>
+      <label>Confirmar nova senha<input id="my-new-password-confirm" type="password" minlength="8" autocomplete="new-password" required></label>
+      <div class="full actions modal-actions">
+        <button class="primary">Salvar nova senha</button>
+        <button type="button" class="secondary" id="my-password-cancel" data-close-my-password>Cancelar</button>
+      </div>
+      <p id="my-password-feedback" class="feedback full"></p>
+    </form>
+  </div>
+</div>
+
+<div id="master-recovery-modal" class="app-modal master-only" hidden>
+  <div class="app-modal-backdrop" data-close-master-recovery></div>
+  <div class="app-modal-dialog password-dialog" role="dialog" aria-modal="true" aria-labelledby="master-recovery-title">
+    <div class="app-modal-header">
+      <div><span class="eyebrow">Proteção do Master</span><h3 id="master-recovery-title">Códigos de recuperação</h3></div>
+      <button type="button" class="modal-close" data-close-master-recovery aria-label="Fechar">×</button>
+    </div>
+    <p class="hint">Use estes códigos somente se esquecer sua senha. Cada código funciona uma vez e não gera custos.</p>
+    <div id="master-recovery-status" class="manual-note info">Consultando os códigos disponíveis...</div>
+    <form id="master-recovery-form" class="form-grid">
+      <label class="full">Confirme sua senha atual<input id="master-recovery-password" type="password" autocomplete="current-password" required></label>
+      <div class="full actions"><button class="primary">Gerar novos códigos</button></div>
+      <p id="master-recovery-feedback" class="feedback full"></p>
+    </form>
+    <div id="master-recovery-result" class="recovery-result" hidden></div>
+  </div>
+</div>
+
+<div id="temporary-password-modal" class="app-modal" hidden>
+  <div class="app-modal-backdrop"></div>
+  <div class="app-modal-dialog password-dialog" role="dialog" aria-modal="true" aria-labelledby="temporary-password-title">
+    <div class="app-modal-header">
+      <div><span class="eyebrow">Senha temporária</span><h3 id="temporary-password-title">Entregue esta senha ao usuário</h3></div>
+    </div>
+    <p id="temporary-password-user" class="hint"></p>
+    <label>Senha exibida somente agora<input id="temporary-password-value" class="secret-output" readonly></label>
+    <div class="actions">
+      <button type="button" class="secondary" id="temporary-password-copy">Copiar senha</button>
+      <button type="button" class="primary" id="temporary-password-close">Já guardei, fechar</button>
+    </div>
+    <p class="manual-note danger"><strong>Atenção:</strong> ao entrar, o usuário precisará substituir esta senha por uma senha pessoal.</p>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <div id="confirm-modal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <div class="modal-icon">!</div>
+      <h3 id="confirm-modal-title">Confirmar ação</h3>
+      <p id="confirm-modal-message"></p>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="confirm-modal-cancel">Cancelar</button>
+        <button type="button" class="danger-button" id="confirm-modal-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="global-loading" class="global-loading" hidden>
+    <div class="loading-card">
+      <span class="spinner"></span>
+      <span id="global-loading-text">Carregando...</span>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var v=window.__controleTermicoVisualCache;
+    if(!v)return;
+    function image(imgId,textId,data,fallback){
+      var img=document.getElementById(imgId),text=document.getElementById(textId);
+      if(data&&img){img.src=data;img.hidden=false;if(text)text.hidden=true;}
+      else if(text){text.textContent=fallback||"RT";text.hidden=false;}
+    }
+    document.title=v.systemName||"Controle Térmico";
+    var title=document.getElementById("brand-title");if(title)title.textContent=v.systemName||"Controle Térmico";
+    var subtitle=document.getElementById("brand-subtitle");if(subtitle)subtitle.textContent=v.systemSubtitle||"Sistema administrativo";
+    var company=document.getElementById("brand-description");
+    if(company){company.textContent=v.companyName||"";company.hidden=!v.companyName;}
+    var sidebar=document.getElementById("sidebar-system-name");if(sidebar)sidebar.textContent=v.systemName||"Controle Térmico";
+    var footer=document.getElementById("login-footer-company");if(footer)footer.textContent=v.footerText||v.systemName||"Controle Térmico";
+    image("brand-logo-image","brand-mark-text",v.logoData,v.shortName);
+    image("sidebar-logo-image","sidebar-logo-text",v.menuLogoData||v.logoData,v.shortName);
+    var favicon=document.getElementById("app-favicon");if(favicon&&v.faviconData)favicon.href=v.faviconData;
+    var brand=document.querySelector("#login-screen .login-brand");
+    if(brand&&v.loginBackgroundData){brand.style.backgroundImage='url("'+v.loginBackgroundData+'")';brand.classList.add("has-background");}
+    document.body.classList.toggle("theme-dark",v.theme==="dark"||(v.theme==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches));
+    document.documentElement.classList.add("visual-ready");
+    document.documentElement.classList.remove("visual-loading");
+  })();
+  </script>
+  <script src="/js/core.js?v=1.0.0"></script>
+  <script src="/js/help-manual.js?v=1.0.0"></script>
+  <script src="/js/admin-access.js?v=1.0.0"></script>
+  <script src="/js/employees-imports.js?v=1.0.0"></script>
+  <script src="/js/calendar-reports.js?v=1.0.0"></script>
+  <script src="/js/settings-system.js?v=1.0.0"></script>
+</body>
+</html>
