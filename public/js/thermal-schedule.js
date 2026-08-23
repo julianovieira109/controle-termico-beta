@@ -83,6 +83,21 @@
     });
   }
 
+  function distributedOffsets(baseRests,employeeIndex,cycleDay,attempt,variationMinutes){
+    const variation=Math.max(0,Math.min(30,Number(variationMinutes)||0));
+    const daySteps=[1,7,13];
+    const employeeSteps=[5,11,17];
+    const attemptSteps=[1,3,5];
+    return baseRests.map((rest,index)=>{
+      const minimum=Math.max(-variation,rest.periodStart-rest.start);
+      const maximum=Math.min(variation,rest.periodEnd-rest.end);
+      const size=maximum-minimum+1;
+      if(size<=1)return minimum;
+      const raw=cycleDay*daySteps[index%3]+employeeIndex*employeeSteps[index%3]+attempt*attemptSteps[index%3];
+      return minimum+(((raw%size)+size)%size);
+    });
+  }
+
   function formatMinutes(value){
     const normalized=((value%1440)+1440)%1440;
     return `${String(Math.floor(normalized/60)).padStart(2,"0")}:${String(normalized%60).padStart(2,"0")}`;
@@ -108,8 +123,14 @@
         if(base.length<restCount)return;
         let selected=null;
         for(let attempt=0;attempt<COMBINATION_COUNT;attempt++){
-          const tupleIndex=employeeIndex+cycleDay*149+attempt;
-          const candidate=applyVariation(base,tupleForIndex(tupleIndex),config.variationMinutes??MAX_VARIATION_MINUTES);
+          const offsets=distributedOffsets(
+            base,
+            employeeIndex,
+            cycleDay,
+            attempt,
+            config.variationMinutes??MAX_VARIATION_MINUTES
+          );
+          const candidate=applyVariation(base,offsets,config.variationMinutes??MAX_VARIATION_MINUTES);
           const key=scheduleKey(candidate);
           if(!used.has(key)){
             used.add(key);
