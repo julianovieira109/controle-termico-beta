@@ -477,18 +477,20 @@ function dayStatus(employee,d){
   return "";
 }
 
-function buildThermalSheet(employee,month){
+function buildThermalSheet(employee,month,thermalPlan){
   const rows=reportMonthDays(month).map(d=>{
     const status=dayStatus(employee,d);
     if(status){
       return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="7">${escapeHtml(status)}</td></tr>`;
     }
+    const rests=thermalPlan?.get(`${employee.id}|${d.iso}`)||[];
+    const cells=rests.length===3
+      ? rests.map(rest=>`<td>${ThermalSchedule.formatMinutes(rest.start)}</td><td>${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("")
+      : "<td></td><td></td><td></td><td></td><td></td><td></td>";
     return `<tr>
       <td>${d.br}</td>
       <td>${d.weekName}</td>
-      <td></td><td></td>
-      <td></td><td></td>
-      <td></td><td></td>
+      ${cells}
       <td class="signature-cell"></td>
     </tr>`;
   }).join("");
@@ -781,6 +783,8 @@ $("report-generate").onclick=()=>{
     return;
   }
 
+  const monthDays=reportMonthDays(month);
+  const thermalPlan=ThermalSchedule.buildMonthPlan(reportEmployees,monthDays);
   let html="";
   let thermalCount=0;
   let mealCount=0;
@@ -789,7 +793,7 @@ $("report-generate").onclick=()=>{
       html+=`<div class="report-group-title">${escapeHtml(employee.full_name)} — ${escapeHtml(employee.registration||"sem matrícula")}</div>`;
     }
     if(reportPolicyAllows(employee.report_policy,"thermal")){
-      html+=buildThermalSheet(employee,month);
+      html+=buildThermalSheet(employee,month,thermalPlan);
       thermalCount+=1;
     }
     if(reportPolicyAllows(employee.report_policy,"meal")){
@@ -800,7 +804,7 @@ $("report-generate").onclick=()=>{
   $("report-output").innerHTML=html;
   const skippedCount=policyBlocked.length+blockedEmployees.length+withoutShift.length;
   summary.className="full feedback success";
-  summary.textContent=`Geração automática concluída: ${thermalCount} ficha(s) de Repouso Térmico, ${mealCount} ficha(s) de Refeição`+
+  summary.textContent=`Geração concluída: ${thermalCount} ficha(s) de Repouso Térmico com horários automáticos, ${mealCount} ficha(s) de Refeição manual`+
     `${skippedCount?` e ${skippedCount} colaborador(es) sem ficha`:""}.`;
   showReportSkippedDetails(skippedEmployees);
 };

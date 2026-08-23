@@ -22,7 +22,7 @@ router.get("/employees",async(req,res,next)=>{
         ELSE COALESCE(e.weekly_days_off,ARRAY[]::SMALLINT[])
       END weekly_days_off,
       s.weekly_days_off shift_weekly_days_off,s.active shift_active,e.admission_date,e.termination_date,e.status,c.trade_name company_name,b.name branch_name,
-      s.name shift_name,j.name job_role_name,
+      s.name shift_name,s.description shift_description,s.senior_code shift_senior_code,j.name job_role_name,
       COALESCE(e.report_policy_override,jbp.report_policy,j.report_policy,'PENDING') report_policy,
       e.report_policy_override,jbp.report_policy branch_report_policy,j.report_policy job_role_report_policy,
       COALESCE(
