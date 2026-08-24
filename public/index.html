@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.4-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.4-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.4-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.4-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.4-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.4-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.4-beta.2">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.4-beta.2">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.4-beta.2">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.4-beta.2">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.4-beta.2">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.4-beta.2">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -1653,20 +1653,35 @@
       <div id="settings-thermal-rest" class="admin-only master-only" hidden>
         <div class="panel">
           <div class="panel-head"><div><h3>Regra do repouso térmico</h3><p class="hint">Escolha o preenchimento automático ou manual e ajuste os parâmetros usados nas próximas fichas.</p></div></div>
-          <form id="thermal-rest-form" class="form-grid">
-            <label>Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="MANUAL">Manual — campos em branco</option></select></label>
-            <label>Minutos trabalhados antes do repouso<input id="thermal-work-minutes" type="number" min="30" max="240" value="100"></label>
-            <label>Duração mínima do repouso (minutos)<input id="thermal-duration-minutes" type="number" min="5" max="60" value="20"></label>
-            <label>Duração máxima do repouso (minutos)<input id="thermal-max-duration-minutes" type="number" min="5" max="60" value="25"><small>Faixa segura recomendada: de 20 a 25 minutos.</small></label>
-            <label>Variação para mais ou menos (minutos)<input id="thermal-variation-minutes" type="number" min="0" max="30" value="15"></label>
-            <label>Dias sem repetir a combinação<input id="thermal-cycle-days" type="number" min="1" max="31" value="31"></label>
-            <label>Quantidade de repousos<select id="thermal-rest-count"><option value="3">3 repousos</option><option value="2">2 repousos</option><option value="1">1 repouso</option></select></label>
-            <label>Tamanho da fonte dos horários (pt)<input id="thermal-font-size" type="number" min="6" max="10" step="0.1" value="7.2"><small>Recomendado: 7,2 pt. A faixa segura é de 6,0 a 10,0 pt.</small></label>
-            <div class="full thermal-authorization-card">
-              <div>
+          <form id="thermal-rest-form" class="thermal-settings-form">
+            <section class="thermal-config-section">
+              <div class="thermal-section-head"><span>1</span><div><strong>Geração dos repousos</strong><p class="hint">Defina como e quando os campos serão preenchidos.</p></div></div>
+              <div class="thermal-fields thermal-fields-three">
+                <label>Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="MANUAL">Manual — campos em branco</option></select></label>
+                <label>Quantidade de repousos<select id="thermal-rest-count"><option value="3">3 repousos</option><option value="2">2 repousos</option><option value="1">1 repouso</option></select></label>
+                <label>Minutos trabalhados antes do repouso<input id="thermal-work-minutes" type="number" min="30" max="240" value="100"></label>
+              </div>
+            </section>
+            <section class="thermal-config-section">
+              <div class="thermal-section-head"><span>2</span><div><strong>Duração e variação</strong><p class="hint">Controle a margem segura e evite combinações repetidas.</p></div></div>
+              <div class="thermal-fields">
+                <label>Duração mínima (minutos)<input id="thermal-duration-minutes" type="number" min="5" max="60" value="20"></label>
+                <label>Duração máxima (minutos)<input id="thermal-max-duration-minutes" type="number" min="5" max="60" value="25"><small>Faixa segura recomendada: de 20 a 25 minutos.</small></label>
+                <label>Variação para mais ou menos (minutos)<input id="thermal-variation-minutes" type="number" min="0" max="30" value="15"></label>
+                <label>Dias sem repetir a combinação<input id="thermal-cycle-days" type="number" min="1" max="31" value="31"></label>
+              </div>
+            </section>
+            <section class="thermal-config-section">
+              <div class="thermal-section-head"><span>3</span><div><strong>Impressão da ficha</strong><p class="hint">Ajuste somente a leitura dos horários no relatório.</p></div></div>
+              <div class="thermal-fields thermal-fields-single">
+                <label>Tamanho da fonte dos horários (pt)<input id="thermal-font-size" type="number" min="6" max="10" step="0.1" value="7.2"><small>Recomendado: 7,2 pt. A faixa segura é de 6,0 a 10,0 pt.</small></label>
+              </div>
+            </section>
+            <section class="thermal-config-section thermal-authorization-card">
+              <div class="thermal-section-head"><span>4</span><div>
                 <strong>Autorização por empresa e filial</strong>
                 <p class="hint">Defina onde o preenchimento automático poderá ser utilizado. Fora da autorização, a ficha térmica será gerada em branco.</p>
-              </div>
+              </div></div>
               <label>Aplicação da regra
                 <select id="thermal-scope-mode">
                   <option value="ALL">Todas as empresas e filiais</option>
@@ -1675,11 +1690,12 @@
               </label>
               <div id="thermal-scope-selection" hidden>
                 <p class="hint">Marcar a empresa libera todas as suas filiais. Para liberar somente algumas, deixe a empresa desmarcada e selecione as filiais desejadas.</p>
+                <div id="thermal-scope-summary" class="thermal-scope-summary"></div>
                 <div id="thermal-scope-list" class="thermal-scope-list"></div>
               </div>
-            </div>
-            <div class="full actions"><button class="primary" type="submit">Salvar regras</button></div>
-            <p id="thermal-rest-feedback" class="feedback full"></p>
+            </section>
+            <div class="thermal-save-bar"><div><strong>Configuração do repouso térmico</strong><p class="hint">As alterações serão usadas nas próximas fichas geradas.</p></div><button class="primary" type="submit">Salvar regras</button></div>
+            <p id="thermal-rest-feedback" class="feedback"></p>
           </form>
         </div>
         <div class="panel">
@@ -2229,12 +2245,12 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.4-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.4-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.4-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.4-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.4-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.4-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.4-beta.1"></script>
+  <script src="/js/core.js?v=1.0.4-beta.2"></script>
+  <script src="/js/help-manual.js?v=1.0.4-beta.2"></script>
+  <script src="/js/admin-access.js?v=1.0.4-beta.2"></script>
+  <script src="/js/employees-imports.js?v=1.0.4-beta.2"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.4-beta.2"></script>
+  <script src="/js/calendar-reports.js?v=1.0.4-beta.2"></script>
+  <script src="/js/settings-system.js?v=1.0.4-beta.2"></script>
 </body>
 </html>

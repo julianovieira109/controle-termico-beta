@@ -1183,7 +1183,8 @@ function renderThermalAuthorization(config=window.thermalRestSettings||{}){
       String(branch.company_id)===companyId&&branch.active!==false
     );
     return `<div class="thermal-scope-company" data-company-id="${escapeHtml(companyId)}">
-      <label><input type="checkbox" data-thermal-company value="${escapeHtml(companyId)}" ${selectedCompanies.has(companyId)?"checked":""}><span>${escapeHtml(company.trade_name||company.legal_name||"Empresa")}</span></label>
+      <div class="thermal-company-head"><label><input type="checkbox" data-thermal-company value="${escapeHtml(companyId)}" ${selectedCompanies.has(companyId)?"checked":""}><span>${escapeHtml(company.trade_name||company.legal_name||"Empresa")}</span></label><span class="thermal-company-status"></span></div>
+      <p class="thermal-branches-title">Filiais desta empresa</p>
       <div class="thermal-scope-branches">
         ${companyBranches.length?companyBranches.map(branch=>{
           const branchId=String(branch.id);
@@ -1196,15 +1197,33 @@ function renderThermalAuthorization(config=window.thermalRestSettings||{}){
   const refreshCompanyCard=card=>{
     const companyChecked=card.querySelector("[data-thermal-company]")?.checked===true;
     card.querySelectorAll("[data-thermal-branch]").forEach(input=>input.disabled=companyChecked);
+    card.classList.toggle("is-company-authorized",companyChecked);
+    const status=card.querySelector(".thermal-company-status");
+    if(status)status.textContent=companyChecked?"Empresa inteira autorizada":"Selecione as filiais";
+    updateThermalScopeSummary();
   };
   list.querySelectorAll(".thermal-scope-company").forEach(card=>{
     refreshCompanyCard(card);
     card.querySelector("[data-thermal-company]")?.addEventListener("change",()=>refreshCompanyCard(card));
+    card.querySelectorAll("[data-thermal-branch]").forEach(input=>input.addEventListener("change",updateThermalScopeSummary));
   });
+}
+
+function updateThermalScopeSummary(){
+  const summary=$("thermal-scope-summary");
+  if(!summary)return;
+  const companyCount=document.querySelectorAll("[data-thermal-company]:checked").length;
+  const branchCount=document.querySelectorAll("[data-thermal-branch]:checked:not(:disabled)").length;
+  if(!companyCount&&!branchCount){
+    summary.textContent="Nenhuma empresa ou filial autorizada — as fichas térmicas serão geradas em branco.";
+    return;
+  }
+  summary.textContent=`Autorização atual: ${companyCount} empresa(s) inteira(s) e ${branchCount} filial(is) selecionada(s).`;
 }
 
 if($("thermal-scope-mode"))$("thermal-scope-mode").onchange=()=>{
   $("thermal-scope-selection").hidden=$("thermal-scope-mode").value!=="SELECTED";
+  updateThermalScopeSummary();
 };
 
 function renderThermalShiftList(config=window.thermalRestSettings||{}){
