@@ -9,13 +9,15 @@ function normalizeSettingValue(value){
   return value;
 }
 
-const thermalRestDefaults={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+const thermalRestDefaults={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 function normalizeThermalRest(value={}){
   const integer=(key,min,max)=>Math.max(min,Math.min(max,Number.parseInt(value[key],10)||thermalRestDefaults[key]));
+  const restMinutes=integer("restMinutes",5,60);
   return {
     mode:String(value.mode||"").toUpperCase()==="MANUAL"?"MANUAL":"AUTOMATIC",
     workMinutes:integer("workMinutes",30,240),
-    restMinutes:integer("restMinutes",5,60),
+    restMinutes,
+    maxRestMinutes:Math.max(restMinutes,integer("maxRestMinutes",5,60)),
     variationMinutes:integer("variationMinutes",0,30),
     cycleDays:integer("cycleDays",1,31),
     restCount:integer("restCount",1,3),

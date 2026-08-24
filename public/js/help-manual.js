@@ -59,7 +59,7 @@ const helpTopics=[
   {id:"employee_find",label:"Pesquisar ou corrigir colaborador",permission:"employees.view",view:"employees",chapter:"manual-employees",answer:"Abra Colaboradores e pesquise pelo nome ou matrícula. Use as abas Ativos, Demitidos, Afastados/Inativos ou Todos. A edição somente aparecerá se o perfil tiver permissão para alterar cadastros."},
   {id:"import",label:"Importar PDF da Senior",permission:"imports.manage",view:"employees",chapter:"manual-import",answer:"Abra Colaboradores → Importar PDFs da Senior, selecione o arquivo e clique em “Ler e conferir PDF”. Confira registros montados, não reconhecidos e o checklist. Confirme somente quando os dados estiverem corretos."},
   {id:"shifts",label:"Atualizar turnos",permission:"settings.view|imports.manage",view:"employees",chapter:"manual-shifts",answer:"Para atualizar por PDF, abra Colaboradores → Atualizar turnos, leia o arquivo e confira matrícula, código e horários. Para cadastro manual de turno, use Configurações quando essa área estiver liberada."},
-  {id:"reports",label:"Gerar e imprimir fichas",permission:"reports.view",view:"reports",chapter:"manual-reports",answer:"Abra Relatórios, selecione empresa, filial, colaborador ou todos, turno se desejar e mês. Clique em “Gerar ficha”. O Repouso Térmico recebe três intervalos automáticos de 20 minutos, calculados pelo turno, com variação de −15 a +15 minutos pelos 31 dias. A ficha de Refeição permanece manual."},
+  {id:"reports",label:"Gerar e imprimir fichas",permission:"reports.view",view:"reports",chapter:"manual-reports",answer:"Abra Relatórios, selecione empresa, filial, colaborador ou todos, turno se desejar e mês. Clique em “Gerar ficha”. O Repouso Térmico recebe três intervalos automáticos com duração segura entre 20 e 25 minutos, calculados pelo turno, com variação de −15 a +15 minutos pelos 31 dias. A ficha de Refeição permanece manual."},
   {id:"missing_report",label:"Colaborador não aparece ou não gera ficha",permission:"reports.view",view:"reports",chapter:"manual-reports",answer:"Confira se o colaborador está Ativo, pertence à empresa e filial selecionadas e estava admitido no mês. Se ele aparece mas não gera ficha, confira turno e a regra do cargo/função. Regras Pendentes ou “Não gerar” bloqueiam a ficha."},
   {id:"calendar",label:"Feriados e folgas",permission:"calendar.manage",view:"settings",chapter:"manual-settings",answer:"Abra Configurações → Feriados e folgas. Escolha o ano, gere os feriados e cadastre ajustes ou folgas individuais. Essas informações serão refletidas nas fichas."},
   {id:"settings",label:"Configurar cargos e o sistema",permission:"settings.view",view:"settings",chapter:"manual-settings",answer:"Abra Configurações e escolha a área disponível no seu perfil. Cargos novos importados ficam Pendentes até que a regra de relatórios seja conferida."},
@@ -240,7 +240,7 @@ function supportRequestDetails(channel="WhatsApp"){
       ...selection.map((label,index)=>`${index+1}. ${label}`),
       "",
       `Assunto: ${activeHelpTopic?.label||"Dúvida no sistema"}`,
-      `Versão: V1.3.1 Beta`,
+      `Versão: V1.0.3 Beta`,
       "",
       "Descreva aqui o que aconteceu: "
     ].join("\n")

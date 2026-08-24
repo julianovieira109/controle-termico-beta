@@ -5,6 +5,7 @@
 })(typeof globalThis!=="undefined"?globalThis:this,function(){
   const REST_AFTER_MINUTES=100;
   const REST_DURATION_MINUTES=20;
+  const MAX_REST_DURATION_MINUTES=25;
   const MAX_VARIATION_MINUTES=15;
   const VARIATION_BASE=MAX_VARIATION_MINUTES*2+1;
   const VARIATION_VALUES=Array.from({length:VARIATION_BASE},(_,index)=>index-MAX_VARIATION_MINUTES);
@@ -72,25 +73,37 @@
     return tuple;
   }
 
-  function applyVariation(baseRests,offsets,variationMinutes=MAX_VARIATION_MINUTES){
+  function applyVariation(baseRests,offsets,variationMinutes=MAX_VARIATION_MINUTES,durations=[]){
     return baseRests.map((rest,index)=>{
+      const duration=durations[index]??(rest.end-rest.start);
       const maximumVariation=Math.max(0,Math.min(30,Number(variationMinutes)||0));
       const minimum=Math.max(-maximumVariation,rest.periodStart-rest.start);
-      const maximum=Math.min(maximumVariation,rest.periodEnd-rest.end);
+      const maximum=Math.min(maximumVariation,rest.periodEnd-rest.start-duration);
       const requested=Number(offsets[index]||0);
       const offset=Math.max(minimum,Math.min(maximum,requested));
-      return {start:rest.start+offset,end:rest.end+offset,offset};
+      return {start:rest.start+offset,end:rest.start+offset+duration,offset,duration};
     });
   }
 
-  function distributedOffsets(baseRests,employeeIndex,cycleDay,attempt,variationMinutes){
+  function distributedDurations(restCount,employeeIndex,daySerial,attempt,config={}){
+    const minimum=Math.max(5,Math.min(60,Number(config.restMinutes)||REST_DURATION_MINUTES));
+    const maximum=Math.max(minimum,Math.min(60,Number(config.maxRestMinutes)||MAX_REST_DURATION_MINUTES));
+    const size=maximum-minimum+1;
+    return Array.from({length:restCount},(_,index)=>{
+      const raw=daySerial+employeeIndex*(index*2+1)+index*2+attempt;
+      return minimum+(((raw%size)+size)%size);
+    });
+  }
+
+  function distributedOffsets(baseRests,employeeIndex,cycleDay,attempt,variationMinutes,durations=[]){
     const variation=Math.max(0,Math.min(30,Number(variationMinutes)||0));
     const daySteps=[1,7,13];
     const employeeSteps=[5,11,17];
     const attemptSteps=[1,3,5];
     return baseRests.map((rest,index)=>{
       const minimum=Math.max(-variation,rest.periodStart-rest.start);
-      const maximum=Math.min(variation,rest.periodEnd-rest.end);
+      const duration=durations[index]??(rest.end-rest.start);
+      const maximum=Math.min(variation,rest.periodEnd-rest.start-duration);
       const size=maximum-minimum+1;
       if(size<=1)return minimum;
       const raw=cycleDay*daySteps[index%3]+employeeIndex*employeeSteps[index%3]+attempt*attemptSteps[index%3];
@@ -112,29 +125,37 @@
       .slice()
       .sort((a,b)=>String(a.id||a.registration||"").localeCompare(String(b.id||b.registration||"")));
     const plan=new Map();
+    const previousDurations=new Map();
 
     for(const day of monthDays||[]){
       const used=new Set();
       const cycleDays=Math.max(1,Math.min(31,Number(config.cycleDays)||31));
       const cycleDay=(Number(day.day)-1)%cycleDays;
+      const parsedDay=Date.parse(`${day.iso}T00:00:00Z`);
+      const daySerial=Number.isFinite(parsedDay)?Math.floor(parsedDay/86400000):cycleDay;
       ordered.forEach((employee,employeeIndex)=>{
         const restCount=Math.max(1,Math.min(3,Number(config.restCount)||3));
         const base=baseThermalRests(employee.shift_description,config);
         if(base.length<restCount)return;
         let selected=null;
         for(let attempt=0;attempt<COMBINATION_COUNT;attempt++){
+          const durations=distributedDurations(base.length,employeeIndex,daySerial,attempt,config);
+          const previous=previousDurations.get(String(employee.id));
+          if(previous&&durations.some((duration,index)=>duration===previous[index]))continue;
           const offsets=distributedOffsets(
             base,
             employeeIndex,
             cycleDay,
             attempt,
-            config.variationMinutes??MAX_VARIATION_MINUTES
+            config.variationMinutes??MAX_VARIATION_MINUTES,
+            durations
           );
-          const candidate=applyVariation(base,offsets,config.variationMinutes??MAX_VARIATION_MINUTES);
+          const candidate=applyVariation(base,offsets,config.variationMinutes??MAX_VARIATION_MINUTES,durations);
           const key=scheduleKey(candidate);
           if(!used.has(key)){
             used.add(key);
             selected=candidate;
+            previousDurations.set(String(employee.id),durations);
             break;
           }
         }
@@ -147,6 +168,7 @@
   return {
     REST_AFTER_MINUTES,
     REST_DURATION_MINUTES,
+    MAX_REST_DURATION_MINUTES,
     MAX_VARIATION_MINUTES,
     parseShiftSchedule,
     baseThermalRests,

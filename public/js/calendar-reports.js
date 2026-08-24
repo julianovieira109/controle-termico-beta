@@ -329,7 +329,7 @@ document.querySelectorAll(".calendar-tab").forEach(btn=>{
 });
 
 let reportEmployees=[];
-window.thermalRestSettings={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+window.thermalRestSettings={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 
 function reportMonthDays(monthValue){
   const [year,month]=monthValue.split("-").map(Number);

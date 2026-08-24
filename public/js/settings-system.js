@@ -1155,6 +1155,7 @@ async function loadThermalRestSettings(){
   $("thermal-rest-mode").value=config.mode;
   $("thermal-work-minutes").value=config.workMinutes;
   $("thermal-duration-minutes").value=config.restMinutes;
+  $("thermal-max-duration-minutes").value=config.maxRestMinutes;
   $("thermal-variation-minutes").value=config.variationMinutes;
   $("thermal-cycle-days").value=config.cycleDays;
   $("thermal-rest-count").value=config.restCount;
@@ -1181,6 +1182,7 @@ if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
     mode:$("thermal-rest-mode").value,
     workMinutes:Number($("thermal-work-minutes").value),
     restMinutes:Number($("thermal-duration-minutes").value),
+    maxRestMinutes:Number($("thermal-max-duration-minutes").value),
     variationMinutes:Number($("thermal-variation-minutes").value),
     cycleDays:Number($("thermal-cycle-days").value),
     restCount:Number($("thermal-rest-count").value),
