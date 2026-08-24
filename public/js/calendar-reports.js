@@ -329,7 +329,15 @@ document.querySelectorAll(".calendar-tab").forEach(btn=>{
 });
 
 let reportEmployees=[];
-window.thermalRestSettings={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+
+function thermalAutomaticAllowed(employee,config=window.thermalRestSettings||{}){
+  if(config.mode!=="AUTOMATIC")return false;
+  if(config.scopeMode!=="SELECTED")return true;
+  const companies=(config.authorizedCompanyIds||[]).map(String);
+  const branches=(config.authorizedBranchIds||[]).map(String);
+  return companies.includes(String(employee.company_id||""))||branches.includes(String(employee.branch_id||""));
+}
 
 function reportMonthDays(monthValue){
   const [year,month]=monthValue.split("-").map(Number);
@@ -576,7 +584,9 @@ async function prepareReports(){
   document.documentElement.style.setProperty("--thermal-time-font-size",`${Number(thermalRestSettings.fontSizePt||7.2)}pt`);
   if($("report-thermal-mode-note"))$("report-thermal-mode-note").innerHTML=thermalRestSettings.mode==="MANUAL"
     ?"<strong>Repouso térmico manual:</strong> os campos serão gerados em branco. Altere em Configurações → Repouso automático."
-    :"<strong>Repouso térmico automático:</strong> os horários serão preenchidos conforme as regras de Configurações. A refeição permanece manual.";
+    :thermalRestSettings.scopeMode==="SELECTED"
+      ?"<strong>Repouso térmico autorizado por empresa e filial:</strong> somente colaboradores dentro da autorização receberão horários automáticos. Os demais terão os campos em branco. A refeição permanece manual."
+      :"<strong>Repouso térmico automático:</strong> os horários serão preenchidos para todas as empresas e filiais conforme as regras de Configurações. A refeição permanece manual.";
 
   reportEmployees=(await api("/api/reports/employees"))
     .filter(employeeCanGenerateReports);
@@ -789,11 +799,14 @@ $("report-generate").onclick=()=>{
   }
 
   const monthDays=reportMonthDays(month);
-  const thermalPlan=thermalRestSettings.mode==="MANUAL"
-    ?new Map()
-    :ThermalSchedule.buildMonthPlan(reportEmployees,monthDays,thermalRestSettings);
+  const automaticEmployees=reportEmployees.filter(employee=>thermalAutomaticAllowed(employee,thermalRestSettings));
+  const thermalPlan=automaticEmployees.length
+    ?ThermalSchedule.buildMonthPlan(automaticEmployees,monthDays,thermalRestSettings)
+    :new Map();
   let html="";
   let thermalCount=0;
+  let thermalAutomaticCount=0;
+  let thermalManualCount=0;
   let mealCount=0;
   for(const employee of selectedEmployees){
     if(selectedEmployees.length>1){
@@ -802,6 +815,8 @@ $("report-generate").onclick=()=>{
     if(reportPolicyAllows(employee.report_policy,"thermal")){
       html+=buildThermalSheet(employee,month,thermalPlan);
       thermalCount+=1;
+      if(thermalAutomaticAllowed(employee,thermalRestSettings))thermalAutomaticCount+=1;
+      else thermalManualCount+=1;
     }
     if(reportPolicyAllows(employee.report_policy,"meal")){
       html+=buildMealSheet(employee,month);
@@ -811,7 +826,7 @@ $("report-generate").onclick=()=>{
   $("report-output").innerHTML=html;
   const skippedCount=policyBlocked.length+blockedEmployees.length+withoutShift.length;
   summary.className="full feedback success";
-  summary.textContent=`Geração concluída: ${thermalCount} ficha(s) de Repouso Térmico com horários automáticos, ${mealCount} ficha(s) de Refeição manual`+
+  summary.textContent=`Geração concluída: ${thermalCount} ficha(s) de Repouso Térmico (${thermalAutomaticCount} automática(s) e ${thermalManualCount} manual(is)), ${mealCount} ficha(s) de Refeição manual`+
     `${skippedCount?` e ${skippedCount} colaborador(es) sem ficha`:""}.`;
   showReportSkippedDetails(skippedEmployees);
 };

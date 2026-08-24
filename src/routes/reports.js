@@ -13,7 +13,7 @@ router.get("/employees",async(req,res,next)=>{
       where+=" AND e.company_id=$1 AND e.branch_id=ANY($2::uuid[])";
     }
     const {rows}=await pool.query(`
-      SELECT e.id,e.full_name,e.registration,e.use_shift_days_off,
+      SELECT e.id,e.company_id,e.branch_id,e.full_name,e.registration,e.use_shift_days_off,
       CASE
         WHEN e.use_shift_days_off AND s.id IS NOT NULL AND s.active=TRUE
           THEN COALESCE(s.weekly_days_off,ARRAY[]::SMALLINT[])

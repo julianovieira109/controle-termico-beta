@@ -1150,6 +1150,8 @@ document.addEventListener("keydown",event=>{
 
 async function loadThermalRestSettings(){
   if(!catalogs.shifts.length)await loadCatalogs();
+  if(!companies.length)await loadCompanies();
+  if(!branches.length)await loadBranches();
   const config=await api("/api/settings/thermal-rest");
   window.thermalRestSettings=config;
   $("thermal-rest-mode").value=config.mode;
@@ -1160,9 +1162,50 @@ async function loadThermalRestSettings(){
   $("thermal-cycle-days").value=config.cycleDays;
   $("thermal-rest-count").value=config.restCount;
   $("thermal-font-size").value=config.fontSizePt;
+  renderThermalAuthorization(config);
   document.documentElement.style.setProperty("--thermal-time-font-size",`${config.fontSizePt}pt`);
   renderThermalShiftList(config);
 }
+
+function renderThermalAuthorization(config=window.thermalRestSettings||{}){
+  const mode=$("thermal-scope-mode");
+  const selection=$("thermal-scope-selection");
+  const list=$("thermal-scope-list");
+  if(!mode||!selection||!list)return;
+  mode.value=config.scopeMode==="SELECTED"?"SELECTED":"ALL";
+  selection.hidden=mode.value!=="SELECTED";
+  const selectedCompanies=new Set((config.authorizedCompanyIds||[]).map(String));
+  const selectedBranches=new Set((config.authorizedBranchIds||[]).map(String));
+  const activeCompanies=(companies||[]).filter(company=>company.active!==false);
+  list.innerHTML=activeCompanies.map(company=>{
+    const companyId=String(company.id);
+    const companyBranches=(branches||[]).filter(branch=>
+      String(branch.company_id)===companyId&&branch.active!==false
+    );
+    return `<div class="thermal-scope-company" data-company-id="${escapeHtml(companyId)}">
+      <label><input type="checkbox" data-thermal-company value="${escapeHtml(companyId)}" ${selectedCompanies.has(companyId)?"checked":""}><span>${escapeHtml(company.trade_name||company.legal_name||"Empresa")}</span></label>
+      <div class="thermal-scope-branches">
+        ${companyBranches.length?companyBranches.map(branch=>{
+          const branchId=String(branch.id);
+          return `<label><input type="checkbox" data-thermal-branch value="${escapeHtml(branchId)}" ${selectedBranches.has(branchId)?"checked":""}><span>${escapeHtml(branch.name||"Filial")}</span></label>`;
+        }).join(""):'<span class="hint">Nenhuma filial ativa cadastrada.</span>'}
+      </div>
+    </div>`;
+  }).join("")||'<p class="hint">Nenhuma empresa ativa cadastrada.</p>';
+
+  const refreshCompanyCard=card=>{
+    const companyChecked=card.querySelector("[data-thermal-company]")?.checked===true;
+    card.querySelectorAll("[data-thermal-branch]").forEach(input=>input.disabled=companyChecked);
+  };
+  list.querySelectorAll(".thermal-scope-company").forEach(card=>{
+    refreshCompanyCard(card);
+    card.querySelector("[data-thermal-company]")?.addEventListener("change",()=>refreshCompanyCard(card));
+  });
+}
+
+if($("thermal-scope-mode"))$("thermal-scope-mode").onchange=()=>{
+  $("thermal-scope-selection").hidden=$("thermal-scope-mode").value!=="SELECTED";
+};
 
 function renderThermalShiftList(config=window.thermalRestSettings||{}){
   const body=$("thermal-shifts-list");
@@ -1180,6 +1223,9 @@ if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
   event.preventDefault();
   const value={
     mode:$("thermal-rest-mode").value,
+    scopeMode:$("thermal-scope-mode").value,
+    authorizedCompanyIds:[...document.querySelectorAll("[data-thermal-company]:checked")].map(input=>input.value),
+    authorizedBranchIds:[...document.querySelectorAll("[data-thermal-branch]:checked")].map(input=>input.value),
     workMinutes:Number($("thermal-work-minutes").value),
     restMinutes:Number($("thermal-duration-minutes").value),
     maxRestMinutes:Number($("thermal-max-duration-minutes").value),
@@ -1194,7 +1240,10 @@ if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
   $("thermal-rest-feedback").className="feedback full success";
   $("thermal-rest-feedback").textContent=result.value.mode==="MANUAL"
     ?"Modo manual salvo. As próximas fichas terão os horários em branco."
-    :"Modo automático e regras salvos com sucesso.";
+    :result.value.scopeMode==="SELECTED"
+      ?"Modo automático salvo para as empresas e filiais autorizadas."
+      :"Modo automático salvo para todas as empresas e filiais.";
+  renderThermalAuthorization(result.value);
   renderThermalShiftList(result.value);
 };
 

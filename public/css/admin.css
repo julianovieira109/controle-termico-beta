@@ -75,6 +75,13 @@
 
 /* V7.54 — Códigos Senior dinâmicos */
 .unknown-codes-list{display:grid;gap:10px}
+.thermal-authorization-card{display:grid;gap:14px;padding:16px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--card) 94%,var(--p) 6%)}
+.thermal-scope-list{display:grid;gap:12px;margin-top:10px}
+.thermal-scope-company{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--card)}
+.thermal-scope-company>label{display:flex;align-items:center;gap:9px;font-weight:800}
+.thermal-scope-branches{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px 14px;margin:10px 0 0 26px}
+.thermal-scope-branches label{display:flex;align-items:center;gap:8px;font-weight:600}
+.thermal-scope-branches input:disabled+span{opacity:.55}
 .unknown-code-row{
   display:grid;
   grid-template-columns:minmax(200px,1fr) minmax(220px,320px) auto;

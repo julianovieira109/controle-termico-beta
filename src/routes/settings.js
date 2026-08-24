@@ -9,12 +9,16 @@ function normalizeSettingValue(value){
   return value;
 }
 
-const thermalRestDefaults={mode:"AUTOMATIC",workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+const thermalRestDefaults={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 function normalizeThermalRest(value={}){
   const integer=(key,min,max)=>Math.max(min,Math.min(max,Number.parseInt(value[key],10)||thermalRestDefaults[key]));
+  const ids=key=>[...new Set((Array.isArray(value[key])?value[key]:[]).map(item=>String(item||"").trim()).filter(Boolean))].slice(0,500);
   const restMinutes=integer("restMinutes",5,60);
   return {
     mode:String(value.mode||"").toUpperCase()==="MANUAL"?"MANUAL":"AUTOMATIC",
+    scopeMode:String(value.scopeMode||"").toUpperCase()==="SELECTED"?"SELECTED":"ALL",
+    authorizedCompanyIds:ids("authorizedCompanyIds"),
+    authorizedBranchIds:ids("authorizedBranchIds"),
     workMinutes:integer("workMinutes",30,240),
     restMinutes,
     maxRestMinutes:Math.max(restMinutes,integer("maxRestMinutes",5,60)),
@@ -140,12 +144,14 @@ router.put("/:key",authenticate,async(req,res,next)=>{
 
     const key=String(req.params.key||"").trim();
     if(!key)return res.status(400).json({error:"Configuração inválida."});
-    const protectedMasterSettings=new Set(["support","visual"]);
+    const protectedMasterSettings=new Set(["support","visual","thermal-rest"]);
     if(protectedMasterSettings.has(key.toLowerCase())&&req.user.isMasterAdmin!==true){
       return res.status(403).json({
         error:key.toLowerCase()==="visual"
           ? "Somente o Administrador Master pode alterar a identidade visual."
-          : "Somente o Administrador Master pode alterar o suporte."
+          : key.toLowerCase()==="thermal-rest"
+            ? "Somente o Administrador Master pode alterar o repouso térmico automático."
+            : "Somente o Administrador Master pode alterar o suporte."
       });
     }
 
