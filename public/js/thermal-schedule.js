@@ -90,7 +90,8 @@
     const maximum=Math.max(minimum,Math.min(60,Number(config.maxRestMinutes)||MAX_REST_DURATION_MINUTES));
     const size=maximum-minimum+1;
     return Array.from({length:restCount},(_,index)=>{
-      const raw=daySerial+employeeIndex*(index*2+1)+index*2+attempt;
+      const digit=Math.floor(attempt/(size**index))%size;
+      const raw=daySerial+employeeIndex*(index*2+1)+index*2+digit;
       return minimum+(((raw%size)+size)%size);
     });
   }
@@ -99,14 +100,16 @@
     const variation=Math.max(0,Math.min(30,Number(variationMinutes)||0));
     const daySteps=[1,7,13];
     const employeeSteps=[5,11,17];
-    const attemptSteps=[1,3,5];
+    let attemptValue=Math.max(0,Math.floor(Number(attempt)||0));
     return baseRests.map((rest,index)=>{
       const minimum=Math.max(-variation,rest.periodStart-rest.start);
       const duration=durations[index]??(rest.end-rest.start);
       const maximum=Math.min(variation,rest.periodEnd-rest.start-duration);
       const size=maximum-minimum+1;
       if(size<=1)return minimum;
-      const raw=cycleDay*daySteps[index%3]+employeeIndex*employeeSteps[index%3]+attempt*attemptSteps[index%3];
+      const digit=attemptValue%size;
+      attemptValue=Math.floor(attemptValue/size);
+      const raw=cycleDay*daySteps[index%3]+employeeIndex*employeeSteps[index%3]+digit;
       return minimum+(((raw%size)+size)%size);
     });
   }
@@ -125,7 +128,8 @@
       .slice()
       .sort((a,b)=>String(a.id||a.registration||"").localeCompare(String(b.id||b.registration||"")));
     const plan=new Map();
-    const previousDurations=new Map();
+    const recentRests=new Map();
+    const employeeSchedules=new Map();
 
     for(const day of monthDays||[]){
       const used=new Set();
@@ -140,8 +144,6 @@
         let selected=null;
         for(let attempt=0;attempt<COMBINATION_COUNT;attempt++){
           const durations=distributedDurations(base.length,employeeIndex,daySerial,attempt,config);
-          const previous=previousDurations.get(String(employee.id));
-          if(previous&&durations.some((duration,index)=>duration===previous[index]))continue;
           const offsets=distributedOffsets(
             base,
             employeeIndex,
@@ -151,11 +153,25 @@
             durations
           );
           const candidate=applyVariation(base,offsets,config.variationMinutes??MAX_VARIATION_MINUTES,durations);
+          const history=recentRests.get(String(employee.id))||[];
+          if(history.some(previous=>candidate.some((rest,index)=>{
+            const prior=previous[index];
+            return prior&&(
+              rest.start===prior.start||
+              rest.end===prior.end||
+              rest.duration===prior.duration
+            );
+          })))continue;
           const key=scheduleKey(candidate);
-          if(!used.has(key)){
+          const schedules=employeeSchedules.get(String(employee.id))||new Set();
+          if(!used.has(key)&&!schedules.has(key)){
             used.add(key);
+            schedules.add(key);
+            employeeSchedules.set(String(employee.id),schedules);
             selected=candidate;
-            previousDurations.set(String(employee.id),durations);
+            const updatedHistory=[...history,candidate];
+            if(updatedHistory.length>3)updatedHistory.shift();
+            recentRests.set(String(employee.id),updatedHistory);
             break;
           }
         }
