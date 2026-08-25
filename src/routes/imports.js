@@ -7,6 +7,7 @@ const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
+const {parseSeniorTimecard}=require("../importers/timecard-reader");
 
 const router=express.Router();
 
@@ -3833,6 +3834,119 @@ router.get("/intelligence-models",async(req,res,next)=>{
   }
 });
 
+
+function normalizePointRegistration(value){
+  return String(value||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");
+}
+
+async function readAndMatchTimecard(req){
+  if(!req.file)throw Object.assign(new Error("Selecione o cartão de ponto em PDF."),{status:400});
+  const companyId=String(req.body.companyId||"").trim();
+  const branchId=String(req.body.branchId||"").trim();
+  if(!companyId||!branchId)throw Object.assign(new Error("Selecione a empresa e a filial."),{status:400});
+  assertScope(req,companyId,branchId);
+  const branchResult=await pool.query(`SELECT id FROM branches WHERE id=$1 AND company_id=$2 AND active=TRUE`,[branchId,companyId]);
+  if(!branchResult.rows[0])throw Object.assign(new Error("A filial selecionada não pertence à empresa ou está inativa."),{status:409});
+
+  const extraction=await extractPdfText(req.file.buffer,{skipPdf2Json:true});
+  const parsed=parseSeniorTimecard(extraction.text);
+  if(!parsed.employees.length)throw Object.assign(new Error("O arquivo não foi reconhecido como Cartão Ponto da Senior."),{status:400});
+
+  const current=await pool.query(`
+    SELECT id,registration,full_name
+    FROM employees
+    WHERE company_id=$1 AND branch_id=$2
+  `,[companyId,branchId]);
+  const byRegistration=new Map(current.rows.map(employee=>[normalizePointRegistration(employee.registration),employee]));
+  const rows=parsed.employees.map(item=>{
+    const employee=byRegistration.get(normalizePointRegistration(item.registration));
+    const sameName=employee&&cleanCaptured(employee.full_name).toUpperCase()===cleanCaptured(item.name).toUpperCase();
+    return {
+      ...item,
+      employeeId:employee?.id||null,
+      systemName:employee?.full_name||null,
+      result:!employee?"NAO_LOCALIZADO":sameName?"APTO":"CONFERIR_NOME",
+      eligibleDays:item.days.filter(day=>day.eligibleForAutomaticRest).length,
+      reviewDays:item.days.filter(day=>day.state==="REVIEW"||day.state==="NO_MARKINGS").length,
+      nonWorkDays:item.days.filter(day=>!day.eligibleForAutomaticRest&&day.state!=="REVIEW"&&day.state!=="NO_MARKINGS").length
+    };
+  });
+  return {companyId,branchId,extraction,parsed,rows};
+}
+
+router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
+  try{
+    const result=await readAndMatchTimecard(req);
+    const located=result.rows.filter(row=>row.employeeId).length;
+    res.json({
+      reportType:"SENIOR_TIMECARD",
+      fileName:req.file.originalname,
+      readerUsed:result.extraction.readerUsed,
+      companyId:result.companyId,
+      branchId:result.branchId,
+      period:result.parsed.employees[0]?.period||null,
+      totals:{...result.parsed.totals,located,notFound:result.rows.length-located},
+      warnings:result.parsed.warnings,
+      rows:result.rows.map(({days,...row})=>row)
+    });
+  }catch(error){
+    if(error.status)return res.status(error.status).json({error:error.message});
+    next(error);
+  }
+});
+
+router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
+  const client=await pool.connect();
+  try{
+    const result=await readAndMatchTimecard(req);
+    const located=result.rows.filter(row=>row.employeeId);
+    if(!located.length)return res.status(409).json({error:"Nenhuma matrícula do PDF foi localizada na empresa e filial selecionadas."});
+    await client.query("BEGIN");
+    const importResult=await client.query(`
+      INSERT INTO employee_imports(
+        user_id,company_id,branch_id,import_type,file_name,total_found,total_created,total_updated,total_not_found,details
+      ) VALUES($1,$2,$3,'PONTO_SENIOR',$4,$5,0,$6,$7,$8::jsonb)
+      RETURNING id,created_at
+    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays})]);
+    const importId=importResult.rows[0].id;
+    let savedDays=0;
+    for(const row of located){
+      for(const day of row.days){
+        await client.query(`
+          INSERT INTO employee_point_days(
+            employee_id,import_id,company_id,branch_id,work_date,schedule_code,markings,point_state,occurrence,
+            eligible_for_automatic_rest,source_file,imported_at
+          ) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,NOW())
+          ON CONFLICT(employee_id,work_date) DO UPDATE SET
+            import_id=EXCLUDED.import_id,company_id=EXCLUDED.company_id,branch_id=EXCLUDED.branch_id,
+            schedule_code=EXCLUDED.schedule_code,markings=EXCLUDED.markings,point_state=EXCLUDED.point_state,
+            occurrence=EXCLUDED.occurrence,eligible_for_automatic_rest=EXCLUDED.eligible_for_automatic_rest,
+            source_file=EXCLUDED.source_file,imported_at=NOW()
+        `,[row.employeeId,importId,result.companyId,result.branchId,day.date,day.scheduleCode,JSON.stringify(day.markings),day.state,day.occurrence,day.eligibleForAutomaticRest,req.file.originalname]);
+        savedDays++;
+      }
+    }
+    await client.query("COMMIT");
+    await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId});
+    res.json({success:true,importId,employees:located.length,savedDays,notFound:result.rows.length-located.length,period:result.parsed.employees[0]?.period});
+  }catch(error){
+    await client.query("ROLLBACK");
+    if(error.status)return res.status(error.status).json({error:error.message});
+    next(error);
+  }finally{
+    client.release();
+  }
+});
+
+router.get("/timecard-history",async(req,res,next)=>{
+  try{
+    const params=[];
+    let where="WHERE i.import_type='PONTO_SENIOR'";
+    if(!req.scope.isAdmin){params.push(req.scope.companyId,req.scope.branchIds);where+=" AND i.company_id=$1 AND i.branch_id=ANY($2::uuid[])";}
+    const {rows}=await pool.query(`SELECT i.id,i.file_name,i.total_found,i.total_updated,i.total_not_found,i.details,i.created_at,c.trade_name company_name,b.name branch_name,u.name user_name FROM employee_imports i LEFT JOIN companies c ON c.id=i.company_id LEFT JOIN branches b ON b.id=i.branch_id LEFT JOIN users u ON u.id=i.user_id ${where} ORDER BY i.created_at DESC LIMIT 20`,params);
+    res.json(rows);
+  }catch(error){next(error);}
+});
 
 router.get("/history",async(req,res,next)=>{
   try{

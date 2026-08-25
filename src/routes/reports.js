@@ -37,4 +37,27 @@ router.get("/employees",async(req,res,next)=>{
     res.json(rows);
   }catch(e){next(e);}
 });
+
+router.get("/point-days",async(req,res,next)=>{
+  try{
+    const month=String(req.query.month||"");
+    if(!/^\d{4}-\d{2}$/.test(month))return res.status(400).json({error:"Informe o mês no formato AAAA-MM."});
+    const start=`${month}-01`;
+    const params=[start];
+    let scope="";
+    if(!req.scope.isAdmin){
+      params.push(req.scope.companyId,req.scope.branchIds);
+      scope=" AND p.company_id=$2 AND p.branch_id=ANY($3::uuid[])";
+    }
+    const {rows}=await pool.query(`
+      SELECT p.employee_id,p.work_date,p.schedule_code,p.markings,p.point_state,p.occurrence,p.eligible_for_automatic_rest,p.imported_at
+      FROM employee_point_days p
+      WHERE p.work_date>= ($1::date - INTERVAL '1 day')
+        AND p.work_date< ($1::date + INTERVAL '1 month')
+        ${scope}
+      ORDER BY p.employee_id,p.work_date
+    `,params);
+    res.json(rows);
+  }catch(error){next(error);}
+});
 module.exports=router;

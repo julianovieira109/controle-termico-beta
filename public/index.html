@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.4-beta.2">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.4-beta.2">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.4-beta.2">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.4-beta.2">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.4-beta.2">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.4-beta.2">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.7-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.7-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.7-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.7-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.7-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.7-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -106,7 +106,7 @@
 
         <div class="login-card-footer">
           <span>Controle Térmico</span>
-          <span>Versão 1.0.4 Beta</span>
+          <span>Versão 1.0.7 Beta</span>
         </div>
       </form>
 
@@ -255,7 +255,7 @@
       <span class="sidebar-nav-heading">Ajuda e suporte</span>
       <button class="nav-btn nav-btn-support" data-view="manual" title="Manual do Sistema"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></svg></span><span class="nav-label">Manual do Sistema</span></button>
     </nav>
-    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.4 Beta</small></div>
+    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.7 Beta</small></div>
   </aside>
 
   <main class="main">
@@ -933,6 +933,25 @@
     
 
     <section id="reports" class="view">
+      <div class="panel no-print point-import-panel" data-permission="imports.manage">
+        <div class="panel-head">
+          <div><h3>Cartão de ponto Senior</h3><p class="hint">Importe o ponto real, confira as matrículas e somente depois confirme o uso na geração automática.</p></div>
+          <span class="point-import-badge">Novo</span>
+        </div>
+        <form id="point-import-form" class="form-grid">
+          <label>Empresa<select id="point-import-company" required></select></label>
+          <label>Filial<select id="point-import-branch" required></select></label>
+          <label class="full">Arquivo PDF do Cartão Ponto<input id="point-import-file" type="file" accept="application/pdf,.pdf" required></label>
+          <div class="full actions"><button type="submit" class="primary">Ler e conferir</button><button type="button" class="secondary" id="point-import-clear">Limpar</button></div>
+          <p id="point-import-feedback" class="feedback full" aria-live="polite"></p>
+        </form>
+        <div id="point-import-preview" class="point-import-preview" hidden>
+          <div id="point-import-summary" class="checklist-summary"></div>
+          <div class="table-wrap"><table><thead><tr><th>Matrícula</th><th>Colaborador no PDF</th><th>Cadastro localizado</th><th>4 marcações</th><th>Revisar</th><th>Sem jornada</th><th>Situação</th></tr></thead><tbody id="point-import-body"></tbody></table></div>
+          <div class="actions"><button type="button" id="point-import-confirm" class="primary">Confirmar importação do ponto</button></div>
+        </div>
+        <details class="import-history-details"><summary>Histórico de cartões de ponto importados</summary><div class="table-wrap"><table><thead><tr><th>Data</th><th>Arquivo</th><th>Período</th><th>Filial</th><th>Localizados</th><th>Usuário</th></tr></thead><tbody id="point-import-history"></tbody></table></div></details>
+      </div>
       <div class="panel no-print">
         <h3>Impressão de fichas</h3>
         <p class="hint">O repouso térmico recebe horários automáticos; a ficha de refeição continua com assinatura manual.</p>
@@ -1656,14 +1675,16 @@
           <form id="thermal-rest-form" class="thermal-settings-form">
             <section class="thermal-config-section">
               <div class="thermal-section-head"><span>1</span><div><strong>Geração dos repousos</strong><p class="hint">Defina como e quando os campos serão preenchidos.</p></div></div>
-              <div class="thermal-fields thermal-fields-three">
+              <div class="info-box full"><strong>Regra do Cartão de Ponto Senior:</strong> cada período trabalhado gera repousos de 20 minutos entre os limites definidos abaixo. A refeição zera a contagem, e a quantidade de repousos acompanha a jornada real, sem limite fixo.</div>
+              <div class="thermal-fields">
                 <label>Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="MANUAL">Manual — campos em branco</option></select></label>
-                <label>Quantidade de repousos<select id="thermal-rest-count"><option value="3">3 repousos</option><option value="2">2 repousos</option><option value="1">1 repouso</option></select></label>
-                <label>Minutos trabalhados antes do repouso<input id="thermal-work-minutes" type="number" min="30" max="240" value="100"></label>
+                <input id="thermal-rest-count" type="hidden" value="3">
+                <label>Tempo mínimo antes do repouso (minutos)<input id="thermal-min-work-minutes" type="number" min="50" max="100" value="50"><small>Na leitura do ponto, abaixo deste tempo não será gerado repouso.</small></label>
+                <label>Tempo máximo antes do repouso (minutos)<input id="thermal-work-minutes" type="number" min="50" max="100" value="100"><small>Limite máximo: 100 minutos sem repouso.</small></label>
               </div>
             </section>
             <section class="thermal-config-section">
-              <div class="thermal-section-head"><span>2</span><div><strong>Duração e variação</strong><p class="hint">Controle a margem segura e evite combinações repetidas.</p></div></div>
+              <div class="thermal-section-head"><span>2</span><div><strong>Duração e variação</strong><p class="hint">Estes parâmetros continuam disponíveis para fichas geradas sem dados importados do Cartão de Ponto.</p></div></div>
               <div class="thermal-fields">
                 <label>Duração mínima (minutos)<input id="thermal-duration-minutes" type="number" min="5" max="60" value="20"></label>
                 <label>Duração máxima (minutos)<input id="thermal-max-duration-minutes" type="number" min="5" max="60" value="25"><small>Faixa segura recomendada: de 20 a 25 minutos.</small></label>
@@ -1689,7 +1710,7 @@
                 </select>
               </label>
               <div id="thermal-scope-selection" hidden>
-                <p class="hint">Marcar a empresa libera todas as suas filiais. Para liberar somente algumas, deixe a empresa desmarcada e selecione as filiais desejadas.</p>
+                <p class="hint">Use “Selecionar todas” somente quando quiser autorizar todas as filiais exibidas. Para autorizar algumas, marque apenas as filiais desejadas.</p>
                 <div id="thermal-scope-summary" class="thermal-scope-summary"></div>
                 <div id="thermal-scope-list" class="thermal-scope-list"></div>
               </div>
@@ -2245,12 +2266,12 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.4-beta.2"></script>
-  <script src="/js/help-manual.js?v=1.0.4-beta.2"></script>
-  <script src="/js/admin-access.js?v=1.0.4-beta.2"></script>
-  <script src="/js/employees-imports.js?v=1.0.4-beta.2"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.4-beta.2"></script>
-  <script src="/js/calendar-reports.js?v=1.0.4-beta.2"></script>
-  <script src="/js/settings-system.js?v=1.0.4-beta.2"></script>
+  <script src="/js/core.js?v=1.0.7-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.0.7-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.0.7-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.0.7-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.7-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.0.7-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.0.7-beta.1"></script>
 </body>
 </html>

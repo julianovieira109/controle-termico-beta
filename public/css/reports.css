@@ -1073,6 +1073,9 @@
 }
 
 /* V1.2.2 Beta — horários térmicos discretamente maiores na tela. */
+.thermal-continuation-label{margin:6px 0;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:#f3f6f9;color:#334155;text-align:center;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.thermal-report-sheet.thermal-rests-4 .col-time{width:7.2%}
+.thermal-report-sheet.thermal-rests-4 .col-signature{width:22%}
 #report-output .thermal-report-table tbody tr:not(.non-work-row) td.thermal-time-cell{
   font-size:var(--thermal-time-font-size,7.2pt)!important;
   font-weight:600!important;

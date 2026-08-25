@@ -42,6 +42,7 @@
   function baseThermalRests(description,config={}){
     const workMinutes=Number(config.workMinutes)||REST_AFTER_MINUTES;
     const restMinutes=Number(config.restMinutes)||REST_DURATION_MINUTES;
+    const fitTolerance=config.allowBoundaryVariation===true?Math.max(0,Math.min(30,Number(config.variationMinutes)||0)):0;
     const restCount=Math.max(1,Math.min(3,Number(config.restCount)||3));
     const schedule=parseShiftSchedule(description);
     if(!schedule)return [];
@@ -50,9 +51,29 @@
       {start:schedule.breakEnd,end:schedule.end}
     ];
     const rests=[];
+    if(config.carryAcrossBreak===true){
+      let workedSinceRest=0;
+      for(const period of periods){
+        let cursor=period.start;
+        while(cursor<period.end&&rests.length<restCount){
+          const needed=Math.max(0,workMinutes-workedSinceRest);
+          const start=cursor+needed;
+          if(start+restMinutes-fitTolerance>period.end){
+            workedSinceRest=Math.min(workMinutes,workedSinceRest+Math.max(0,period.end-cursor));
+            break;
+          }
+          const end=start+restMinutes;
+          rests.push({start,end,periodStart:period.start,periodEnd:period.end});
+          cursor=end;
+          workedSinceRest=0;
+        }
+        if(rests.length===restCount)break;
+      }
+      return rests;
+    }
     for(const period of periods){
       let workCursor=period.start;
-      while(workCursor+workMinutes+restMinutes<=period.end&&rests.length<restCount){
+      while(workCursor+workMinutes+restMinutes-fitTolerance<=period.end&&rests.length<restCount){
         const start=workCursor+workMinutes;
         const end=start+restMinutes;
         rests.push({start,end,periodStart:period.start,periodEnd:period.end});
@@ -119,8 +140,52 @@
     return `${String(Math.floor(normalized/60)).padStart(2,"0")}:${String(normalized%60).padStart(2,"0")}`;
   }
 
+  function isThirdShift(employee={}){
+    return /3\s*[º°o]?\s*turno/i.test(String(employee.shift_name||""))||
+      String(employee.shift_senior_code||"").replace(/^0+/,"")==="56";
+  }
+
+  function pointReportDate(value,employee={}){
+    const source=String(value||"").slice(0,10);
+    if(!isThirdShift(employee))return source;
+    const date=new Date(`${source}T00:00:00Z`);
+    if(Number.isNaN(date.getTime()))return source;
+    date.setUTCDate(date.getUTCDate()+1);
+    return date.toISOString().slice(0,10);
+  }
+
   function scheduleKey(rests){
     return rests.map(rest=>`${formatMinutes(rest.start)}-${formatMinutes(rest.end)}`).join("|");
+  }
+
+  function dynamicPointRests(description,config={},employeeIndex=0,daySerial=0,attempt=0){
+    const schedule=parseShiftSchedule(description);
+    if(!schedule)return [];
+    const minimum=Math.max(30,Math.min(100,Number(config.minWorkMinutes)||50));
+    const maximum=Math.max(minimum,Math.min(100,Number(config.workMinutes)||100));
+    const duration=20;
+    const range=maximum-minimum+1;
+    const periods=[
+      {start:schedule.start,end:schedule.breakStart},
+      {start:schedule.breakEnd,end:schedule.end}
+    ];
+    const rests=[];
+    periods.forEach((period,periodIndex)=>{
+      let cursor=period.start;
+      let restIndex=0;
+      while(cursor+minimum+duration<=period.end&&restIndex<24){
+        const maximumThatFits=Math.min(maximum,period.end-cursor-duration);
+        const localRange=Math.max(1,maximumThatFits-minimum+1);
+        const seed=(daySerial+1)*37+(employeeIndex+1)*53+(periodIndex+1)*71+(restIndex+1)*89+(attempt+1)*97;
+        const interval=minimum+(((seed%Math.min(range,localRange))+localRange)%localRange);
+        const start=cursor+interval;
+        const end=start+duration;
+        rests.push({start,end,periodStart:period.start,periodEnd:period.end,interval,duration});
+        cursor=end;
+        restIndex++;
+      }
+    });
+    return rests;
   }
 
   function buildMonthPlan(employees,monthDays,config={}){
@@ -138,8 +203,30 @@
       const parsedDay=Date.parse(`${day.iso}T00:00:00Z`);
       const daySerial=Number.isFinite(parsedDay)?Math.floor(parsedDay/86400000):cycleDay;
       ordered.forEach((employee,employeeIndex)=>{
+        if(config.usePointData===true){
+          const description=employee.point_schedules?.[day.iso];
+          if(!description)return;
+          let selected=null;
+          for(let attempt=0;attempt<1000;attempt++){
+            const candidate=dynamicPointRests(description,config,employeeIndex,daySerial,attempt);
+            if(!candidate.length)break;
+            const key=scheduleKey(candidate);
+            const schedules=employeeSchedules.get(String(employee.id))||new Set();
+            if(!used.has(key)&&!schedules.has(key)){
+              used.add(key);
+              schedules.add(key);
+              employeeSchedules.set(String(employee.id),schedules);
+              selected=candidate;
+              break;
+            }
+          }
+          if(selected)plan.set(`${employee.id}|${day.iso}`,selected);
+          return;
+        }
         const restCount=Math.max(1,Math.min(3,Number(config.restCount)||3));
-        const base=baseThermalRests(employee.shift_description,config);
+        const pointDescription=employee.point_schedules?.[day.iso];
+        const description=config.usePointData?pointDescription:employee.shift_description;
+        const base=baseThermalRests(description,{...config,allowBoundaryVariation:config.usePointData===true,carryAcrossBreak:config.usePointData===true});
         if(base.length<restCount)return;
         let selected=null;
         for(let attempt=0;attempt<COMBINATION_COUNT;attempt++){
@@ -153,6 +240,7 @@
             durations
           );
           const candidate=applyVariation(base,offsets,config.variationMinutes??MAX_VARIATION_MINUTES,durations);
+          if(candidate.some((rest,index)=>rest.start<base[index].periodStart||rest.end>base[index].periodEnd))continue;
           const history=recentRests.get(String(employee.id))||[];
           if(history.some(previous=>candidate.some((rest,index)=>{
             const prior=previous[index];
@@ -188,7 +276,10 @@
     MAX_VARIATION_MINUTES,
     parseShiftSchedule,
     baseThermalRests,
+    dynamicPointRests,
     buildMonthPlan,
+    isThirdShift,
+    pointReportDate,
     formatMinutes
   };
 });

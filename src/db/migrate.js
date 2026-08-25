@@ -267,6 +267,24 @@ CREATE TABLE IF NOT EXISTS employee_imports (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- V1.0.4 Beta: marcações reais importadas do Cartão Ponto da Senior.
+CREATE TABLE IF NOT EXISTS employee_point_days (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  import_id UUID REFERENCES employee_imports(id) ON DELETE SET NULL,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+  work_date DATE NOT NULL,
+  schedule_code VARCHAR(20),
+  markings JSONB NOT NULL DEFAULT '[]'::jsonb,
+  point_state VARCHAR(30) NOT NULL,
+  occurrence TEXT,
+  eligible_for_automatic_rest BOOLEAN NOT NULL DEFAULT FALSE,
+  source_file VARCHAR(255),
+  imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(employee_id,work_date)
+);
+
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES user_profiles(id) ON DELETE RESTRICT;
 
@@ -609,6 +627,8 @@ CREATE INDEX IF NOT EXISTS idx_employee_days_off_date ON employee_days_off(off_d
 CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_recovery_codes_user ON user_recovery_codes(user_id,used_at);
 CREATE INDEX IF NOT EXISTS idx_employee_imports_created ON employee_imports(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_employee_point_days_date ON employee_point_days(work_date);
+CREATE INDEX IF NOT EXISTS idx_employee_point_days_employee_date ON employee_point_days(employee_id,work_date);
 CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_user_activity ON audit_logs(entity,entity_id,action,created_at DESC);
 
@@ -661,9 +681,9 @@ WHERE e.id=s.employee_id
 (async()=>{
   try{
     await pool.query(sql);
-    console.log("Migrações V1.33 concluídas.");
+    console.log("Migrações V1.34 concluídas.");
   }catch(error){
-    console.error("Falha nas migrações V1.33:",{
+    console.error("Falha nas migrações V1.34:",{
       message:error.message,
       code:error.code,
       detail:error.detail,

@@ -9,17 +9,20 @@ function normalizeSettingValue(value){
   return value;
 }
 
-const thermalRestDefaults={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+const thermalRestDefaults={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:50,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 function normalizeThermalRest(value={}){
   const integer=(key,min,max)=>Math.max(min,Math.min(max,Number.parseInt(value[key],10)||thermalRestDefaults[key]));
   const ids=key=>[...new Set((Array.isArray(value[key])?value[key]:[]).map(item=>String(item||"").trim()).filter(Boolean))].slice(0,500);
   const restMinutes=integer("restMinutes",5,60);
+  const workMinutes=integer("workMinutes",50,100);
+  const minWorkMinutes=Math.min(workMinutes,integer("minWorkMinutes",50,workMinutes));
   return {
     mode:String(value.mode||"").toUpperCase()==="MANUAL"?"MANUAL":"AUTOMATIC",
     scopeMode:String(value.scopeMode||"").toUpperCase()==="SELECTED"?"SELECTED":"ALL",
     authorizedCompanyIds:ids("authorizedCompanyIds"),
     authorizedBranchIds:ids("authorizedBranchIds"),
-    workMinutes:integer("workMinutes",30,240),
+    minWorkMinutes,
+    workMinutes,
     restMinutes,
     maxRestMinutes:Math.max(restMinutes,integer("maxRestMinutes",5,60)),
     variationMinutes:integer("variationMinutes",0,30),

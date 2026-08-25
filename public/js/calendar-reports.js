@@ -81,8 +81,8 @@ async function prepareCalendar(){
       .map(year=>`<option value="${year}" ${year===currentYear?"selected":""}>${year}</option>`).join("");
   }
 
-  if(!companies.length && currentUser.role==="ADMIN") await loadCompanies();
-  if(!branches.length && currentUser.role==="ADMIN") await loadBranches();
+  if(!companies.length)await loadCompanies();
+  if(!branches.length)await loadBranches();
 
   calendarEmployees=await api("/api/reports/employees");
   fillHolidaySelectors();
@@ -329,14 +329,17 @@ document.querySelectorAll(".calendar-tab").forEach(btn=>{
 });
 
 let reportEmployees=[];
-window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+let pointImportPreview=null;
+let pointDataActive=false;
+window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:50,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 
 function thermalAutomaticAllowed(employee,config=window.thermalRestSettings||{}){
   if(config.mode!=="AUTOMATIC")return false;
   if(config.scopeMode!=="SELECTED")return true;
   const companies=(config.authorizedCompanyIds||[]).map(String);
   const branches=(config.authorizedBranchIds||[]).map(String);
-  return companies.includes(String(employee.company_id||""))||branches.includes(String(employee.branch_id||""));
+  if(branches.length)return branches.includes(String(employee.branch_id||""));
+  return companies.includes(String(employee.company_id||""));
 }
 
 function reportMonthDays(monthValue){
@@ -487,50 +490,38 @@ function dayStatus(employee,d){
 }
 
 function buildThermalSheet(employee,month,thermalPlan){
-  const rows=reportMonthDays(month).map(d=>{
-    const status=dayStatus(employee,d);
-    if(status){
-      return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="7">${escapeHtml(status)}</td></tr>`;
-    }
-    const rests=thermalPlan?.get(`${employee.id}|${d.iso}`)||[];
-    const generated=rests.map(rest=>`<td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.start)}</td><td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("");
-    const cells=generated+'<td class="thermal-time-cell"></td><td class="thermal-time-cell"></td>'.repeat(Math.max(0,3-rests.length));
-    return `<tr>
-      <td>${d.br}</td>
-      <td>${d.weekName}</td>
-      ${cells}
-      <td class="signature-cell"></td>
-    </tr>`;
+  const days=reportMonthDays(month);
+  const maximumRests=Math.max(0,...days.map(day=>(thermalPlan?.get(`${employee.id}|${day.iso}`)||[]).length));
+  const restsPerPage=4;
+  const pageCount=Math.max(1,Math.ceil(maximumRests/restsPerPage));
+  const pointLabels={DSR:"DSR",FOLGA:"FOLGA / SEM JORNADA",FERIAS:"FÉRIAS",FALTA:"FALTA",ATESTADO:"ATESTADO",LICENCA:"LICENÇA",SUSPENSAO:"SUSPENSÃO",AFASTAMENTO:"AFASTAMENTO",COMPENSADO:"COMPENSADO",CURSO:"CURSO",OBITO:"ÓBITO FAMILIAR",REVIEW:"REVISAR MARCAÇÕES DO PONTO",NO_MARKINGS:"SEM MARCAÇÕES"};
+  return Array.from({length:pageCount},(_,pageIndex)=>{
+    const offset=pageIndex*restsPerPage;
+    const slots=pageIndex===pageCount-1&&maximumRests>offset?Math.min(restsPerPage,maximumRests-offset):restsPerPage;
+    const rows=days.map(d=>{
+      const pointState=employee.point_states?.[d.iso];
+      const allRests=thermalPlan?.get(`${employee.id}|${d.iso}`)||[];
+      let status=pointDataActive
+        ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":dayStatus(employee,d)||"PONTO NÃO IMPORTADO")
+        :dayStatus(employee,d);
+      if(pointDataActive&&pointState==="WORKED"&&!allRests.length)status="JORNADA ABAIXO DO MÍNIMO PARA REPOUSO";
+      if(status)return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="${slots*2+1}">${escapeHtml(status)}</td></tr>`;
+      const rests=allRests.slice(offset,offset+slots);
+      const generated=rests.map(rest=>`<td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.start)}</td><td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("");
+      const cells=generated+'<td class="thermal-time-cell"></td><td class="thermal-time-cell"></td>'.repeat(Math.max(0,slots-rests.length));
+      return `<tr><td>${d.br}</td><td>${d.weekName}</td>${cells}<td class="signature-cell"></td></tr>`;
+    }).join("");
+    const restHeaders=Array.from({length:slots},(_,index)=>`<th class="print-head" colspan="2">Repouso ${offset+index+1}</th>`).join("");
+    const subHeaders='<th class="print-head">Saída</th><th class="print-head">Retorno</th>'.repeat(slots);
+    const continuation=pageCount>1?`<div class="thermal-continuation-label">${pageIndex===0?"Página principal":`Continuação ${pageIndex+1} de ${pageCount}`} — repousos ${offset+1} a ${offset+slots}</div>`:"";
+    return `<section class="report-sheet thermal-report-sheet thermal-rests-${slots} month-days-${days.length}">
+      ${reportHeader(employee,"FICHA DE CONTROLE DE REPOUSO TÉRMICO",month)}${continuation}
+      <table class="report-table thermal-report-table"><colgroup><col class="col-date"><col class="col-day"><col span="${slots*2}" class="col-time"><col class="col-signature"></colgroup>
+        <thead><tr><th class="print-head" rowspan="2">Data</th><th class="print-head" rowspan="2">Dia</th>${restHeaders}<th class="print-head print-sign-head" rowspan="2">Assinatura do colaborador</th></tr><tr>${subHeaders}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </section>`;
   }).join("");
-
-  const totalDays=reportMonthDays(month).length;
-  return `<section class="report-sheet thermal-report-sheet month-days-${totalDays}">
-    ${reportHeader(employee,"FICHA DE CONTROLE DE REPOUSO TÉRMICO",month)}
-    <table class="report-table thermal-report-table">
-      <colgroup>
-        <col class="col-date">
-        <col class="col-day">
-        <col span="6" class="col-time">
-        <col class="col-signature">
-      </colgroup>
-      <thead>
-        <tr>
-          <th class="print-head" rowspan="2">Data</th>
-          <th class="print-head" rowspan="2">Dia</th>
-          <th class="print-head" colspan="2">Repouso 1</th>
-          <th class="print-head" colspan="2">Repouso 2</th>
-          <th class="print-head" colspan="2">Repouso 3</th>
-          <th class="print-head print-sign-head" rowspan="2">Assinatura do colaborador</th>
-        </tr>
-        <tr>
-          <th class="print-head">Saída</th><th class="print-head">Retorno</th>
-          <th class="print-head">Saída</th><th class="print-head">Retorno</th>
-          <th class="print-head">Saída</th><th class="print-head">Retorno</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </section>`;
 }
 
 function buildMealSheet(employee,month){
@@ -577,8 +568,8 @@ async function prepareReports(){
   if(!holidays.length){
     try{ holidays=await api("/api/calendar/holidays"); }catch{}
   }
-  if(!companies.length && currentUser.role==="ADMIN") await loadCompanies();
-  if(!branches.length && currentUser.role==="ADMIN") await loadBranches();
+  if(!companies.length)await loadCompanies();
+  if(!branches.length)await loadBranches();
   if(!catalogs.shifts.length) await loadCatalogs();
   try{window.thermalRestSettings=await api("/api/settings/thermal-rest");}catch{}
   document.documentElement.style.setProperty("--thermal-time-font-size",`${Number(thermalRestSettings.fontSizePt||7.2)}pt`);
@@ -590,6 +581,8 @@ async function prepareReports(){
 
   reportEmployees=(await api("/api/reports/employees"))
     .filter(employeeCanGenerateReports);
+  preparePointImportSelectors();
+  await loadPointImportHistory();
 
   const companyOptions=[...new Set(
     reportEmployees.map(e=>e.company_name).filter(Boolean)
@@ -600,6 +593,118 @@ async function prepareReports(){
 
   $("report-month").value=new Date().toISOString().slice(0,7);
   refreshReportFilters();
+}
+
+function preparePointImportSelectors(){
+  const companySelect=$("point-import-company");
+  if(!companySelect)return;
+  const allowedCompanies=currentUser.role==="ADMIN"
+    ?companies
+    :companies.filter(company=>String(company.id)===String(currentUser.companyId||currentUser.company_id||""));
+  companySelect.innerHTML='<option value="">Selecione</option>'+allowedCompanies.filter(company=>company.active!==false).map(company=>`<option value="${company.id}">${escapeHtml(company.trade_name||company.legal_name)}</option>`).join("");
+  fillPointImportBranches();
+}
+
+function fillPointImportBranches(){
+  const companyId=$("point-import-company")?.value;
+  const select=$("point-import-branch");
+  if(!select)return;
+  const allowed=branches.filter(branch=>branch.active!==false&&(!companyId||String(branch.company_id)===String(companyId))&&(currentUser.role==="ADMIN"||(currentUser.branchIds||[]).map(String).includes(String(branch.id))));
+  select.innerHTML='<option value="">Selecione</option>'+allowed.map(branch=>`<option value="${branch.id}">${escapeHtml(branch.name)}</option>`).join("");
+}
+
+if($("point-import-company"))$("point-import-company").onchange=fillPointImportBranches;
+
+async function sendPointImport(path){
+  const file=$("point-import-file")?.files?.[0];
+  if(!file)throw new Error("Selecione o PDF do Cartão Ponto.");
+  const form=new FormData();
+  form.append("file",file);
+  form.append("companyId",$("point-import-company").value);
+  form.append("branchId",$("point-import-branch").value);
+  const response=await fetch(path,{method:"POST",headers:{Authorization:`Bearer ${token}`},body:form});
+  const data=await response.json().catch(()=>({error:"Resposta inválida do servidor."}));
+  if(!response.ok)throw new Error(data.error||"Não foi possível processar o cartão de ponto.");
+  return data;
+}
+
+function renderPointImportPreview(data){
+  pointImportPreview=data;
+  $("point-import-preview").hidden=false;
+  const period=data.period?`${formatApiDate(data.period.start)} a ${formatApiDate(data.period.end)}`:"não identificado";
+  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias com 4 marcações</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint">Período: ${period}</p>`;
+  $("point-import-body").innerHTML=data.rows.map(row=>`<tr><td>${escapeHtml(row.registration)}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.systemName||"-")}</td><td>${row.eligibleDays}</td><td>${row.reviewDays}</td><td>${row.nonWorkDays}</td><td><span class="import-result ${row.result}">${escapeHtml(row.result.replaceAll("_"," "))}</span></td></tr>`).join("");
+}
+
+if($("point-import-form"))$("point-import-form").onsubmit=async event=>{
+  event.preventDefault();
+  const button=event.submitter||event.currentTarget.querySelector('button[type="submit"]');
+  try{
+    setButtonLoading(button,true,"Lendo ponto");
+    const data=await sendPointImport("/api/imports/timecard-preview");
+    renderPointImportPreview(data);
+    $("point-import-feedback").className="feedback full success";
+    $("point-import-feedback").textContent="Leitura concluída. Confira os resultados antes de confirmar.";
+  }catch(error){
+    $("point-import-feedback").className="feedback full error";
+    $("point-import-feedback").textContent=error.message;
+    toast(error.message,"error");
+  }finally{setButtonLoading(button,false);}
+};
+
+if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
+  if(!pointImportPreview)return toast("Leia o arquivo antes de confirmar.","warning");
+  if(!confirm(`Confirmar as marcações de ${pointImportPreview.totals.located} colaborador(es) localizado(s)?`))return;
+  const button=$("point-import-confirm");
+  try{
+    setButtonLoading(button,true,"Importando ponto");
+    const data=await sendPointImport("/api/imports/timecard-confirm");
+    $("point-import-feedback").className="feedback full success";
+    $("point-import-feedback").textContent=`Importação concluída: ${data.employees} colaborador(es) e ${data.savedDays} dia(s) salvos.`;
+    toast("Cartão de ponto importado com sucesso.","success");
+    await loadPointImportHistory();
+  }catch(error){toast(error.message,"error");$("point-import-feedback").textContent=error.message;}
+  finally{setButtonLoading(button,false);}
+};
+
+if($("point-import-clear"))$("point-import-clear").onclick=()=>{
+  $("point-import-form").reset();pointImportPreview=null;$("point-import-preview").hidden=true;$("point-import-feedback").textContent="";preparePointImportSelectors();
+};
+
+async function loadPointImportHistory(){
+  const body=$("point-import-history");
+  if(!body)return;
+  try{
+    const rows=await api("/api/imports/timecard-history");
+    body.innerHTML=rows.length?rows.map(row=>`<tr><td>${new Date(row.created_at).toLocaleString("pt-BR")}</td><td>${escapeHtml(row.file_name)}</td><td>${row.details?.period?`${formatApiDate(row.details.period.start)} a ${formatApiDate(row.details.period.end)}`:"-"}</td><td>${escapeHtml(row.branch_name||"-")}</td><td>${row.total_updated}</td><td>${escapeHtml(row.user_name||"-")}</td></tr>`).join(""):'<tr><td colspan="6">Nenhum cartão de ponto importado.</td></tr>';
+  }catch{body.innerHTML='<tr><td colspan="6">Histórico disponível para usuários com permissão de importação.</td></tr>';}
+}
+
+async function applyPointDataToEmployees(month){
+  const rows=await api(`/api/reports/point-days?month=${encodeURIComponent(month)}`);
+  pointDataActive=rows.length>0;
+  const monthStart=`${month}-01`;
+  const nextMonthDate=new Date(`${monthStart}T00:00:00Z`);
+  nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth()+1);
+  const nextMonth=nextMonthDate.toISOString().slice(0,10);
+  const employeesById=new Map(reportEmployees.map(employee=>[String(employee.id),employee]));
+  const byEmployee=new Map();
+  rows.forEach(row=>{
+    const id=String(row.employee_id);
+    if(!byEmployee.has(id))byEmployee.set(id,{schedules:{},states:{}});
+    const target=byEmployee.get(id);
+    const sourceDate=String(row.work_date).slice(0,10);
+    const date=ThermalSchedule.pointReportDate(sourceDate,employeesById.get(id));
+    if(date<monthStart||date>=nextMonth)return;
+    target.states[date]=row.point_state;
+    if(row.eligible_for_automatic_rest&&Array.isArray(row.markings)&&row.markings.length===4)target.schedules[date]=row.markings.join("-");
+  });
+  reportEmployees.forEach(employee=>{
+    const data=byEmployee.get(String(employee.id))||{schedules:{},states:{}};
+    employee.point_schedules=data.schedules;
+    employee.point_states=data.states;
+  });
+  return rows;
 }
 
 function refreshReportBranchOptions(){
@@ -717,7 +822,7 @@ $("report-branch").onchange=()=>{
   $(id).onchange=refreshReportEmployeeList;
 });
 
-$("report-generate").onclick=()=>{
+$("report-generate").onclick=async()=>{
   const month=$("report-month").value;
   const all=$("report-all-employees").checked;
   const summary=$("report-generation-summary");
@@ -729,6 +834,7 @@ $("report-generate").onclick=()=>{
     alert("Selecione o mês de referência.");
     return;
   }
+  try{await applyPointDataToEmployees(month);}catch(error){return alert(`Não foi possível consultar o ponto importado: ${error.message}`);}
 
   let selectedEmployees=[];
   if(all){
@@ -801,7 +907,7 @@ $("report-generate").onclick=()=>{
   const monthDays=reportMonthDays(month);
   const automaticEmployees=reportEmployees.filter(employee=>thermalAutomaticAllowed(employee,thermalRestSettings));
   const thermalPlan=automaticEmployees.length
-    ?ThermalSchedule.buildMonthPlan(automaticEmployees,monthDays,thermalRestSettings)
+    ?ThermalSchedule.buildMonthPlan(automaticEmployees,monthDays,{...thermalRestSettings,usePointData:pointDataActive})
     :new Map();
   let html="";
   let thermalCount=0;

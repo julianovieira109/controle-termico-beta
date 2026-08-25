@@ -90,6 +90,7 @@
 .thermal-scope-list{display:grid;gap:12px;margin-top:10px}
 .thermal-scope-company{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--card);transition:.2s ease}
 .thermal-scope-company.is-company-authorized{border-color:#79c696;background:#f3fbf6}
+.thermal-company-name{margin-bottom:10px;color:var(--ink);font-size:14px;font-weight:900;text-transform:uppercase}
 .thermal-company-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .thermal-company-head>label{display:flex;align-items:center;gap:9px;font-weight:800}
 .thermal-company-status{padding:5px 9px;border-radius:999px;background:#eef2f6;color:#526273;font-size:11px;font-weight:800;white-space:nowrap}
@@ -100,6 +101,10 @@
 .thermal-scope-branches input:disabled+span{opacity:.55}
 .thermal-save-bar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#f8fafc}
 .thermal-save-bar p{margin:3px 0 0}
+.point-import-panel{border-left:4px solid var(--p)}
+.point-import-badge{padding:6px 10px;border-radius:999px;background:#e7f2fb;color:var(--p);font-size:11px;font-weight:900;text-transform:uppercase}
+.point-import-preview{display:grid;gap:14px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.point-import-preview[hidden]{display:none}
 .unknown-code-row{
   display:grid;
   grid-template-columns:minmax(200px,1fr) minmax(220px,320px) auto;
