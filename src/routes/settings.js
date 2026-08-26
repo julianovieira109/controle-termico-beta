@@ -16,8 +16,9 @@ function normalizeThermalRest(value={}){
   const restMinutes=integer("restMinutes",5,60);
   const workMinutes=integer("workMinutes",50,100);
   const minWorkMinutes=Math.min(workMinutes,integer("minWorkMinutes",50,workMinutes));
+  const requestedMode=String(value.mode||"").toUpperCase();
   return {
-    mode:String(value.mode||"").toUpperCase()==="MANUAL"?"MANUAL":"AUTOMATIC",
+    mode:["MANUAL","AUTOMATIC","AUTOMATIC_AND_BLANK"].includes(requestedMode)?requestedMode:"AUTOMATIC",
     scopeMode:String(value.scopeMode||"").toUpperCase()==="SELECTED"?"SELECTED":"ALL",
     authorizedCompanyIds:ids("authorizedCompanyIds"),
     authorizedBranchIds:ids("authorizedBranchIds"),

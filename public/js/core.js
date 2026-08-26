@@ -46,7 +46,7 @@ function configuredSupportWhatsappHref(systemMessage=""){
     `Olá${visualSettings?.supportName?`, ${visualSettings.supportName}`:""}! Preciso de suporte no Controle Térmico.`,
     `Usuário: ${user?.name||"Não identificado"}`,
     `Perfil: ${user?.profileName||(user?.role==="ADMIN"?"Administrador":user?.role||"Não identificado")}`,
-    `Versão: V1.0.8 Beta`,
+    `Versão: V1.0.9 Beta`,
     `Aviso apresentado: ${String(systemMessage||"Não informado").trim()}`,
     "Descreva aqui a alteração necessária: "
   ].join("\n");

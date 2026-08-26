@@ -334,7 +334,7 @@ let pointDataActive=false;
 window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:50,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 
 function thermalAutomaticAllowed(employee,config=window.thermalRestSettings||{}){
-  if(config.mode!=="AUTOMATIC")return false;
+  if(!["AUTOMATIC","AUTOMATIC_AND_BLANK"].includes(config.mode))return false;
   if(config.scopeMode!=="SELECTED")return true;
   const companies=(config.authorizedCompanyIds||[]).map(String);
   const branches=(config.authorizedBranchIds||[]).map(String);
@@ -489,7 +489,7 @@ function dayStatus(employee,d){
   return "";
 }
 
-function buildThermalSheet(employee,month,thermalPlan){
+function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
   const days=reportMonthDays(month);
   const maximumRests=Math.max(0,...days.map(day=>(thermalPlan?.get(`${employee.id}|${day.iso}`)||[]).length));
   const restsPerPage=4;
@@ -501,21 +501,22 @@ function buildThermalSheet(employee,month,thermalPlan){
     const rows=days.map(d=>{
       const pointState=employee.point_states?.[d.iso];
       const allRests=thermalPlan?.get(`${employee.id}|${d.iso}`)||[];
-      let status=pointDataActive
+      let status=blankCopy?dayStatus(employee,d):pointDataActive
         ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":dayStatus(employee,d)||"PONTO NÃO IMPORTADO")
         :dayStatus(employee,d);
-      if(pointDataActive&&pointState==="WORKED"&&!allRests.length)status="JORNADA ABAIXO DO MÍNIMO PARA REPOUSO";
+      if(!blankCopy&&pointDataActive&&pointState==="WORKED"&&!allRests.length)status="JORNADA ABAIXO DO MÍNIMO PARA REPOUSO";
       if(status)return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="${slots*2+1}">${escapeHtml(status)}</td></tr>`;
-      const rests=allRests.slice(offset,offset+slots);
+      const rests=blankCopy?[]:allRests.slice(offset,offset+slots);
       const generated=rests.map(rest=>`<td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.start)}</td><td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("");
       const cells=generated+'<td class="thermal-time-cell"></td><td class="thermal-time-cell"></td>'.repeat(Math.max(0,slots-rests.length));
       return `<tr><td>${d.br}</td><td>${d.weekName}</td>${cells}<td class="signature-cell"></td></tr>`;
     }).join("");
     const restHeaders=Array.from({length:slots},(_,index)=>`<th class="print-head" colspan="2">Repouso ${offset+index+1}</th>`).join("");
     const subHeaders='<th class="print-head">Saída</th><th class="print-head">Retorno</th>'.repeat(slots);
+    const copyLabel=blankCopy?'<div class="thermal-continuation-label">Cópia para preenchimento manual</div>':"";
     const continuation=pageCount>1?`<div class="thermal-continuation-label">${pageIndex===0?"Página principal":`Continuação ${pageIndex+1} de ${pageCount}`} — repousos ${offset+1} a ${offset+slots}</div>`:"";
     return `<section class="report-sheet thermal-report-sheet thermal-rests-${slots} month-days-${days.length}">
-      ${reportHeader(employee,"FICHA DE CONTROLE DE REPOUSO TÉRMICO",month)}${continuation}
+      ${reportHeader(employee,"FICHA DE CONTROLE DE REPOUSO TÉRMICO",month)}${copyLabel}${continuation}
       <table class="report-table thermal-report-table"><colgroup><col class="col-date"><col class="col-day"><col span="${slots*2}" class="col-time"><col class="col-signature"></colgroup>
         <thead><tr><th class="print-head" rowspan="2">Data</th><th class="print-head" rowspan="2">Dia</th>${restHeaders}<th class="print-head print-sign-head" rowspan="2">Assinatura do colaborador</th></tr><tr>${subHeaders}</tr></thead>
         <tbody>${rows}</tbody>
@@ -575,6 +576,8 @@ async function prepareReports(){
   document.documentElement.style.setProperty("--thermal-time-font-size",`${Number(thermalRestSettings.fontSizePt||7.2)}pt`);
   if($("report-thermal-mode-note"))$("report-thermal-mode-note").innerHTML=thermalRestSettings.mode==="MANUAL"
     ?"<strong>Repouso térmico manual:</strong> os campos serão gerados em branco. Altere em Configurações → Repouso automático."
+    :thermalRestSettings.mode==="AUTOMATIC_AND_BLANK"
+      ?"<strong>Automático + cópia manual:</strong> cada ficha automática completa será seguida de uma cópia sem horários e sem ocorrências do ponto, mantendo as folgas configuradas no sistema."
     :thermalRestSettings.scopeMode==="SELECTED"
       ?"<strong>Repouso térmico autorizado por empresa e filial:</strong> somente colaboradores dentro da autorização receberão horários automáticos. Os demais terão os campos em branco. A refeição permanece manual."
       :"<strong>Repouso térmico automático:</strong> os horários serão preenchidos para todas as empresas e filiais conforme as regras de Configurações. A refeição permanece manual.";
@@ -913,6 +916,7 @@ $("report-generate").onclick=async()=>{
   let thermalCount=0;
   let thermalAutomaticCount=0;
   let thermalManualCount=0;
+  let thermalBlankCopyCount=0;
   let mealCount=0;
   for(const employee of selectedEmployees){
     if(selectedEmployees.length>1){
@@ -921,7 +925,13 @@ $("report-generate").onclick=async()=>{
     if(reportPolicyAllows(employee.report_policy,"thermal")){
       html+=buildThermalSheet(employee,month,thermalPlan);
       thermalCount+=1;
-      if(thermalAutomaticAllowed(employee,thermalRestSettings))thermalAutomaticCount+=1;
+      if(thermalAutomaticAllowed(employee,thermalRestSettings)){
+        thermalAutomaticCount+=1;
+        if(thermalRestSettings.mode==="AUTOMATIC_AND_BLANK"){
+          html+=buildThermalSheet(employee,month,thermalPlan,{blankCopy:true});
+          thermalBlankCopyCount+=1;
+        }
+      }
       else thermalManualCount+=1;
     }
     if(reportPolicyAllows(employee.report_policy,"meal")){
@@ -932,7 +942,7 @@ $("report-generate").onclick=async()=>{
   $("report-output").innerHTML=html;
   const skippedCount=policyBlocked.length+blockedEmployees.length+withoutShift.length;
   summary.className="full feedback success";
-  summary.textContent=`Geração concluída: ${thermalCount} ficha(s) de Repouso Térmico (${thermalAutomaticCount} automática(s) e ${thermalManualCount} manual(is)), ${mealCount} ficha(s) de Refeição manual`+
+  summary.textContent=`Geração concluída: ${thermalCount} ficha(s) de Repouso Térmico (${thermalAutomaticCount} automática(s), ${thermalBlankCopyCount} cópia(s) manual(is) e ${thermalManualCount} manual(is)), ${mealCount} ficha(s) de Refeição manual`+
     `${skippedCount?` e ${skippedCount} colaborador(es) sem ficha`:""}.`;
   showReportSkippedDetails(skippedEmployees);
 };
