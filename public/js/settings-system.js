@@ -1166,6 +1166,8 @@ async function loadThermalRestSettings(){
   renderThermalAuthorization(config);
   document.documentElement.style.setProperty("--thermal-time-font-size",`${config.fontSizePt}pt`);
   renderThermalShiftList(config);
+  if(typeof preparePointImportSelectors==="function")preparePointImportSelectors();
+  if(typeof loadPointImportHistory==="function")await loadPointImportHistory();
 }
 
 function renderThermalAuthorization(config=window.thermalRestSettings||{}){
