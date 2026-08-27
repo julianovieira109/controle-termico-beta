@@ -511,7 +511,7 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
     const rows=days.map(d=>{
       const pointState=employee.point_states?.[d.iso];
       const allRests=(thermalPlan?.get(`${employee.id}|${d.iso}`)||[]).slice(0,4);
-      let status=blankCopy?dayStatus(employee,d):pointDataActive
+      let status=pointDataActive
         ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":dayStatus(employee,d)||"PONTO NÃO IMPORTADO")
         :dayStatus(employee,d);
       if(!blankCopy&&pointDataActive&&pointState==="WORKED"&&!allRests.length)status="JORNADA ABAIXO DO MÍNIMO PARA REPOUSO";
