@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.15-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.15-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.15-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.15-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.15-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.15-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.16-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.16-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.16-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.16-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.16-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.16-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -106,7 +106,7 @@
 
         <div class="login-card-footer">
           <span>Controle Térmico</span>
-          <span>Versão 1.0.15 Beta</span>
+          <span>Versão 1.0.16 Beta</span>
         </div>
       </form>
 
@@ -255,7 +255,7 @@
       <span class="sidebar-nav-heading">Ajuda e suporte</span>
       <button class="nav-btn nav-btn-support" data-view="manual" title="Manual do Sistema"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></svg></span><span class="nav-label">Manual do Sistema</span></button>
     </nav>
-    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.15 Beta</small></div>
+    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.16 Beta</small></div>
   </aside>
 
   <main class="main">
@@ -1656,7 +1656,7 @@
           <form id="thermal-rest-form" class="thermal-settings-form">
             <section class="thermal-config-section">
               <div class="thermal-section-head"><span>1</span><div><strong>Geração dos repousos</strong><p class="hint">Defina como e quando os campos serão preenchidos.</p></div></div>
-              <div class="info-box full"><strong>Regra do Cartão de Ponto Senior:</strong> a jornada normal gera até 3 repousos de 20 minutos, distribuídos para que nenhum trecho contínuo ultrapasse 100 minutos. A refeição encerra o bloco anterior e reinicia a contagem, sem apagar repouso já devido. Saídas antecipadas podem gerar menos repousos; horas extras podem liberar somente o 4º. Nenhum horário ultrapassa a saída real e não haverá continuação.</div>
+              <div class="info-box full"><strong>Regra do Cartão de Ponto Senior:</strong> a jornada normal gera até 3 repousos de 20 minutos, distribuídos para que nenhum trecho contínuo ultrapasse 100 minutos. A refeição encerra o bloco anterior e reinicia a contagem. Duas marcações acompanhadas de saída antecipada/BH negativo são tratadas como jornada parcial válida; duas marcações sem confirmação permanecem para revisão. Horas extras podem liberar somente o 4º repouso.</div>
               <div class="thermal-fields">
                 <label>Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="AUTOMATIC_AND_BLANK">Automático + cópia manual</option><option value="MANUAL">Manual — campos em branco</option></select><small>No modo combinado, a ficha automática completa será seguida de uma cópia em branco que mantém somente as folgas configuradas no sistema.</small></label>
                 <input id="thermal-rest-count" type="hidden" value="3">
@@ -2266,12 +2266,12 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.15-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.15-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.15-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.15-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.15-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.15-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.15-beta.1"></script>
+  <script src="/js/core.js?v=1.0.16-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.0.16-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.0.16-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.0.16-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.16-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.0.16-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.0.16-beta.1"></script>
 </body>
 </html>

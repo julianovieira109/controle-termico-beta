@@ -714,7 +714,7 @@ async function applyPointDataToEmployees(month){
     const date=ThermalSchedule.pointReportDate(sourceDate,employeesById.get(id));
     if(date<monthStart||date>=nextMonth)return;
     target.states[date]=row.point_state;
-    if(row.eligible_for_automatic_rest&&Array.isArray(row.markings)&&row.markings.length===4)target.schedules[date]=row.markings.join("-");
+    if(row.eligible_for_automatic_rest&&Array.isArray(row.markings)&&[2,4].includes(row.markings.length))target.schedules[date]=row.markings.join("-");
   });
   reportEmployees.forEach(employee=>{
     const data=byEmployee.get(String(employee.id))||{schedules:{},states:{}};

@@ -163,18 +163,32 @@
     return Math.max(0,schedule.breakStart-schedule.start)+Math.max(0,schedule.end-schedule.breakEnd);
   }
 
+  function parsePointSchedule(description){
+    const times=String(description||"").match(/(?:[01]?\d|2[0-3]):[0-5]\d/g)||[];
+    if(times.length===2){
+      const start=clockToMinutes(times[0]);
+      let end=clockToMinutes(times[1]);
+      if(start===null||end===null)return null;
+      while(end<=start)end+=1440;
+      return {start,breakStart:end,breakEnd:end,end,partial:true};
+    }
+    return parseShiftSchedule(description);
+  }
+
   function dynamicPointRests(description,config={},employeeIndex=0,daySerial=0,attempt=0){
-    const schedule=parseShiftSchedule(description);
+    const schedule=parsePointSchedule(description);
     if(!schedule)return [];
     // Regra legal adotada: 20 minutos de repouso somente depois de
     // 100 minutos completos de trabalho contínuo. A saída real do ponto
     // delimita o período, inclusive quando o colaborador sai antecipadamente.
     const workInterval=100;
     const duration=20;
-    const periods=[
-      {start:schedule.start,end:schedule.breakStart},
-      {start:schedule.breakEnd,end:schedule.end}
-    ];
+    const periods=schedule.partial
+      ?[{start:schedule.start,end:schedule.end}]
+      :[
+        {start:schedule.start,end:schedule.breakStart},
+        {start:schedule.breakEnd,end:schedule.end}
+      ];
     const rests=[];
     periods.forEach((period,periodIndex)=>{
       const elapsed=Math.max(0,period.end-period.start);
@@ -214,7 +228,7 @@
         if(config.usePointData===true){
           const description=employee.point_schedules?.[day.iso];
           if(!description)return;
-          const pointSchedule=parseShiftSchedule(description);
+          const pointSchedule=parsePointSchedule(description);
           const registeredSchedule=parseShiftSchedule(employee.shift_description);
           const overtimeMinutes=registeredSchedule
             ?Math.max(0,workedSpanMinutes(pointSchedule)-workedSpanMinutes(registeredSchedule))

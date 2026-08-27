@@ -61,10 +61,12 @@ function parseDayLine(line,period){
     .sort((a,b)=>a-b)[0];
   const markingPart=firstEventIndex===undefined?payload:payload.slice(0,firstEventIndex);
   const markings=markingPart.match(/(?:[01]\d|2[0-3]):[0-5]\d/g)||[];
+  const occurrence=payload.replace(markingPart,"").trim()||null;
+  const confirmedPartial=markings.length===2&&/(?:BH\s*\(-\)|SA[ÍI]DA\s+ANTECIPADA)/i.test(occurrence||"");
   let state="WORKED";
   if(statusMatch)state=statusMatch[0];
   else if(markings.length===0)state="NO_MARKINGS";
-  else if(markings.length!==4)state="REVIEW";
+  else if(markings.length!==4&&!confirmedPartial)state="REVIEW";
 
   return {
     date:isoDate(head[1],period.start,period.end),
@@ -72,8 +74,8 @@ function parseDayLine(line,period){
     scheduleCode,
     markings:markings.slice(0,8),
     state,
-    occurrence:payload.replace(markingPart,"").trim()||null,
-    eligibleForAutomaticRest:state==="WORKED"&&markings.length===4
+    occurrence,
+    eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial)
   };
 }
 
