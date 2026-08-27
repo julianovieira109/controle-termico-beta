@@ -158,13 +158,19 @@
     return rests.map(rest=>`${formatMinutes(rest.start)}-${formatMinutes(rest.end)}`).join("|");
   }
 
+  function workedSpanMinutes(schedule){
+    if(!schedule)return 0;
+    return Math.max(0,schedule.breakStart-schedule.start)+Math.max(0,schedule.end-schedule.breakEnd);
+  }
+
   function dynamicPointRests(description,config={},employeeIndex=0,daySerial=0,attempt=0){
     const schedule=parseShiftSchedule(description);
     if(!schedule)return [];
-    const minimum=Math.max(30,Math.min(100,Number(config.minWorkMinutes)||50));
-    const maximum=Math.max(minimum,Math.min(100,Number(config.workMinutes)||100));
+    // Regra legal adotada: 20 minutos de repouso somente depois de
+    // 100 minutos completos de trabalho contínuo. A saída real do ponto
+    // delimita o período, inclusive quando o colaborador sai antecipadamente.
+    const workInterval=100;
     const duration=20;
-    const range=maximum-minimum+1;
     const periods=[
       {start:schedule.start,end:schedule.breakStart},
       {start:schedule.breakEnd,end:schedule.end}
@@ -173,14 +179,10 @@
     periods.forEach((period,periodIndex)=>{
       let cursor=period.start;
       let restIndex=0;
-      while(cursor+minimum+duration<=period.end&&restIndex<24){
-        const maximumThatFits=Math.min(maximum,period.end-cursor-duration);
-        const localRange=Math.max(1,maximumThatFits-minimum+1);
-        const seed=(daySerial+1)*37+(employeeIndex+1)*53+(periodIndex+1)*71+(restIndex+1)*89+(attempt+1)*97;
-        const interval=minimum+(((seed%Math.min(range,localRange))+localRange)%localRange);
-        const start=cursor+interval;
+      while(cursor+workInterval+duration<=period.end&&restIndex<24){
+        const start=cursor+workInterval;
         const end=start+duration;
-        rests.push({start,end,periodStart:period.start,periodEnd:period.end,interval,duration});
+        rests.push({start,end,periodStart:period.start,periodEnd:period.end,interval:workInterval,duration});
         cursor=end;
         restIndex++;
       }
@@ -206,20 +208,11 @@
         if(config.usePointData===true){
           const description=employee.point_schedules?.[day.iso];
           if(!description)return;
-          let selected=null;
-          for(let attempt=0;attempt<1000;attempt++){
-            const candidate=dynamicPointRests(description,config,employeeIndex,daySerial,attempt);
-            if(!candidate.length)break;
-            const key=scheduleKey(candidate);
-            const schedules=employeeSchedules.get(String(employee.id))||new Set();
-            if(!used.has(key)&&!schedules.has(key)){
-              used.add(key);
-              schedules.add(key);
-              employeeSchedules.set(String(employee.id),schedules);
-              selected=candidate;
-              break;
-            }
-          }
+          const pointSchedule=parseShiftSchedule(description);
+          const registeredSchedule=parseShiftSchedule(employee.shift_description);
+          const overtimeMinutes=Math.max(0,workedSpanMinutes(pointSchedule)-workedSpanMinutes(registeredSchedule));
+          const maximumRests=3+Math.floor(overtimeMinutes/100);
+          const selected=dynamicPointRests(description,config,employeeIndex,daySerial,0).slice(0,maximumRests);
           if(selected)plan.set(`${employee.id}|${day.iso}`,selected);
           return;
         }

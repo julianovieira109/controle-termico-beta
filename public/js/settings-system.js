@@ -1155,7 +1155,7 @@ async function loadThermalRestSettings(){
   const config=await api("/api/settings/thermal-rest");
   window.thermalRestSettings=config;
   $("thermal-rest-mode").value=config.mode;
-  $("thermal-min-work-minutes").value=config.minWorkMinutes??50;
+  $("thermal-min-work-minutes").value=100;
   $("thermal-work-minutes").value=config.workMinutes;
   $("thermal-duration-minutes").value=config.restMinutes;
   $("thermal-max-duration-minutes").value=config.maxRestMinutes;
@@ -1258,8 +1258,8 @@ if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
     scopeMode:$("thermal-scope-mode").value,
     authorizedCompanyIds:[],
     authorizedBranchIds:[...document.querySelectorAll("[data-thermal-branch]:checked")].map(input=>input.value),
-    minWorkMinutes:Number($("thermal-min-work-minutes").value),
-    workMinutes:Number($("thermal-work-minutes").value),
+    minWorkMinutes:100,
+    workMinutes:100,
     restMinutes:Number($("thermal-duration-minutes").value),
     maxRestMinutes:Number($("thermal-max-duration-minutes").value),
     variationMinutes:Number($("thermal-variation-minutes").value),

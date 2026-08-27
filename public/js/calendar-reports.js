@@ -331,7 +331,7 @@ document.querySelectorAll(".calendar-tab").forEach(btn=>{
 let reportEmployees=[];
 let pointImportPreview=null;
 let pointDataActive=false;
-window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:50,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:100,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 
 function thermalAutomaticAllowed(employee,config=window.thermalRestSettings||{}){
   if(!["AUTOMATIC","AUTOMATIC_AND_BLANK"].includes(config.mode))return false;

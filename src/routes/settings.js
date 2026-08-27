@@ -9,13 +9,13 @@ function normalizeSettingValue(value){
   return value;
 }
 
-const thermalRestDefaults={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:50,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+const thermalRestDefaults={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:100,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 function normalizeThermalRest(value={}){
   const integer=(key,min,max)=>Math.max(min,Math.min(max,Number.parseInt(value[key],10)||thermalRestDefaults[key]));
   const ids=key=>[...new Set((Array.isArray(value[key])?value[key]:[]).map(item=>String(item||"").trim()).filter(Boolean))].slice(0,500);
   const restMinutes=integer("restMinutes",5,60);
-  const workMinutes=integer("workMinutes",50,100);
-  const minWorkMinutes=Math.min(workMinutes,integer("minWorkMinutes",50,workMinutes));
+  const workMinutes=100;
+  const minWorkMinutes=100;
   const requestedMode=String(value.mode||"").toUpperCase();
   return {
     mode:["MANUAL","AUTOMATIC","AUTOMATIC_AND_BLANK"].includes(requestedMode)?requestedMode:"AUTOMATIC",
