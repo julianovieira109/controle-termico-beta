@@ -394,10 +394,18 @@ function showReportSkippedDetails(items=[]){
   if(!panel)return;
   panel.innerHTML="";
   panel.hidden=!items.length;
+  panel.open=false;
   if(!items.length)return;
 
+  const summary=document.createElement("summary");
   const title=document.createElement("strong");
   title.textContent=`Colaboradores sem ficha (${items.length})`;
+  const action=document.createElement("span");
+  action.textContent="Ver detalhes";
+  panel.ontoggle=()=>{action.textContent=panel.open?"Ocultar detalhes":"Ver detalhes";};
+  summary.append(title,action);
+  const content=document.createElement("div");
+  content.className="report-skipped-content";
   const hint=document.createElement("p");
   hint.textContent="Confira o motivo abaixo para corrigir o cadastro ou a regra de relatórios.";
   const list=document.createElement("ul");
@@ -420,7 +428,8 @@ function showReportSkippedDetails(items=[]){
       list.appendChild(row);
     });
 
-  panel.append(title,hint,list);
+  content.append(hint,list);
+  panel.append(summary,content);
 }
 
 function reportHeader(employee,title,month){
