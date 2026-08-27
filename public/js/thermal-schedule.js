@@ -177,14 +177,20 @@
     ];
     const rests=[];
     periods.forEach((period,periodIndex)=>{
+      const elapsed=Math.max(0,period.end-period.start);
+      const requiredRests=Math.max(0,Math.ceil((elapsed-workInterval)/(workInterval+duration)));
+      const workableMinutes=Math.max(0,elapsed-requiredRests*duration);
+      const workSegments=requiredRests+1;
+      const baseSegment=Math.floor(workableMinutes/workSegments);
+      const extraSegmentMinutes=workableMinutes%workSegments;
       let cursor=period.start;
-      let restIndex=0;
-      while(cursor+workInterval+duration<=period.end&&restIndex<24){
-        const start=cursor+workInterval;
+      for(let restIndex=0;restIndex<requiredRests&&restIndex<24;restIndex++){
+        const workBeforeRest=baseSegment+(restIndex<extraSegmentMinutes?1:0);
+        const start=cursor+workBeforeRest;
         const end=start+duration;
-        rests.push({start,end,periodStart:period.start,periodEnd:period.end,interval:workInterval,duration});
+        if(end>period.end)break;
+        rests.push({start,end,periodStart:period.start,periodEnd:period.end,interval:workBeforeRest,duration});
         cursor=end;
-        restIndex++;
       }
     });
     return rests;
@@ -210,7 +216,9 @@
           if(!description)return;
           const pointSchedule=parseShiftSchedule(description);
           const registeredSchedule=parseShiftSchedule(employee.shift_description);
-          const overtimeMinutes=Math.max(0,workedSpanMinutes(pointSchedule)-workedSpanMinutes(registeredSchedule));
+          const overtimeMinutes=registeredSchedule
+            ?Math.max(0,workedSpanMinutes(pointSchedule)-workedSpanMinutes(registeredSchedule))
+            :0;
           const maximumRests=Math.min(4,3+Math.floor(overtimeMinutes/100));
           const selected=dynamicPointRests(description,config,employeeIndex,daySerial,0).slice(0,maximumRests);
           if(selected)plan.set(`${employee.id}|${day.iso}`,selected);
