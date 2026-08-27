@@ -536,8 +536,12 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
 }
 
 function buildMealSheet(employee,month){
+  const pointLabels={DSR:"DSR",FOLGA:"FOLGA / SEM JORNADA",FERIAS:"FÉRIAS",FALTA:"FALTA",ATESTADO:"ATESTADO",LICENCA:"LICENÇA",SUSPENSAO:"SUSPENSÃO",AFASTAMENTO:"AFASTAMENTO",COMPENSADO:"COMPENSADO",CURSO:"CURSO",OBITO:"ÓBITO FAMILIAR",REVIEW:"REVISAR MARCAÇÕES DO PONTO",NO_MARKINGS:"SEM MARCAÇÕES"};
   const rows=reportMonthDays(month).map(d=>{
-    const status=dayStatus(employee,d);
+    const pointState=employee.point_states?.[d.iso];
+    const status=pointDataActive
+      ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":dayStatus(employee,d)||"PONTO NÃO IMPORTADO")
+      :dayStatus(employee,d);
 
     if(status){
       return `<tr class="non-work-row">
