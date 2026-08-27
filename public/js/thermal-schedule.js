@@ -211,7 +211,7 @@
           const pointSchedule=parseShiftSchedule(description);
           const registeredSchedule=parseShiftSchedule(employee.shift_description);
           const overtimeMinutes=Math.max(0,workedSpanMinutes(pointSchedule)-workedSpanMinutes(registeredSchedule));
-          const maximumRests=3+Math.floor(overtimeMinutes/100);
+          const maximumRests=Math.min(4,3+Math.floor(overtimeMinutes/100));
           const selected=dynamicPointRests(description,config,employeeIndex,daySerial,0).slice(0,maximumRests);
           if(selected)plan.set(`${employee.id}|${day.iso}`,selected);
           return;

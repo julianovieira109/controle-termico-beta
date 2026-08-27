@@ -501,16 +501,16 @@ function dayStatus(employee,d){
 
 function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
   const days=reportMonthDays(month);
-  const maximumRests=Math.max(0,...days.map(day=>(thermalPlan?.get(`${employee.id}|${day.iso}`)||[]).length));
+  const maximumRests=Math.min(4,Math.max(0,...days.map(day=>(thermalPlan?.get(`${employee.id}|${day.iso}`)||[]).length)));
   const restsPerPage=4;
-  const pageCount=Math.max(1,Math.ceil(maximumRests/restsPerPage));
+  const pageCount=1;
   const pointLabels={DSR:"DSR",FOLGA:"FOLGA / SEM JORNADA",FERIAS:"FÉRIAS",FALTA:"FALTA",ATESTADO:"ATESTADO",LICENCA:"LICENÇA",SUSPENSAO:"SUSPENSÃO",AFASTAMENTO:"AFASTAMENTO",COMPENSADO:"COMPENSADO",CURSO:"CURSO",OBITO:"ÓBITO FAMILIAR",REVIEW:"REVISAR MARCAÇÕES DO PONTO",NO_MARKINGS:"SEM MARCAÇÕES"};
   return Array.from({length:pageCount},(_,pageIndex)=>{
     const offset=pageIndex*restsPerPage;
     const slots=pageIndex===pageCount-1&&maximumRests>offset?Math.min(restsPerPage,maximumRests-offset):restsPerPage;
     const rows=days.map(d=>{
       const pointState=employee.point_states?.[d.iso];
-      const allRests=thermalPlan?.get(`${employee.id}|${d.iso}`)||[];
+      const allRests=(thermalPlan?.get(`${employee.id}|${d.iso}`)||[]).slice(0,4);
       let status=blankCopy?dayStatus(employee,d):pointDataActive
         ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":dayStatus(employee,d)||"PONTO NÃO IMPORTADO")
         :dayStatus(employee,d);
