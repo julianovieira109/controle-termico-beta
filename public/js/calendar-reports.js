@@ -331,6 +331,7 @@ document.querySelectorAll(".calendar-tab").forEach(btn=>{
 let reportEmployees=[];
 let pointImportPreview=null;
 let pointDataActive=false;
+let pointCompetenceBranches=new Set();
 window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:100,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
 
 function thermalAutomaticAllowed(employee,config=window.thermalRestSettings||{}){
@@ -693,8 +694,12 @@ async function loadPointImportHistory(){
 }
 
 async function applyPointDataToEmployees(month){
-  const rows=await api(`/api/reports/point-days?month=${encodeURIComponent(month)}`);
-  pointDataActive=rows.length>0;
+  const [rows,competence]=await Promise.all([
+    api(`/api/reports/point-days?month=${encodeURIComponent(month)}`),
+    api(`/api/reports/point-competence?month=${encodeURIComponent(month)}`)
+  ]);
+  pointCompetenceBranches=new Set((competence.imports||[]).map(item=>String(item.branch_id)));
+  pointDataActive=pointCompetenceBranches.size>0&&rows.length>0;
   const monthStart=`${month}-01`;
   const nextMonthDate=new Date(`${monthStart}T00:00:00Z`);
   nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth()+1);
@@ -916,8 +921,32 @@ $("report-generate").onclick=async()=>{
     return;
   }
 
+  const automaticSelected=selectedEmployees.filter(employee=>
+    reportPolicyAllows(employee.report_policy,"thermal")&&thermalAutomaticAllowed(employee,thermalRestSettings)
+  );
+  if(automaticSelected.length){
+    const missingBranches=[...new Map(
+      automaticSelected
+        .filter(employee=>!pointCompetenceBranches.has(String(employee.branch_id)))
+        .map(employee=>[String(employee.branch_id),employee.branch_name||"Filial não identificada"])
+    ).values()];
+    if(missingBranches.length){
+      const competence=reportMonthLabel(month);
+      summary.className="full feedback error";
+      summary.textContent=`Relatório automático bloqueado: importe e confirme o Cartão de Ponto da competência ${competence}.`;
+      alert(
+        `RELATÓRIO AUTOMÁTICO BLOQUEADO\n\n`+
+        `Não existe Cartão de Ponto confirmado da competência ${competence} para: ${missingBranches.join(", ")}.\n\n`+
+        `Importe o PDF correto em Configurações → Repouso automático ou altere o modo para Manual.`
+      );
+      return;
+    }
+  }
+
   const monthDays=reportMonthDays(month);
-  const automaticEmployees=reportEmployees.filter(employee=>thermalAutomaticAllowed(employee,thermalRestSettings));
+  const automaticEmployees=reportEmployees.filter(employee=>
+    thermalAutomaticAllowed(employee,thermalRestSettings)&&pointCompetenceBranches.has(String(employee.branch_id))
+  );
   const thermalPlan=automaticEmployees.length
     ?ThermalSchedule.buildMonthPlan(automaticEmployees,monthDays,{...thermalRestSettings,usePointData:pointDataActive})
     :new Map();

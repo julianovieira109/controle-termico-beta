@@ -60,4 +60,28 @@ router.get("/point-days",async(req,res,next)=>{
     res.json(rows);
   }catch(error){next(error);}
 });
+
+router.get("/point-competence",async(req,res,next)=>{
+  try{
+    const month=String(req.query.month||"");
+    if(!/^\d{4}-\d{2}$/.test(month))return res.status(400).json({error:"Informe o mês no formato AAAA-MM."});
+    const params=[month];
+    let scope="";
+    if(!req.scope.isAdmin){
+      params.push(req.scope.companyId,req.scope.branchIds);
+      scope=" AND i.company_id=$2 AND i.branch_id=ANY($3::uuid[])";
+    }
+    const {rows}=await pool.query(`
+      SELECT DISTINCT i.company_id,i.branch_id,i.file_name,i.created_at,
+             i.details->'period'->>'start' period_start,
+             i.details->'period'->>'end' period_end
+      FROM employee_imports i
+      WHERE i.import_type='PONTO_SENIOR'
+        AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
+        ${scope}
+      ORDER BY i.created_at DESC
+    `,params);
+    res.json({month,imports:rows});
+  }catch(error){next(error);}
+});
 module.exports=router;
