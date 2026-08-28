@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.18-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.18-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.18-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.18-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.18-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.18-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.19-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.19-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.19-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.19-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.19-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.19-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -106,7 +106,7 @@
 
         <div class="login-card-footer">
           <span>Controle Térmico</span>
-          <span>Versão 1.0.18 Beta</span>
+          <span>Versão 1.0.19 Beta</span>
         </div>
       </form>
 
@@ -255,7 +255,7 @@
       <span class="sidebar-nav-heading">Ajuda e suporte</span>
       <button class="nav-btn nav-btn-support" data-view="manual" title="Manual do Sistema"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></svg></span><span class="nav-label">Manual do Sistema</span></button>
     </nav>
-    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.18 Beta</small></div>
+    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.19 Beta</small></div>
   </aside>
 
   <main class="main">
@@ -1651,60 +1651,47 @@
       </div>
 
       <div id="settings-thermal-rest" class="admin-only master-only" hidden>
-        <div class="panel">
-          <div class="panel-head"><div><h3>Regra do repouso térmico</h3><p class="hint">Escolha o preenchimento automático ou manual e ajuste os parâmetros usados nas próximas fichas.</p></div></div>
+        <div class="panel thermal-command-panel">
+          <div class="panel-head"><div><h3>Repouso automático</h3><p class="hint">Configure a geração das fichas e acompanhe o Cartão de Ponto Senior em um único fluxo.</p></div><span class="thermal-status-badge">Configuração principal</span></div>
+          <div class="thermal-overview" aria-label="Resumo das regras atuais">
+            <div><span>Jornada normal</span><strong>Até 3 repousos</strong><small>Conforme o ponto real</small></div>
+            <div><span>Ciclo máximo</span><strong>100 minutos</strong><small>20 minutos de repouso</small></div>
+            <div><span>Hora extra</span><strong>Até o 4º repouso</strong><small>Sem página adicional</small></div>
+          </div>
           <form id="thermal-rest-form" class="thermal-settings-form">
             <section class="thermal-config-section">
-              <div class="thermal-section-head"><span>1</span><div><strong>Geração dos repousos</strong><p class="hint">Defina como e quando os campos serão preenchidos.</p></div></div>
-              <div class="info-box full"><strong>Regra do Cartão de Ponto Senior:</strong> a jornada normal gera até 3 repousos de 20 minutos, distribuídos para que nenhum trecho contínuo ultrapasse 100 minutos. A refeição encerra o bloco anterior e reinicia a contagem. Duas marcações acompanhadas de saída antecipada/BH negativo são tratadas como jornada parcial válida; duas marcações sem confirmação permanecem para revisão. Horas extras podem liberar somente o 4º repouso.</div>
-              <div class="thermal-fields">
-                <label>Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="AUTOMATIC_AND_BLANK">Automático + cópia manual</option><option value="MANUAL">Manual — campos em branco</option></select><small>No modo combinado, a ficha automática será seguida de uma cópia com os horários em branco, mantendo DSR, faltas, férias, atestados, folgas e demais justificativas.</small></label>
-                <input id="thermal-rest-count" type="hidden" value="3">
-                <label>Ciclo de trabalho contínuo (minutos)<input id="thermal-min-work-minutes" type="number" value="100" readonly><small>O repouso somente é gerado depois de 100 minutos completos trabalhados.</small></label>
-                <label>Limite antes do repouso (minutos)<input id="thermal-work-minutes" type="number" value="100" readonly><small>Depois do repouso ou da refeição, a contagem de 100 minutos reinicia.</small></label>
-              </div>
+              <div class="thermal-section-head"><span>1</span><div><strong>Como gerar as fichas</strong><p class="hint">Escolha apenas o formato de saída. As regras de jornada são aplicadas automaticamente.</p></div></div>
+              <label class="thermal-mode-field">Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="AUTOMATIC_AND_BLANK">Automático + cópia manual</option><option value="MANUAL">Manual — campos em branco</option></select><small>No modo combinado, a ordem será: ficha automática, cópia sem horários e ficha de refeição. Todas mantêm DSR, faltas, férias, atestados, folgas e demais justificativas.</small></label>
+              <div class="thermal-rule-note"><strong>Leitura segura do ponto</strong><p>A refeição reinicia a contagem. Saída antecipada confirmada é tratada como jornada parcial. Marcações incompletas continuam sinalizadas para revisão.</p></div>
+              <input id="thermal-rest-count" type="hidden" value="3">
+              <input id="thermal-min-work-minutes" type="hidden" value="100">
+              <input id="thermal-work-minutes" type="hidden" value="100">
+              <input id="thermal-duration-minutes" type="hidden" value="20">
+              <input id="thermal-max-duration-minutes" type="hidden" value="25">
+              <input id="thermal-variation-minutes" type="hidden" value="15">
+              <input id="thermal-cycle-days" type="hidden" value="31">
             </section>
-            <section class="thermal-config-section">
-              <div class="thermal-section-head"><span>2</span><div><strong>Duração e variação</strong><p class="hint">Estes parâmetros continuam disponíveis para fichas geradas sem dados importados do Cartão de Ponto.</p></div></div>
-              <div class="thermal-fields">
-                <label>Duração mínima (minutos)<input id="thermal-duration-minutes" type="number" min="5" max="60" value="20"></label>
-                <label>Duração máxima (minutos)<input id="thermal-max-duration-minutes" type="number" min="5" max="60" value="25"><small>Faixa segura recomendada: de 20 a 25 minutos.</small></label>
-                <label>Variação para mais ou menos (minutos)<input id="thermal-variation-minutes" type="number" min="0" max="30" value="15"></label>
-                <label>Dias sem repetir a combinação<input id="thermal-cycle-days" type="number" min="1" max="31" value="31"></label>
+            <details class="thermal-settings-details">
+              <summary><span><strong>Impressão da ficha</strong><small>Ajustar tamanho dos horários</small></span></summary>
+              <div class="thermal-details-content"><label>Tamanho da fonte dos horários (pt)<input id="thermal-font-size" type="number" min="6" max="10" step="0.1" value="7.2"><small>Recomendado: 7,2 pt. Faixa disponível: 6,0 a 10,0 pt.</small></label></div>
+            </details>
+            <details class="thermal-settings-details thermal-authorization-card">
+              <summary><span><strong>Empresas e filiais autorizadas</strong><small>Definir onde o modo automático será utilizado</small></span></summary>
+              <div class="thermal-details-content">
+                <label>Aplicação da regra<select id="thermal-scope-mode"><option value="ALL">Todas as empresas e filiais</option><option value="SELECTED">Somente empresas e filiais selecionadas</option></select></label>
+                <div id="thermal-scope-selection" hidden><p class="hint">Marque somente as filiais que poderão utilizar a geração automática.</p><div id="thermal-scope-summary" class="thermal-scope-summary"></div><div id="thermal-scope-list" class="thermal-scope-list"></div></div>
               </div>
-            </section>
-            <section class="thermal-config-section">
-              <div class="thermal-section-head"><span>3</span><div><strong>Impressão da ficha</strong><p class="hint">Ajuste somente a leitura dos horários no relatório.</p></div></div>
-              <div class="thermal-fields thermal-fields-single">
-                <label>Tamanho da fonte dos horários (pt)<input id="thermal-font-size" type="number" min="6" max="10" step="0.1" value="7.2"><small>Recomendado: 7,2 pt. A faixa segura é de 6,0 a 10,0 pt.</small></label>
-              </div>
-            </section>
-            <section class="thermal-config-section thermal-authorization-card">
-              <div class="thermal-section-head"><span>4</span><div>
-                <strong>Autorização por empresa e filial</strong>
-                <p class="hint">Defina onde o preenchimento automático poderá ser utilizado. Fora da autorização, a ficha térmica será gerada em branco.</p>
-              </div></div>
-              <label>Aplicação da regra
-                <select id="thermal-scope-mode">
-                  <option value="ALL">Todas as empresas e filiais</option>
-                  <option value="SELECTED">Somente empresas e filiais selecionadas</option>
-                </select>
-              </label>
-              <div id="thermal-scope-selection" hidden>
-                <p class="hint">Use “Selecionar todas” somente quando quiser autorizar todas as filiais exibidas. Para autorizar algumas, marque apenas as filiais desejadas.</p>
-                <div id="thermal-scope-summary" class="thermal-scope-summary"></div>
-                <div id="thermal-scope-list" class="thermal-scope-list"></div>
-              </div>
-            </section>
+            </details>
             <div class="thermal-save-bar"><div><strong>Configuração do repouso térmico</strong><p class="hint">As alterações serão usadas nas próximas fichas geradas.</p></div><button class="primary" type="submit">Salvar regras</button></div>
             <p id="thermal-rest-feedback" class="feedback"></p>
           </form>
         </div>
         <div class="panel no-print point-import-panel" data-permission="imports.manage">
           <div class="panel-head">
-            <div><h3>Importar Cartão de Ponto Senior</h3><p class="hint">Carregue o ponto real usado pelo relatório automático, confira as matrículas e confirme a importação.</p></div>
+            <div><h3>Cartão de Ponto Senior</h3><p class="hint">Importe a competência que será usada para gerar os relatórios automáticos.</p></div>
             <span class="point-import-badge">Relatório automático</span>
           </div>
+          <div class="point-import-steps"><span><b>1</b> Selecione</span><span><b>2</b> Confira</span><span><b>3</b> Confirme</span></div>
           <form id="point-import-form" class="form-grid">
             <label>Empresa<select id="point-import-company" required></select></label>
             <label>Filial<select id="point-import-branch" required></select></label>
@@ -1719,10 +1706,10 @@
           </div>
           <details class="import-history-details"><summary>Histórico de cartões de ponto importados</summary><div class="table-wrap"><table><thead><tr><th>Data</th><th>Arquivo</th><th>Período</th><th>Filial</th><th>Localizados</th><th>Usuário</th></tr></thead><tbody id="point-import-history"></tbody></table></div></details>
         </div>
-        <div class="panel">
-          <div class="panel-head"><div><h3>Turnos cadastrados</h3><p class="hint">A prévia apresenta o repouso-base mínimo. Nos relatórios, cada duração varia automaticamente entre o mínimo e o máximo configurados.</p></div></div>
+        <details class="panel thermal-reference-details">
+          <summary><span><strong>Consultar turnos cadastrados</strong><small>Visualizar códigos, horários e repousos-base</small></span></summary>
           <div class="table-wrap"><table><thead><tr><th>Código</th><th>Turno</th><th>Horário</th><th>Repousos-base</th><th>Situação</th></tr></thead><tbody id="thermal-shifts-list"></tbody></table></div>
-        </div>
+        </details>
       </div>
 
       <div id="settings-job-reports" class="admin-only" hidden>
@@ -2266,12 +2253,12 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.18-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.18-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.18-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.18-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.18-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.18-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.18-beta.1"></script>
+  <script src="/js/core.js?v=1.0.19-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.0.19-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.0.19-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.0.19-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.19-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.0.19-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.0.19-beta.1"></script>
 </body>
 </html>

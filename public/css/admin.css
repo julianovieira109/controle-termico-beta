@@ -105,6 +105,31 @@
 .point-import-badge{padding:6px 10px;border-radius:999px;background:#e7f2fb;color:var(--p);font-size:11px;font-weight:900;text-transform:uppercase}
 .point-import-preview{display:grid;gap:14px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
 .point-import-preview[hidden]{display:none}
+.thermal-command-panel{display:grid;gap:18px}
+.thermal-status-badge{padding:7px 11px;border-radius:999px;background:color-mix(in srgb,var(--p) 12%,var(--card));color:var(--p);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.thermal-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.thermal-overview>div{display:grid;gap:3px;padding:14px 16px;border:1px solid var(--line);border-radius:13px;background:color-mix(in srgb,var(--card) 95%,var(--p) 5%)}
+.thermal-overview span{color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.thermal-overview strong{color:var(--ink);font-size:16px}
+.thermal-overview small{color:var(--muted)}
+.thermal-mode-field{display:grid;gap:7px;max-width:680px;font-weight:800}
+.thermal-rule-note{display:grid;gap:4px;padding:13px 15px;border-left:4px solid #2f8a55;border-radius:10px;background:color-mix(in srgb,#eaf7ef 82%,var(--card));color:var(--ink)}
+.thermal-rule-note p{margin:0;color:var(--muted);line-height:1.45}
+.thermal-settings-details,.thermal-reference-details{border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
+.thermal-settings-details>summary,.thermal-reference-details>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;cursor:pointer;list-style:none;color:var(--ink)}
+.thermal-settings-details>summary::-webkit-details-marker,.thermal-reference-details>summary::-webkit-details-marker{display:none}
+.thermal-settings-details>summary::after,.thermal-reference-details>summary::after{content:"+";display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:color-mix(in srgb,var(--p) 10%,var(--card));color:var(--p);font-size:20px;font-weight:800}
+.thermal-settings-details[open]>summary::after,.thermal-reference-details[open]>summary::after{content:"−"}
+.thermal-settings-details>summary span,.thermal-reference-details>summary span{display:grid;gap:3px}
+.thermal-settings-details>summary strong,.thermal-reference-details>summary strong{font-size:14px}
+.thermal-settings-details>summary small,.thermal-reference-details>summary small{color:var(--muted);font-weight:500}
+.thermal-details-content{display:grid;gap:14px;padding:0 17px 17px;border-top:1px solid var(--line)}
+.thermal-details-content>label{display:grid;gap:7px;max-width:680px;margin-top:16px;font-weight:700}
+.thermal-reference-details{padding:0}
+.thermal-reference-details>.table-wrap{margin:0 16px 16px}
+.point-import-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.point-import-steps span{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;background:color-mix(in srgb,var(--card) 92%,var(--p) 8%);color:var(--muted);font-size:12px;font-weight:700}
+.point-import-steps b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--p);color:#fff;font-size:11px}
 .unknown-code-row{
   display:grid;
   grid-template-columns:minmax(200px,1fr) minmax(220px,320px) auto;
@@ -125,6 +150,9 @@
   .thermal-scope-branches{grid-template-columns:1fr;margin-left:0}
   .thermal-branches-title{margin-left:0}
   .thermal-save-bar button{width:100%}
+  .thermal-overview,.point-import-steps{grid-template-columns:1fr}
+  .thermal-status-badge{display:none}
+  .thermal-settings-details>summary,.thermal-reference-details>summary{padding:13px 14px}
 }
 
 
