@@ -6,7 +6,7 @@ const path=require('node:path');
 test('competência única fica no resumo operacional',()=>{
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
   assert.equal((html.match(/id="dashboard-alert-month"/g)||[]).length,1);
-  assert.equal((html.match(/id="dashboard-alert-refresh"/g)||[]).length,0);
+  assert.equal((html.match(/id="dashboard-alert-refresh"/g)||[]).length,1);
   const management=html.indexOf('dashboard-management');
   const month=html.indexOf('id="dashboard-alert-month"');
   const alerts=html.indexOf('dashboard-alert-center');

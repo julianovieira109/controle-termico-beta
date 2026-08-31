@@ -122,6 +122,50 @@ function renderDashboardGraphs(){
   }
 }
 
+
+const DASHBOARD_LOADING_IDS=[
+  "sum-employees","sum-companies","sum-branches","sum-users","sum-missing-shift",
+  "dashboard-point-imports","dashboard-point-employees","dashboard-point-days","dashboard-point-eligible",
+  "dashboard-alert-critical","dashboard-alert-warning","dashboard-alert-total",
+  "chart-errors-total","chart-days-total","chart-coverage-percent","chart-review-days"
+];
+
+function setDashboardLoading(isLoading){
+  document.querySelector("#dashboard")?.classList.toggle("dashboard-is-loading",isLoading);
+  if(isLoading){
+    DASHBOARD_LOADING_IDS.forEach(id=>{
+      const el=$(id);
+      if(!el)return;
+      el.dataset.previousValue=el.textContent||"";
+      el.textContent="—";
+      el.classList.add("dashboard-value-loading");
+    });
+    if($("dashboard-alert-list")){
+      $("dashboard-alert-list").innerHTML=`
+        <div class="dashboard-loading-panel" role="status" aria-live="polite">
+          <span class="dashboard-loading-spinner" aria-hidden="true"></span>
+          <div><strong>Carregando dados...</strong><small>Aguarde a consulta ao banco de dados.</small></div>
+        </div>`;
+    }
+  }else{
+    DASHBOARD_LOADING_IDS.forEach(id=>$(id)?.classList.remove("dashboard-value-loading"));
+  }
+}
+
+function showDashboardLoadError(message){
+  setDashboardLoading(false);
+  const safe=escapeHtml(message||"Não foi possível carregar os dados.");
+  if($("dashboard-alert-list")){
+    $("dashboard-alert-list").innerHTML=`
+      <div class="dashboard-load-failure" role="alert">
+        <div><strong>Não foi possível carregar os dados</strong>
+        <span>${safe}</span></div>
+        <button type="button" class="secondary" id="dashboard-retry-load">Tentar novamente</button>
+      </div>`;
+    $("dashboard-retry-load")?.addEventListener("click",()=>loadDashboard());
+  }
+}
+
 async function loadDashboardOperations(){
   const month=dashboardAlertMonthValue();
   const data=await api(`/api/dashboard/operations?month=${encodeURIComponent(month)}`);
@@ -197,40 +241,40 @@ async function loadDashboardAlerts(){
 }
 
 async function loadDashboard(){
-  const d=await api("/api/dashboard/summary");
-  dashboardActiveEmployees=Number(d.employees||0);
-  $("sum-employees").textContent=d.employees;
-  $("sum-companies").textContent=d.companies;
-  $("sum-branches").textContent=d.branches;
-  $("sum-users").textContent=d.users;
-  const missingShift=Number(d.missingShift||0);
-  $("sum-missing-shift").textContent=missingShift;
-  $("welcome-title").textContent=`Olá, ${currentUser.name}`;
-
-  const missingCard=$("missing-shift-card");
-  missingCard?.classList.toggle("is-clear",missingShift===0);
-  if($("sum-missing-shift-status")){
-    $("sum-missing-shift-status").textContent=missingShift===0?"Tudo certo":"Requer atenção";
-  }
-
-  // O alerta legado de "sem turno" fica recolhido: a Central de Alertas
-  // passa a ser o único local detalhado para pendências operacionais.
-  if($("pending-shift-alert"))$("pending-shift-alert").hidden=true;
-
+  setDashboardLoading(true);
   try{
+    const d=await api("/api/dashboard/summary");
+    dashboardActiveEmployees=Number(d.employees||0);
+    $("sum-employees").textContent=d.employees;
+    $("sum-companies").textContent=d.companies;
+    $("sum-branches").textContent=d.branches;
+    $("sum-users").textContent=d.users;
+    const missingShift=Number(d.missingShift||0);
+    $("sum-missing-shift").textContent=missingShift;
+    $("welcome-title").textContent=`Olá, ${currentUser.name}`;
+
+    const missingCard=$("missing-shift-card");
+    missingCard?.classList.toggle("is-clear",missingShift===0);
+    if($("sum-missing-shift-status")){
+      $("sum-missing-shift-status").textContent=missingShift===0?"Tudo certo":"Requer atenção";
+    }
+
+    if($("pending-shift-alert"))$("pending-shift-alert").hidden=true;
+
     await Promise.all([loadDashboardOperations(),loadDashboardAlerts()]);
+    setDashboardLoading(false);
   }catch(error){
     console.error("[DASHBOARD]",error);
-    if($("dashboard-alert-month")){
-  $("dashboard-alert-month").onchange=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
-}
-if($("dashboard-alert-list")){
-      $("dashboard-alert-list").innerHTML='<div class="dashboard-alert-load-error">Não foi possível carregar todos os dados desta competência.</div>';
-    }
+    showDashboardLoadError(error.message);
   }
 }
 
-
+if($("dashboard-alert-refresh")){
+  $("dashboard-alert-refresh").onclick=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
+}
+if($("dashboard-alert-month")){
+  $("dashboard-alert-month").onchange=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
+}
 if($("dashboard-alert-list")){
   $("dashboard-alert-list").onclick=event=>{
     const button=event.target.closest("[data-dashboard-alert-action]");
