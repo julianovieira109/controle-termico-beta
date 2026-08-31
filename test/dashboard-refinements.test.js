@@ -21,10 +21,11 @@ test('card sem turno possui status dinâmico',()=>{
   assert.match(js,/classList\.toggle\("is-clear",missingShift===0\)/);
 });
 
-test('última importação usa blocos e revisão possui destaque dinâmico',()=>{
+test('dashboard mantém revisão destacada sem exibir detalhe técnico da última importação',()=>{
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
   const js=fs.readFileSync(path.join(__dirname,'../public/js/admin-access.js'),'utf8');
-  assert.match(html,/class="dashboard-last-import-meta"/);
+  assert.doesNotMatch(html,/id="dashboard-last-import"/);
+  assert.doesNotMatch(html,/id="dashboard-last-import-meta"/);
   assert.match(html,/id="dashboard-review-card"/);
   assert.match(js,/classList\.toggle\("has-review",reviewDays>0\)/);
 });

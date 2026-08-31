@@ -136,20 +136,7 @@ async function loadDashboardOperations(){
       : "Nenhuma revisão pendente";
   }
 
-  if(point.lastImport){
-    const when=new Date(point.lastImport.createdAt);
-    const whenText=Number.isNaN(when.getTime())?"":when.toLocaleString("pt-BR");
-    $("dashboard-last-import").textContent=point.lastImport.fileName||"Cartão de Ponto";
-    $("dashboard-last-import-meta").innerHTML=`
-      <span><b>Empresa</b>${escapeHtml(point.lastImport.companyName||"-")}</span>
-      <span><b>Filial</b>${escapeHtml(point.lastImport.branchName||"-")}</span>
-      <span><b>Importado em</b>${escapeHtml(whenText||"-")}</span>
-      <span><b>Localizados</b>${Number(point.lastImport.located||0)}</span>
-      <span><b>Não localizados</b>${Number(point.lastImport.notFound||0)}</span>`;
-  }else{
-    $("dashboard-last-import").textContent="Nenhuma importação nesta competência.";
-    $("dashboard-last-import-meta").innerHTML="";
-  }
+
   renderDashboardGraphs();
 }
 

@@ -2191,3 +2191,11 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
   .dashboard-donut-wrap{grid-template-columns:1fr;justify-items:center}
   .dashboard-chart-legend{width:100%}
 }
+
+/* V1.0.25 beta.4 — painel sem detalhe da última importação */
+.dashboard-management-foot.dashboard-management-foot-compact{display:flex;justify-content:flex-end}
+.dashboard-management-foot.dashboard-management-foot-compact .dashboard-review-indicator{width:min(100%,220px);min-width:190px}
+@media(max-width:760px){
+ .dashboard-management-foot.dashboard-management-foot-compact{display:block}
+ .dashboard-management-foot.dashboard-management-foot-compact .dashboard-review-indicator{width:100%}
+}
