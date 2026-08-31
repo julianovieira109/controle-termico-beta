@@ -1887,3 +1887,105 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
   .dashboard-management-grid{grid-template-columns:1fr}
   .dashboard-management-foot{grid-template-columns:1fr}
 }
+
+
+/* V1.0.25 beta.2 — refinamentos finais do Dashboard */
+.dashboard-management-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+}
+.dashboard-period-controls{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  flex:0 0 auto;
+}
+.dashboard-period-controls label{min-width:165px}
+
+#dashboard .cards article.pending-card.is-clear::before{background:#16835f}
+#dashboard .cards article.pending-card.is-clear::after{
+  background:color-mix(in srgb,#16835f 7%,transparent);
+}
+#dashboard .cards article.pending-card.is-clear small{color:#16835f}
+
+.dashboard-alert-summary article{
+  display:flex;
+  flex-direction:column;
+}
+.dashboard-alert-summary article span{margin-bottom:0}
+.dashboard-alert-summary article strong{
+  margin-top:auto;
+  padding-top:10px;
+}
+.dashboard-alert-summary article span::after{
+  margin-top:6px;
+}
+
+.dashboard-last-import-card{
+  min-width:0;
+}
+.dashboard-last-import-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:9px;
+}
+.dashboard-last-import-meta span{
+  display:grid;
+  gap:2px;
+  min-width:120px;
+  padding:7px 9px;
+  border:1px solid #e6ebef;
+  border-radius:9px;
+  background:#fff;
+  color:#425466;
+  font-size:10px;
+}
+.dashboard-last-import-meta b{
+  color:#7a8794;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.dashboard-review-indicator{
+  position:relative;
+  min-width:165px;
+  overflow:hidden;
+}
+.dashboard-review-indicator::before{
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:#16835f;
+}
+.dashboard-review-indicator.has-review{
+  border-color:#e2bc63;
+  background:#fffaf0;
+}
+.dashboard-review-indicator.has-review::before{background:#d39418}
+.dashboard-review-indicator.has-review strong{color:#9a6500!important}
+.dashboard-review-indicator small{
+  display:block;
+  margin-top:5px;
+  color:#607080;
+  font-size:10px;
+}
+.dashboard-review-indicator.has-review small{color:#8a650e}
+
+@media(max-width:760px){
+  .dashboard-management-head{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .dashboard-period-controls{
+    align-items:stretch;
+  }
+  .dashboard-period-controls label{
+    min-width:0;
+    flex:1;
+  }
+}

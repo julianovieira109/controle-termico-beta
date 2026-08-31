@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.25-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.25-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.25-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.25-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.25-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.25-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.25-beta.2">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.25-beta.2">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.25-beta.2">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.25-beta.2">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.25-beta.2">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.25-beta.2">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -284,7 +284,7 @@
         <article><span>Empresas</span><strong id="sum-companies">0</strong></article>
         <article><span>Filiais</span><strong id="sum-branches">0</strong></article>
         <article><span>Usuários</span><strong id="sum-users">0</strong></article>
-        <article class="pending-card" id="missing-shift-card"><span>Sem turno</span><strong id="sum-missing-shift">0</strong><small>Requer atenção</small></article>
+        <article class="pending-card" id="missing-shift-card"><span>Sem turno</span><strong id="sum-missing-shift">0</strong><small id="sum-missing-shift-status">Tudo certo</small></article>
       </div>
       <section class="dashboard-management" aria-labelledby="dashboard-management-title">
         <div class="dashboard-management-head">
@@ -292,6 +292,12 @@
             <span class="eyebrow">Visão da competência</span>
             <h3 id="dashboard-management-title">Resumo operacional</h3>
             <p>Acompanhe rapidamente a situação do Cartão de Ponto e a preparação dos relatórios.</p>
+          </div>
+          <div class="dashboard-period-controls">
+            <label>Competência
+              <input type="month" id="dashboard-alert-month">
+            </label>
+            <button type="button" class="secondary" id="dashboard-alert-refresh">Atualizar</button>
           </div>
         </div>
         <div class="dashboard-management-grid">
@@ -317,14 +323,15 @@
           </article>
         </div>
         <div class="dashboard-management-foot">
-          <div>
+          <div class="dashboard-last-import-card">
             <span>Última importação</span>
             <strong id="dashboard-last-import">Nenhuma importação nesta competência.</strong>
-            <small id="dashboard-last-import-meta"></small>
+            <div id="dashboard-last-import-meta" class="dashboard-last-import-meta"></div>
           </div>
-          <div class="dashboard-review-indicator">
+          <div class="dashboard-review-indicator" id="dashboard-review-card">
             <span>Dias para revisar</span>
             <strong id="dashboard-review-days">0</strong>
+            <small id="dashboard-review-status">Nenhuma revisão pendente</small>
           </div>
         </div>
       </section>
@@ -336,12 +343,7 @@
             <h3 id="dashboard-alert-title">Central de Alertas</h3>
             <p>Antecipe pendências antes da geração das fichas.</p>
           </div>
-          <div class="dashboard-alert-controls">
-            <label>Competência
-              <input type="month" id="dashboard-alert-month">
-            </label>
-            <button type="button" class="secondary" id="dashboard-alert-refresh">Atualizar</button>
-          </div>
+
         </div>
         <div class="dashboard-alert-summary">
           <article class="alert-summary-critical"><span>Críticos</span><strong id="dashboard-alert-critical">0</strong></article>
@@ -2335,14 +2337,14 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.25-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.25-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.25-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.25-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.25-beta.1"></script>
-  <script src="/js/report-validator.js?v=1.0.25-beta.1"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.25-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.25-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.25-beta.1"></script>
+  <script src="/js/core.js?v=1.0.25-beta.2"></script>
+  <script src="/js/help-manual.js?v=1.0.25-beta.2"></script>
+  <script src="/js/admin-access.js?v=1.0.25-beta.2"></script>
+  <script src="/js/employees-imports.js?v=1.0.25-beta.2"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.25-beta.2"></script>
+  <script src="/js/report-validator.js?v=1.0.25-beta.2"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.25-beta.2"></script>
+  <script src="/js/calendar-reports.js?v=1.0.25-beta.2"></script>
+  <script src="/js/settings-system.js?v=1.0.25-beta.2"></script>
 </body>
 </html>

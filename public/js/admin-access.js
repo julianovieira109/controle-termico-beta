@@ -45,20 +45,28 @@ async function loadDashboardOperations(){
   $("dashboard-point-employees").textContent=point.employees||0;
   $("dashboard-point-days").textContent=point.days||0;
   $("dashboard-point-eligible").textContent=point.eligibleDays||0;
-  $("dashboard-review-days").textContent=point.reviewDays||0;
+  const reviewDays=Number(point.reviewDays||0);
+  $("dashboard-review-days").textContent=reviewDays;
+  $("dashboard-review-card")?.classList.toggle("has-review",reviewDays>0);
+  if($("dashboard-review-status")){
+    $("dashboard-review-status").textContent=reviewDays>0
+      ? "Requer conferência"
+      : "Nenhuma revisão pendente";
+  }
 
   if(point.lastImport){
     const when=new Date(point.lastImport.createdAt);
     const whenText=Number.isNaN(when.getTime())?"":when.toLocaleString("pt-BR");
     $("dashboard-last-import").textContent=point.lastImport.fileName||"Cartão de Ponto";
-    $("dashboard-last-import-meta").textContent=
-      `${point.lastImport.companyName} · ${point.lastImport.branchName}`+
-      `${whenText?` · ${whenText}`:""}`+
-      ` · ${point.lastImport.located||0} localizado(s)`+
-      `${point.lastImport.notFound?` · ${point.lastImport.notFound} não localizado(s)`:""}`;
+    $("dashboard-last-import-meta").innerHTML=`
+      <span><b>Empresa</b>${escapeHtml(point.lastImport.companyName||"-")}</span>
+      <span><b>Filial</b>${escapeHtml(point.lastImport.branchName||"-")}</span>
+      <span><b>Importado em</b>${escapeHtml(whenText||"-")}</span>
+      <span><b>Localizados</b>${Number(point.lastImport.located||0)}</span>
+      <span><b>Não localizados</b>${Number(point.lastImport.notFound||0)}</span>`;
   }else{
     $("dashboard-last-import").textContent="Nenhuma importação nesta competência.";
-    $("dashboard-last-import-meta").textContent="";
+    $("dashboard-last-import-meta").innerHTML="";
   }
 }
 
@@ -128,8 +136,15 @@ async function loadDashboard(){
   $("sum-companies").textContent=d.companies;
   $("sum-branches").textContent=d.branches;
   $("sum-users").textContent=d.users;
-  $("sum-missing-shift").textContent=d.missingShift||0;
+  const missingShift=Number(d.missingShift||0);
+  $("sum-missing-shift").textContent=missingShift;
   $("welcome-title").textContent=`Olá, ${currentUser.name}`;
+
+  const missingCard=$("missing-shift-card");
+  missingCard?.classList.toggle("is-clear",missingShift===0);
+  if($("sum-missing-shift-status")){
+    $("sum-missing-shift-status").textContent=missingShift===0?"Tudo certo":"Requer atenção";
+  }
 
   // O alerta legado de "sem turno" fica recolhido: a Central de Alertas
   // passa a ser o único local detalhado para pendências operacionais.
