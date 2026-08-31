@@ -1757,3 +1757,56 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
   .dashboard-alert-group-body li{display:grid}
   .dashboard-alert-group-body li span{text-align:left}
 }
+
+
+/* V1.0.24 beta.3 — padronização dos cards do Painel */
+#dashboard .cards{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  align-items:stretch;
+}
+#dashboard .cards article{
+  min-width:0;
+  min-height:104px;
+  height:104px;
+  padding:18px;
+  border:1px solid var(--border-soft)!important;
+  border-radius:17px;
+  background:var(--card);
+  box-shadow:var(--shadow-soft);
+}
+#dashboard .cards article.pending-card{
+  border-color:var(--border-soft)!important;
+}
+#dashboard .cards article span{
+  margin:0;
+  color:#667085;
+  font-size:12px;
+  font-weight:650;
+}
+#dashboard .cards article strong,
+#dashboard .cards article.pending-card strong{
+  display:block;
+  margin-top:8px;
+  color:var(--d)!important;
+  font-size:29px;
+  line-height:1;
+}
+#dashboard .cards article small{
+  display:block;
+  margin-top:5px;
+  color:#8a5a00;
+  font-size:10px;
+}
+#dashboard .cards article.pending-card::before{background:#d69200}
+#dashboard .cards article.pending-card::after{
+  background:color-mix(in srgb,#d69200 7%,transparent);
+}
+@media(max-width:1180px){
+  #dashboard .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:900px){
+  #dashboard .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  #dashboard .cards{grid-template-columns:1fr}
+}
