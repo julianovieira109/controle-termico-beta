@@ -511,19 +511,14 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
     const rows=days.map(d=>{
       const pointState=employee.point_states?.[d.iso];
       const allRests=(thermalPlan?.get(`${employee.id}|${d.iso}`)||[]).slice(0,4);
-      // Na cópia manual em branco, pré-marcar somente folgas já configuradas.
-      // Ocorrências vindas do ponto (falta, atestado, férias, DSR etc.) pertencem
-      // somente à ficha automática, pois não devem parecer conhecidas antecipadamente.
-      let status;
-      if(blankCopy){
-        const weeklyOff=(employee.weekly_days_off||[]).includes(d.weekDay);
-        const specificOff=(employee.specific_days_off||[]).find(x=>String(x.date).slice(0,10)===d.iso);
-        status=(weeklyOff||specificOff)?"FOLGA / SEM JORNADA":"";
-      }else{
-        status=pointDataActive
+      // Cópia manual: deliberadamente NÃO consulta point_states, feriados, férias,
+      // faltas, atestados, DSR ou qualquer outra ocorrência do ponto.
+      // Somente folgas previamente configuradas podem ser pré-marcadas.
+      const status=blankCopy
+        ?BlankCopyStatus.status(employee,d)
+        :(pointDataActive
           ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":dayStatus(employee,d)||"PONTO NÃO IMPORTADO")
-          :dayStatus(employee,d);
-      }
+          :dayStatus(employee,d));
       if(!blankCopy&&pointDataActive&&pointState==="WORKED"&&!allRests.length)status="JORNADA ABAIXO DO MÍNIMO PARA REPOUSO";
       if(status)return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="${slots*2+1}">${escapeHtml(status)}</td></tr>`;
       const rests=blankCopy?[]:allRests.slice(offset,offset+slots);

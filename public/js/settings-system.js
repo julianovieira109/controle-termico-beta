@@ -1281,7 +1281,7 @@ if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
   $("thermal-rest-feedback").textContent=result.value.mode==="MANUAL"
     ?"Modo manual salvo. As próximas fichas terão os horários em branco."
     :result.value.mode==="AUTOMATIC_AND_BLANK"
-      ?"Modo automático com cópia manual salvo. A cópia manual mantém somente as folgas configuradas no sistema; faltas, atestados, férias, DSR e demais ocorrências ficam em branco para preenchimento posterior."
+      ?"Modo automático com cópia manual salvo. A cópia manual mantém somente as folgas configuradas; ocorrências do ponto ficam em branco para preenchimento posterior."
     :result.value.scopeMode==="SELECTED"
       ?"Modo automático salvo para as empresas e filiais autorizadas."
       :"Modo automático salvo para todas as empresas e filiais.";
