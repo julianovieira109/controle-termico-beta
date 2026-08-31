@@ -1,3 +1,102 @@
+function dashboardAlertMonthValue(){
+  const input=$("dashboard-alert-month");
+  if(input?.value)return input.value;
+  const now=new Date();
+  const value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  if(input)input.value=value;
+  return value;
+}
+
+function dashboardAlertPersonList(items=[]){
+  const limit=12;
+  const visible=items.slice(0,limit);
+  const html=visible.map(item=>`
+    <li>
+      <strong>${escapeHtml(item.name||"Colaborador")}</strong>
+      <span>${escapeHtml(item.registration||"Sem matrícula")} · ${escapeHtml(item.branchName||"-")}</span>
+    </li>`).join("");
+  const remaining=items.length-visible.length;
+  return `<ul>${html}</ul>${remaining>0?`<small class="dashboard-alert-more">+ ${remaining} outro(s)</small>`:""}`;
+}
+
+function renderDashboardAlertGroup({title,description,severity,count,items=[],branches=[],action,label}){
+  if(!count)return "";
+  const body=branches.length
+    ?`<ul>${branches.map(item=>`<li><strong>${escapeHtml(item.branchName||"-")}</strong><span>${escapeHtml(item.companyName||"-")}</span></li>`).join("")}</ul>`
+    :dashboardAlertPersonList(items);
+  return `
+    <details class="dashboard-alert-group severity-${severity}">
+      <summary>
+        <div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(description)}</span></div>
+        <b>${count}</b>
+      </summary>
+      <div class="dashboard-alert-group-body">
+        ${body}
+        <button type="button" class="secondary compact" data-dashboard-alert-action="${escapeHtml(action)}">${escapeHtml(label)}</button>
+      </div>
+    </details>`;
+}
+
+async function loadDashboardAlerts(){
+  const month=dashboardAlertMonthValue();
+  const data=await api(`/api/dashboard/alerts?month=${encodeURIComponent(month)}`);
+  $("dashboard-alert-critical").textContent=data.summary?.critical||0;
+  $("dashboard-alert-warning").textContent=data.summary?.warnings||0;
+  $("dashboard-alert-total").textContent=data.summary?.total||0;
+
+  const groups=data.groups||{};
+  const sections=[
+    renderDashboardAlertGroup({
+      title:"Colaboradores sem turno",
+      description:"Impede o cálculo correto da jornada.",
+      severity:"critical",
+      count:groups.missingShift?.length||0,
+      items:groups.missingShift||[],
+      action:"missing-shift",
+      label:"Abrir colaboradores"
+    }),
+    renderDashboardAlertGroup({
+      title:"Filiais sem Cartão de Ponto",
+      description:"Não há importação confirmada para a competência.",
+      severity:"critical",
+      count:groups.missingPointImport?.length||0,
+      branches:groups.missingPointImport||[],
+      action:"reports",
+      label:"Abrir relatórios"
+    }),
+    renderDashboardAlertGroup({
+      title:"Matrícula não informada",
+      description:"Cadastro precisa ser conferido.",
+      severity:"warning",
+      count:groups.missingRegistration?.length||0,
+      items:groups.missingRegistration||[],
+      action:"employees",
+      label:"Abrir colaboradores"
+    }),
+    renderDashboardAlertGroup({
+      title:"Regra de relatório pendente",
+      description:"Ainda não foi definido se o colaborador gera ficha.",
+      severity:"warning",
+      count:groups.pendingPolicy?.length||0,
+      items:groups.pendingPolicy||[],
+      action:"employees",
+      label:"Abrir colaboradores"
+    }),
+    renderDashboardAlertGroup({
+      title:"Colaborador não localizado no ponto",
+      description:"A filial tem ponto importado, mas não há linhas do colaborador na competência.",
+      severity:"warning",
+      count:groups.missingPointRows?.length||0,
+      items:groups.missingPointRows||[],
+      action:"reports",
+      label:"Abrir relatórios"
+    })
+  ].filter(Boolean);
+
+  $("dashboard-alert-list").innerHTML=sections.join("");
+  $("dashboard-alert-empty").hidden=sections.length>0;
+}
+
 async function loadDashboard(){
   const d=await api("/api/dashboard/summary");
   $("sum-employees").textContent=d.employees;
@@ -7,12 +106,44 @@ async function loadDashboard(){
   $("sum-missing-shift").textContent=d.missingShift||0;
   $("welcome-title").textContent=`Olá, ${currentUser.name}`;
 
-  const hasPending=(d.missingShift||0)>0;
-  $("pending-shift-alert").hidden=!hasPending;
-  $("pending-shift-title").textContent=`${d.missingShift||0} colaborador(es) sem turno`;
-  $("pending-shift-text").textContent=hasPending
-    ?"Defina os turnos antes de gerar as fichas mensais."
-    :"Todos os colaboradores ativos possuem turno cadastrado.";
+  // O alerta legado de "sem turno" fica recolhido: a Central de Alertas
+  // passa a ser o único local detalhado para pendências operacionais.
+  if($("pending-shift-alert"))$("pending-shift-alert").hidden=true;
+
+  try{
+    await loadDashboardAlerts();
+  }catch(error){
+    console.error("[DASHBOARD_ALERTS]",error);
+    if($("dashboard-alert-list")){
+      $("dashboard-alert-list").innerHTML='<div class="dashboard-alert-load-error">Não foi possível carregar os alertas desta competência.</div>';
+    }
+  }
+}
+
+if($("dashboard-alert-refresh")){
+  $("dashboard-alert-refresh").onclick=()=>loadDashboardAlerts().catch(error=>toast(error.message,"error"));
+}
+if($("dashboard-alert-month")){
+  $("dashboard-alert-month").onchange=()=>loadDashboardAlerts().catch(error=>toast(error.message,"error"));
+}
+if($("dashboard-alert-list")){
+  $("dashboard-alert-list").onclick=event=>{
+    const button=event.target.closest("[data-dashboard-alert-action]");
+    if(!button)return;
+    const action=button.dataset.dashboardAlertAction;
+    if(action==="missing-shift"){
+      openMissingShiftEmployees();
+      return;
+    }
+    if(action==="employees"){
+      navigate("employees");
+      loadEmployees();
+      return;
+    }
+    if(action==="reports"){
+      navigate("reports");
+    }
+  };
 }
 
 document.querySelectorAll("[data-company-tab]").forEach(button=>{

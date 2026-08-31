@@ -240,7 +240,7 @@ function supportRequestDetails(channel="WhatsApp"){
       ...selection.map((label,index)=>`${index+1}. ${label}`),
       "",
       `Assunto: ${activeHelpTopic?.label||"Dúvida no sistema"}`,
-      `Versão: V1.0.23 Beta`,
+      `Versão: V1.0.24 Beta`,
       "",
       "Descreva aqui o que aconteceu: "
     ].join("\n")
