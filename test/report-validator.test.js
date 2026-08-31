@@ -25,9 +25,10 @@ test('sem turno gera aviso e não bloqueio global',()=>{
   assert.equal(r.valid,true); assert.ok(r.warnings.some(x=>x.code==='NO_SHIFT'));
 });
 
-test('regra PENDING gera aviso antes da geração',()=>{
+test('regra PENDING não duplica aviso da lista de colaboradores sem ficha',()=>{
   const r=validator.validate({month:'2026-08',employees:[employee({report_policy:'PENDING'})],thermalConfig:cfg,pointCompetenceBranches:['10']});
-  assert.equal(r.valid,true); assert.ok(r.warnings.some(x=>x.code==='POLICY_BLOCKED'));
+  assert.equal(r.valid,true);
+  assert.equal(r.warnings.some(x=>x.code==='POLICY_BLOCKED'),false);
 });
 
 test('matrícula ausente é sinalizada como aviso',()=>{

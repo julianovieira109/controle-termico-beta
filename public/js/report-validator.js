@@ -40,7 +40,8 @@
         continue;
       }
       if(!policyAllows(employee.report_policy)){
-        warnings.push(issue('warning','POLICY_BLOCKED',`${name}: regra de relatórios pendente ou configurada para não gerar.`,employee));
+        // A política PENDING/NONE já é detalhada em "Colaboradores sem ficha".
+        // Não repetir o mesmo colaborador na validação prévia.
         continue;
       }
       if(!text(employee.shift_name)){
