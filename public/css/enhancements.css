@@ -2203,3 +2203,51 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
 @media(max-width:760px){
   .dashboard-management-foot.dashboard-management-foot-review-only{grid-template-columns:1fr}
 }
+
+
+/* V1.0.25 beta.6 — Dias para revisar integrado ao gráfico */
+.dashboard-donut-wrap>div:last-child{
+  display:grid;
+  gap:12px;
+}
+.dashboard-review-callout{
+  display:grid;
+  grid-template-columns:1fr auto;
+  grid-template-areas:
+    "label value"
+    "hint value";
+  gap:2px 10px;
+  align-items:center;
+  padding:10px 12px;
+  border:1px solid #e2bc63;
+  border-left:4px solid #d39418;
+  border-radius:10px;
+  background:#fffaf0;
+}
+.dashboard-review-callout span{
+  grid-area:label;
+  color:#7a5a0a;
+  font-size:10px;
+  font-weight:700;
+}
+.dashboard-review-callout strong{
+  grid-area:value;
+  color:#9a6500;
+  font-size:24px;
+  line-height:1;
+}
+.dashboard-review-callout small{
+  grid-area:hint;
+  color:#8a650e;
+  font-size:9px;
+}
+.dashboard-review-callout.is-clear{
+  border-color:#b9dec8;
+  border-left-color:#16835f;
+  background:#f4fbf6;
+}
+.dashboard-review-callout.is-clear span,
+.dashboard-review-callout.is-clear strong,
+.dashboard-review-callout.is-clear small{
+  color:#146c43;
+}

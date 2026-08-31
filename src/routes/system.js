@@ -123,7 +123,7 @@ async function collectBackup(client,req){
 
   return attachIntegrity({
     format:"controle-termico-backup",
-    version:"1.0.25-beta.5",
+    version:"1.0.25-beta.6",
     generatedAt:new Date().toISOString(),
     generatedBy:{
       id:req.user.sub,

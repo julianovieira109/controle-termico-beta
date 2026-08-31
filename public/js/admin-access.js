@@ -76,6 +76,10 @@ function renderDashboardGraphs(){
   const review=Math.min(Math.max(0,days-eligible),Number(operations.reviewDays||0));
   const other=Math.max(0,days-eligible-review);
   if($("chart-days-total"))$("chart-days-total").textContent=days;
+  if($("chart-review-days"))$("chart-review-days").textContent=review;
+  $("chart-review-callout")?.classList.toggle("is-clear",review===0);
+  const reviewSmall=$("chart-review-callout")?.querySelector("small");
+  if(reviewSmall)reviewSmall.textContent=review===0?"Nenhuma revisão pendente":"Requer conferência";
   const eligiblePct=dashboardPercent(eligible,days);
   const reviewPct=dashboardPercent(review,days);
   const otherPct=Math.max(0,100-eligiblePct-reviewPct);
@@ -127,15 +131,6 @@ async function loadDashboardOperations(){
   $("dashboard-point-employees").textContent=point.employees||0;
   $("dashboard-point-days").textContent=point.days||0;
   $("dashboard-point-eligible").textContent=point.eligibleDays||0;
-  const reviewDays=Number(point.reviewDays||0);
-  $("dashboard-review-days").textContent=reviewDays;
-  $("dashboard-review-card")?.classList.toggle("has-review",reviewDays>0);
-  if($("dashboard-review-status")){
-    $("dashboard-review-status").textContent=reviewDays>0
-      ? "Requer conferência"
-      : "Nenhuma revisão pendente";
-  }
-
   renderDashboardGraphs();
 }
 

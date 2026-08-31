@@ -7,7 +7,7 @@ test('dashboard principal possui resumo operacional por competência',()=>{
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
   for(const id of [
     'dashboard-point-imports','dashboard-point-employees','dashboard-point-days',
-    'dashboard-point-eligible','dashboard-review-days'
+    'dashboard-point-eligible'
   ]){
     assert.match(html,new RegExp(`id="${id}"`));
   }

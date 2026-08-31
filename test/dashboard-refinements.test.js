@@ -26,6 +26,6 @@ test('dashboard mantém revisão destacada sem detalhes da última importação'
   const js=fs.readFileSync(path.join(__dirname,'../public/js/admin-access.js'),'utf8');
   assert.doesNotMatch(html,/id="dashboard-last-import"/);
   assert.doesNotMatch(html,/id="dashboard-last-import-meta"/);
-  assert.match(html,/id="dashboard-review-card"/);
-  assert.match(js,/classList\.toggle\("has-review",reviewDays>0\)/);
+  assert.match(html,/id="chart-review-callout"/);
+  assert.match(js,/chart-review-callout/);
 });
