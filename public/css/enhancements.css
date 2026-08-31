@@ -1612,21 +1612,80 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
 .dashboard-alert-summary{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:10px;
-  margin-bottom:12px;
+  gap:14px;
+  margin:14px 0 16px;
 }
 .dashboard-alert-summary article{
-  border:1px solid #d7e0e8;
-  border-radius:12px;
-  padding:12px 14px;
-  background:#fbfcfd;
+  position:relative;
+  min-height:104px;
+  border:1px solid #d9e2e9;
+  border-radius:16px;
+  padding:18px 18px 14px;
+  background:#fff;
+  overflow:hidden;
+  box-shadow:0 8px 22px rgba(28,55,78,.06);
+}
+.dashboard-alert-summary article::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:#2479ae;
+}
+.dashboard-alert-summary article::after{
+  content:"";
+  position:absolute;
+  width:66px;
+  height:66px;
+  right:-18px;
+  top:-22px;
+  border-radius:50%;
+  background:#f0f3f6;
 }
 .dashboard-alert-summary span,
-.dashboard-alert-summary strong{display:block}
-.dashboard-alert-summary span{font-size:12px;color:#617181}
-.dashboard-alert-summary strong{font-size:24px;margin-top:3px}
-.alert-summary-critical strong{color:#a33a32}
-.alert-summary-warning strong{color:#9a6500}
+.dashboard-alert-summary strong{
+  position:relative;
+  z-index:1;
+  display:block;
+}
+.dashboard-alert-summary span{
+  font-size:12px;
+  color:#3f596e;
+  margin-bottom:2px;
+}
+.dashboard-alert-summary strong{
+  font-size:30px;
+  line-height:1;
+  color:#082f58;
+}
+.dashboard-alert-summary article::marker{display:none}
+.dashboard-alert-summary article.alert-summary-critical::before{background:#b54a41}
+.dashboard-alert-summary article.alert-summary-warning::before{background:#d39418}
+.dashboard-alert-summary article.alert-summary-total::before{background:#2479ae}
+.dashboard-alert-summary article.alert-summary-critical::after,
+.dashboard-alert-summary article.alert-summary-warning::after,
+.dashboard-alert-summary article.alert-summary-total::after{background:#f0f3f6}
+.dashboard-alert-summary article span::after{
+  display:block;
+  margin-top:20px;
+  font-size:10px;
+  line-height:1.2;
+  font-weight:500;
+}
+.dashboard-alert-summary .alert-summary-critical span::after{
+  content:"Requer atenção imediata";
+  color:#8d3b35;
+}
+.dashboard-alert-summary .alert-summary-warning span::after{
+  content:"Conferir pendências";
+  color:#8c650f;
+}
+.dashboard-alert-summary .alert-summary-total span::after{
+  content:"Total da competência";
+  color:#536b7d;
+}
 .dashboard-alert-list{display:grid;gap:8px}
 .dashboard-alert-group{
   border:1px solid #d7e0e8;
