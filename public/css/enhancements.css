@@ -2192,10 +2192,14 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
   .dashboard-chart-legend{width:100%}
 }
 
-/* V1.0.25 beta.4 — painel sem detalhe da última importação */
-.dashboard-management-foot.dashboard-management-foot-compact{display:flex;justify-content:flex-end}
-.dashboard-management-foot.dashboard-management-foot-compact .dashboard-review-indicator{width:min(100%,220px);min-width:190px}
+/* V1.0.25 beta.5 — correção estrutural do Dashboard */
+.dashboard-management-foot.dashboard-management-foot-review-only{
+  grid-template-columns:minmax(190px,220px);
+  justify-content:end;
+}
+.dashboard-management-foot.dashboard-management-foot-review-only .dashboard-review-indicator{
+  width:100%;min-width:0;box-sizing:border-box;
+}
 @media(max-width:760px){
- .dashboard-management-foot.dashboard-management-foot-compact{display:block}
- .dashboard-management-foot.dashboard-management-foot-compact .dashboard-review-indicator{width:100%}
+  .dashboard-management-foot.dashboard-management-foot-review-only{grid-template-columns:1fr}
 }

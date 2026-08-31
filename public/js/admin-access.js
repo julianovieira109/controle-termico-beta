@@ -136,7 +136,6 @@ async function loadDashboardOperations(){
       : "Nenhuma revisão pendente";
   }
 
-
   renderDashboardGraphs();
 }
 

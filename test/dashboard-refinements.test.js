@@ -21,7 +21,7 @@ test('card sem turno possui status dinâmico',()=>{
   assert.match(js,/classList\.toggle\("is-clear",missingShift===0\)/);
 });
 
-test('dashboard mantém revisão destacada sem exibir detalhe técnico da última importação',()=>{
+test('dashboard mantém revisão destacada sem detalhes da última importação',()=>{
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
   const js=fs.readFileSync(path.join(__dirname,'../public/js/admin-access.js'),'utf8');
   assert.doesNotMatch(html,/id="dashboard-last-import"/);
