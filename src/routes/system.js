@@ -122,7 +122,7 @@ async function collectBackup(client,req){
 
   return {
     format:"controle-termico-backup",
-    version:"1.0.20-beta",
+    version:"1.0.21-beta",
     generatedAt:new Date().toISOString(),
     generatedBy:{
       id:req.user.sub,
@@ -182,7 +182,7 @@ router.get("/tests",async(req,res)=>{
       {
         name:"Colunas críticas do banco",
         success:columnProblems.length===0,
-        detail:columnProblems.length?`Ausentes: ${columnProblems.join(" | ")}`:"Estrutura compatível com a V1.0.20 Beta."
+        detail:columnProblems.length?`Ausentes: ${columnProblems.join(" | ")}`:"Estrutura compatível com a V1.0.21 Beta."
       },
       {
         name:"Administrador atual",
