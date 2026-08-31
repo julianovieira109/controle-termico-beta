@@ -668,8 +668,13 @@ $("system-restore-form").onsubmit=async event=>{
     return;
   }
 
+  if(!latestSystemBackupToken){
+    toast("Antes de restaurar, gere e baixe um backup atual do sistema.","warning");
+    return;
+  }
+
   const confirmed=await confirmAction(
-    "A restauração substituirá os dados atuais pelos dados do backup. Deseja continuar?",
+    "A restauração substituirá os dados atuais. O backup de segurança atual já foi baixado. Deseja continuar?",
     "Restaurar backup"
   );
   if(!confirmed)return;
@@ -680,6 +685,7 @@ $("system-restore-form").onsubmit=async event=>{
     const form=new FormData();
     form.append("file",file);
     form.append("confirmation",$("system-restore-confirmation").value);
+    form.append("restoreToken",latestSystemBackupToken);
 
     const response=await fetch("/api/system/restore",{
       method:"POST",
@@ -695,6 +701,7 @@ $("system-restore-form").onsubmit=async event=>{
       throw new Error(data.error||raw||"Não foi possível restaurar o backup.");
     }
 
+    latestSystemBackupToken=null;
     toast(data.message,"success");
     $("system-restore-form").reset();
 

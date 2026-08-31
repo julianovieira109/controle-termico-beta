@@ -4,6 +4,7 @@ const crypto=require("crypto");
 const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {normalizeBackupData}=require("../services/backup-normalizer");
+const {attachIntegrity,verifyIntegrity}=require("../services/backup-integrity");
 const {authenticate,requireAdmin,requireMasterAdmin}=require("../middleware/auth");
 
 const router=express.Router();
@@ -120,9 +121,9 @@ async function collectBackup(client,req){
     data[table]=rows;
   }
 
-  return {
+  return attachIntegrity({
     format:"controle-termico-backup",
-    version:"1.0.21-beta",
+    version:"1.0.22-beta",
     generatedAt:new Date().toISOString(),
     generatedBy:{
       id:req.user.sub,
@@ -131,7 +132,7 @@ async function collectBackup(client,req){
     },
     warning:"Este arquivo contém dados pessoais e hashes de senha. Guarde-o em local seguro.",
     data
-  };
+  });
 }
 
 router.get("/tests",async(req,res)=>{
@@ -182,7 +183,7 @@ router.get("/tests",async(req,res)=>{
       {
         name:"Colunas críticas do banco",
         success:columnProblems.length===0,
-        detail:columnProblems.length?`Ausentes: ${columnProblems.join(" | ")}`:"Estrutura compatível com a V1.0.21 Beta."
+        detail:columnProblems.length?`Ausentes: ${columnProblems.join(" | ")}`:"Estrutura compatível com a V1.0.22 Beta."
       },
       {
         name:"Administrador atual",
@@ -397,6 +398,15 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
       });
     }
 
+    cleanupTokens();
+    const restoreToken=req.body.restoreToken;
+    const tokenData=backupTokens.get(restoreToken);
+    if(!tokenData||tokenData.userId!==req.user.sub||tokenData.expiresAt<=Date.now()){
+      return res.status(400).json({
+        error:"Por segurança, gere e baixe um backup atual antes de restaurar outro arquivo."
+      });
+    }
+
     let backup;
     try{
       backup=JSON.parse(req.file.buffer.toString("utf8"));
@@ -406,6 +416,11 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
 
     if(backup?.format!=="controle-termico-backup"||!backup?.data){
       return res.status(400).json({error:"Arquivo de backup incompatível."});
+    }
+
+    const integrity=verifyIntegrity(backup);
+    if(!integrity.valid){
+      return res.status(400).json({error:`Backup recusado: ${integrity.reason}`});
     }
 
     const normalizedBackup=normalizeBackupData(backup.data);
@@ -443,12 +458,14 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
     }
 
     await client.query("COMMIT");
+    backupTokens.delete(restoreToken);
 
     res.json({
       message:"Backup restaurado com sucesso. Entre novamente no sistema.",
       generatedAt:backup.generatedAt||null,
       tablesRestored:Object.keys(backup.data),
       duplicatesResolved:normalizedBackup.stats,
+      integrity:integrity.legacy?"legacy":"verified",
       requiresRelogin:true
     });
   }catch(error){
