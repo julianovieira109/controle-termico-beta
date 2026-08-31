@@ -117,4 +117,71 @@ router.get("/alerts",async(req,res,next)=>{
   }catch(error){next(error);}
 });
 
+router.get("/operations",async(req,res,next)=>{
+  try{
+    const month=String(req.query.month||"");
+    if(!/^\d{4}-\d{2}$/.test(month)){
+      return res.status(400).json({error:"Informe o mês no formato AAAA-MM."});
+    }
+
+    const params=[month];
+    let scope="";
+    if(!req.scope.isAdmin){
+      params.push(req.scope.companyId,req.scope.branchIds);
+      scope=" AND i.company_id=$2 AND i.branch_id=ANY($3::uuid[])";
+    }
+
+    const {rows:imports}=await pool.query(`
+      SELECT i.id,i.file_name,i.total_found,i.total_updated,i.total_not_found,
+             i.details,i.created_at,c.trade_name company_name,b.name branch_name
+      FROM employee_imports i
+      LEFT JOIN companies c ON c.id=i.company_id
+      LEFT JOIN branches b ON b.id=i.branch_id
+      WHERE i.import_type='PONTO_SENIOR'
+        AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
+        ${scope}
+      ORDER BY i.created_at DESC
+    `,params);
+
+    const pointParams=[`${month}-01`];
+    let pointScope="";
+    if(!req.scope.isAdmin){
+      pointParams.push(req.scope.companyId,req.scope.branchIds);
+      pointScope=" AND p.company_id=$2 AND p.branch_id=ANY($3::uuid[])";
+    }
+    const {rows:pointSummary}=await pool.query(`
+      SELECT
+        COUNT(DISTINCT p.employee_id)::int employees_with_point,
+        COUNT(*)::int point_days,
+        COUNT(*) FILTER(WHERE p.eligible_for_automatic_rest=TRUE)::int eligible_days,
+        COUNT(*) FILTER(WHERE p.point_state='REVIEW')::int review_days
+      FROM employee_point_days p
+      WHERE p.work_date>=($1::date - INTERVAL '1 day')
+        AND p.work_date<($1::date + INTERVAL '1 month')
+        ${pointScope}
+    `,pointParams);
+
+    const latest=imports[0]||null;
+    res.json({
+      month,
+      point:{
+        imports:imports.length,
+        employees:pointSummary[0]?.employees_with_point||0,
+        days:pointSummary[0]?.point_days||0,
+        eligibleDays:pointSummary[0]?.eligible_days||0,
+        reviewDays:pointSummary[0]?.review_days||0,
+        lastImport:latest?{
+          fileName:latest.file_name,
+          createdAt:latest.created_at,
+          companyName:latest.company_name||"-",
+          branchName:latest.branch_name||"-",
+          found:latest.total_found||0,
+          located:latest.total_updated||0,
+          notFound:latest.total_not_found||0
+        }:null
+      }
+    });
+  }catch(error){next(error);}
+});
+
 module.exports=router;

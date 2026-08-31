@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.24-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.24-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.24-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.24-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.24-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.24-beta.3">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.25-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.25-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.25-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.25-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.25-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.25-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -255,7 +255,7 @@
       <span class="sidebar-nav-heading">Ajuda e suporte</span>
       <button class="nav-btn nav-btn-support" data-view="manual" title="Manual do Sistema"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></svg></span><span class="nav-label">Manual do Sistema</span></button>
     </nav>
-    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.24 Beta</small></div>
+    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.25 Beta</small></div>
   </aside>
 
   <main class="main">
@@ -286,6 +286,49 @@
         <article><span>Usuários</span><strong id="sum-users">0</strong></article>
         <article class="pending-card" id="missing-shift-card"><span>Sem turno</span><strong id="sum-missing-shift">0</strong><small>Requer atenção</small></article>
       </div>
+      <section class="dashboard-management" aria-labelledby="dashboard-management-title">
+        <div class="dashboard-management-head">
+          <div>
+            <span class="eyebrow">Visão da competência</span>
+            <h3 id="dashboard-management-title">Resumo operacional</h3>
+            <p>Acompanhe rapidamente a situação do Cartão de Ponto e a preparação dos relatórios.</p>
+          </div>
+        </div>
+        <div class="dashboard-management-grid">
+          <article>
+            <span>Importações de ponto</span>
+            <strong id="dashboard-point-imports">0</strong>
+            <small>na competência</small>
+          </article>
+          <article>
+            <span>Colaboradores no ponto</span>
+            <strong id="dashboard-point-employees">0</strong>
+            <small>localizados</small>
+          </article>
+          <article>
+            <span>Dias importados</span>
+            <strong id="dashboard-point-days">0</strong>
+            <small>registros do período</small>
+          </article>
+          <article>
+            <span>Dias aptos ao repouso</span>
+            <strong id="dashboard-point-eligible">0</strong>
+            <small>conforme leitura</small>
+          </article>
+        </div>
+        <div class="dashboard-management-foot">
+          <div>
+            <span>Última importação</span>
+            <strong id="dashboard-last-import">Nenhuma importação nesta competência.</strong>
+            <small id="dashboard-last-import-meta"></small>
+          </div>
+          <div class="dashboard-review-indicator">
+            <span>Dias para revisar</span>
+            <strong id="dashboard-review-days">0</strong>
+          </div>
+        </div>
+      </section>
+
       <section class="dashboard-alert-center" aria-labelledby="dashboard-alert-title">
         <div class="dashboard-alert-head">
           <div>
@@ -2292,14 +2335,14 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.24-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.24-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.24-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.24-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.24-beta.1"></script>
-  <script src="/js/report-validator.js?v=1.0.24-beta.1"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.24-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.24-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.24-beta.1"></script>
+  <script src="/js/core.js?v=1.0.25-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.0.25-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.0.25-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.0.25-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.25-beta.1"></script>
+  <script src="/js/report-validator.js?v=1.0.25-beta.1"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.25-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.0.25-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.0.25-beta.1"></script>
 </body>
 </html>

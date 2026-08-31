@@ -37,6 +37,31 @@ function renderDashboardAlertGroup({title,description,severity,count,items=[],br
     </details>`;
 }
 
+async function loadDashboardOperations(){
+  const month=dashboardAlertMonthValue();
+  const data=await api(`/api/dashboard/operations?month=${encodeURIComponent(month)}`);
+  const point=data.point||{};
+  $("dashboard-point-imports").textContent=point.imports||0;
+  $("dashboard-point-employees").textContent=point.employees||0;
+  $("dashboard-point-days").textContent=point.days||0;
+  $("dashboard-point-eligible").textContent=point.eligibleDays||0;
+  $("dashboard-review-days").textContent=point.reviewDays||0;
+
+  if(point.lastImport){
+    const when=new Date(point.lastImport.createdAt);
+    const whenText=Number.isNaN(when.getTime())?"":when.toLocaleString("pt-BR");
+    $("dashboard-last-import").textContent=point.lastImport.fileName||"Cartão de Ponto";
+    $("dashboard-last-import-meta").textContent=
+      `${point.lastImport.companyName} · ${point.lastImport.branchName}`+
+      `${whenText?` · ${whenText}`:""}`+
+      ` · ${point.lastImport.located||0} localizado(s)`+
+      `${point.lastImport.notFound?` · ${point.lastImport.notFound} não localizado(s)`:""}`;
+  }else{
+    $("dashboard-last-import").textContent="Nenhuma importação nesta competência.";
+    $("dashboard-last-import-meta").textContent="";
+  }
+}
+
 async function loadDashboardAlerts(){
   const month=dashboardAlertMonthValue();
   const data=await api(`/api/dashboard/alerts?month=${encodeURIComponent(month)}`);
@@ -111,20 +136,20 @@ async function loadDashboard(){
   if($("pending-shift-alert"))$("pending-shift-alert").hidden=true;
 
   try{
-    await loadDashboardAlerts();
+    await Promise.all([loadDashboardOperations(),loadDashboardAlerts()]);
   }catch(error){
-    console.error("[DASHBOARD_ALERTS]",error);
+    console.error("[DASHBOARD]",error);
     if($("dashboard-alert-list")){
-      $("dashboard-alert-list").innerHTML='<div class="dashboard-alert-load-error">Não foi possível carregar os alertas desta competência.</div>';
+      $("dashboard-alert-list").innerHTML='<div class="dashboard-alert-load-error">Não foi possível carregar todos os dados desta competência.</div>';
     }
   }
 }
 
 if($("dashboard-alert-refresh")){
-  $("dashboard-alert-refresh").onclick=()=>loadDashboardAlerts().catch(error=>toast(error.message,"error"));
+  $("dashboard-alert-refresh").onclick=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
 }
 if($("dashboard-alert-month")){
-  $("dashboard-alert-month").onchange=()=>loadDashboardAlerts().catch(error=>toast(error.message,"error"));
+  $("dashboard-alert-month").onchange=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
 }
 if($("dashboard-alert-list")){
   $("dashboard-alert-list").onclick=event=>{
