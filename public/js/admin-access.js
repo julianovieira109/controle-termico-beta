@@ -37,9 +37,91 @@ function renderDashboardAlertGroup({title,description,severity,count,items=[],br
     </details>`;
 }
 
+
+let dashboardOperationsSnapshot=null;
+let dashboardAlertsSnapshot=null;
+let dashboardActiveEmployees=0;
+
+function dashboardPercent(value,total){
+  const v=Number(value||0);
+  const t=Number(total||0);
+  return t>0?Math.max(0,Math.min(100,Math.round((v/t)*100))):0;
+}
+
+function renderDashboardGraphs(){
+  const operations=dashboardOperationsSnapshot?.point||{};
+  const alerts=dashboardAlertsSnapshot||{};
+  const groups=alerts.groups||{};
+
+  const errorItems=[
+    {label:"Sem turno",value:groups.missingShift?.length||0,tone:"critical"},
+    {label:"Filial sem ponto",value:groups.missingPointImport?.length||0,tone:"critical"},
+    {label:"Sem matrícula",value:groups.missingRegistration?.length||0,tone:"warning"},
+    {label:"Regra pendente",value:groups.pendingPolicy?.length||0,tone:"warning"},
+    {label:"Não localizado",value:groups.missingPointRows?.length||0,tone:"warning"}
+  ];
+  const max=Math.max(1,...errorItems.map(item=>item.value));
+  const total=errorItems.reduce((sum,item)=>sum+item.value,0);
+  if($("chart-errors-total"))$("chart-errors-total").textContent=total;
+  if($("chart-errors-bars")){
+    $("chart-errors-bars").innerHTML=errorItems.map(item=>`
+      <div class="dashboard-bar-row">
+        <div class="dashboard-bar-label"><span>${escapeHtml(item.label)}</span><b>${item.value}</b></div>
+        <div class="dashboard-bar-track"><i class="${item.tone}" style="width:${Math.round((item.value/max)*100)}%"></i></div>
+      </div>`).join("");
+  }
+
+  const days=Number(operations.days||0);
+  const eligible=Math.min(days,Number(operations.eligibleDays||0));
+  const review=Math.min(Math.max(0,days-eligible),Number(operations.reviewDays||0));
+  const other=Math.max(0,days-eligible-review);
+  if($("chart-days-total"))$("chart-days-total").textContent=days;
+  const eligiblePct=dashboardPercent(eligible,days);
+  const reviewPct=dashboardPercent(review,days);
+  const otherPct=Math.max(0,100-eligiblePct-reviewPct);
+  if($("chart-days-donut")){
+    $("chart-days-donut").style.setProperty("--eligible",`${eligiblePct}%`);
+    $("chart-days-donut").style.setProperty("--review",`${eligiblePct+reviewPct}%`);
+  }
+  if($("chart-days-legend")){
+    $("chart-days-legend").innerHTML=`
+      <span><i class="eligible"></i><b>Aptos</b>${eligible}</span>
+      <span><i class="review"></i><b>Revisar</b>${review}</span>
+      <span><i class="other"></i><b>Demais</b>${other}</span>`;
+  }
+
+  const found=Number(operations.employees||0);
+  const active=Math.max(0,Number(dashboardActiveEmployees||0));
+  const missing=Math.max(0,active-found);
+  const coverage=dashboardPercent(found,active);
+  if($("chart-coverage-percent"))$("chart-coverage-percent").textContent=`${coverage}%`;
+  if($("chart-coverage-fill"))$("chart-coverage-fill").style.width=`${coverage}%`;
+  if($("chart-coverage-found"))$("chart-coverage-found").textContent=found;
+  if($("chart-coverage-missing"))$("chart-coverage-missing").textContent=missing;
+
+  const actions=[
+    {count:groups.missingShift?.length||0,title:"Definir turno",text:"Cadastre o turno dos colaboradores antes da geração."},
+    {count:groups.missingPointImport?.length||0,title:"Importar Cartão de Ponto",text:"Confirme o ponto das filiais sem arquivo na competência."},
+    {count:groups.missingRegistration?.length||0,title:"Completar matrícula",text:"Corrija cadastros sem matrícula informada."},
+    {count:groups.pendingPolicy?.length||0,title:"Definir regra de relatório",text:"Informe quais fichas cada colaborador deve gerar."},
+    {count:groups.missingPointRows?.length||0,title:"Conferir não localizados",text:"Revise matrícula, filial e conteúdo do ponto importado."}
+  ].filter(item=>item.count>0);
+
+  if($("dashboard-correction-actions")){
+    $("dashboard-correction-actions").innerHTML=actions.length
+      ?actions.map(item=>`
+        <div class="dashboard-correction-row">
+          <b>${item.count}</b>
+          <div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.text)}</span></div>
+        </div>`).join("")
+      :'<div class="dashboard-corrections-ok"><strong>✓ Nenhuma correção pendente</strong><span>A competência não possui alertas operacionais no momento.</span></div>';
+  }
+}
+
 async function loadDashboardOperations(){
   const month=dashboardAlertMonthValue();
   const data=await api(`/api/dashboard/operations?month=${encodeURIComponent(month)}`);
+  dashboardOperationsSnapshot=data;
   const point=data.point||{};
   $("dashboard-point-imports").textContent=point.imports||0;
   $("dashboard-point-employees").textContent=point.employees||0;
@@ -68,11 +150,13 @@ async function loadDashboardOperations(){
     $("dashboard-last-import").textContent="Nenhuma importação nesta competência.";
     $("dashboard-last-import-meta").innerHTML="";
   }
+  renderDashboardGraphs();
 }
 
 async function loadDashboardAlerts(){
   const month=dashboardAlertMonthValue();
   const data=await api(`/api/dashboard/alerts?month=${encodeURIComponent(month)}`);
+  dashboardAlertsSnapshot=data;
   $("dashboard-alert-critical").textContent=data.summary?.critical||0;
   $("dashboard-alert-warning").textContent=data.summary?.warnings||0;
   $("dashboard-alert-total").textContent=data.summary?.total||0;
@@ -128,10 +212,12 @@ async function loadDashboardAlerts(){
 
   $("dashboard-alert-list").innerHTML=sections.join("");
   $("dashboard-alert-empty").hidden=sections.length>0;
+  renderDashboardGraphs();
 }
 
 async function loadDashboard(){
   const d=await api("/api/dashboard/summary");
+  dashboardActiveEmployees=Number(d.employees||0);
   $("sum-employees").textContent=d.employees;
   $("sum-companies").textContent=d.companies;
   $("sum-branches").textContent=d.branches;

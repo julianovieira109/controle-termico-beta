@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.25-beta.2">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.25-beta.2">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.25-beta.2">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.25-beta.2">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.25-beta.2">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.25-beta.2">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.25-beta.3">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.25-beta.3">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.25-beta.3">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.25-beta.3">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.25-beta.3">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.25-beta.3">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -333,6 +333,59 @@
             <strong id="dashboard-review-days">0</strong>
             <small id="dashboard-review-status">Nenhuma revisão pendente</small>
           </div>
+        </div>
+      </section>
+
+      <section class="dashboard-charts" aria-labelledby="dashboard-charts-title">
+        <div class="dashboard-charts-head">
+          <div>
+            <span class="eyebrow">Indicadores gráficos</span>
+            <h3 id="dashboard-charts-title">Análise da competência</h3>
+            <p>Visualize os principais erros, pontos de correção e a situação do Cartão de Ponto.</p>
+          </div>
+        </div>
+
+        <div class="dashboard-charts-grid">
+          <article class="dashboard-chart-card">
+            <div class="dashboard-chart-title">
+              <div><strong>Pendências por tipo</strong><span>Onde estão concentrados os erros e avisos.</span></div>
+              <b id="chart-errors-total">0</b>
+            </div>
+            <div id="chart-errors-bars" class="dashboard-bar-chart"></div>
+          </article>
+
+          <article class="dashboard-chart-card">
+            <div class="dashboard-chart-title">
+              <div><strong>Situação dos dias importados</strong><span>Aptos, revisão e demais registros.</span></div>
+            </div>
+            <div class="dashboard-donut-wrap">
+              <div id="chart-days-donut" class="dashboard-donut" aria-label="Gráfico de situação dos dias importados">
+                <div class="dashboard-donut-center"><strong id="chart-days-total">0</strong><span>dias</span></div>
+              </div>
+              <div id="chart-days-legend" class="dashboard-chart-legend"></div>
+            </div>
+          </article>
+
+          <article class="dashboard-chart-card">
+            <div class="dashboard-chart-title">
+              <div><strong>Cobertura do Cartão de Ponto</strong><span>Colaboradores ativos localizados na competência.</span></div>
+              <b id="chart-coverage-percent">0%</b>
+            </div>
+            <div class="dashboard-progress-chart">
+              <div class="dashboard-progress-track"><i id="chart-coverage-fill"></i></div>
+              <div class="dashboard-progress-meta">
+                <span><b id="chart-coverage-found">0</b> localizados</span>
+                <span><b id="chart-coverage-missing">0</b> não localizados</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="dashboard-chart-card dashboard-corrections-card">
+            <div class="dashboard-chart-title">
+              <div><strong>Ações de correção</strong><span>O que precisa ser feito para reduzir as pendências.</span></div>
+            </div>
+            <div id="dashboard-correction-actions" class="dashboard-correction-actions"></div>
+          </article>
         </div>
       </section>
 
@@ -2337,14 +2390,14 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.25-beta.2"></script>
-  <script src="/js/help-manual.js?v=1.0.25-beta.2"></script>
-  <script src="/js/admin-access.js?v=1.0.25-beta.2"></script>
-  <script src="/js/employees-imports.js?v=1.0.25-beta.2"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.25-beta.2"></script>
-  <script src="/js/report-validator.js?v=1.0.25-beta.2"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.25-beta.2"></script>
-  <script src="/js/calendar-reports.js?v=1.0.25-beta.2"></script>
-  <script src="/js/settings-system.js?v=1.0.25-beta.2"></script>
+  <script src="/js/core.js?v=1.0.25-beta.3"></script>
+  <script src="/js/help-manual.js?v=1.0.25-beta.3"></script>
+  <script src="/js/admin-access.js?v=1.0.25-beta.3"></script>
+  <script src="/js/employees-imports.js?v=1.0.25-beta.3"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.25-beta.3"></script>
+  <script src="/js/report-validator.js?v=1.0.25-beta.3"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.25-beta.3"></script>
+  <script src="/js/calendar-reports.js?v=1.0.25-beta.3"></script>
+  <script src="/js/settings-system.js?v=1.0.25-beta.3"></script>
 </body>
 </html>
