@@ -514,7 +514,7 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
       // Cópia manual: deliberadamente NÃO consulta point_states, feriados, férias,
       // faltas, atestados, DSR ou qualquer outra ocorrência do ponto.
       // Somente folgas previamente configuradas podem ser pré-marcadas.
-      const status=blankCopy
+      let status=blankCopy
         ?BlankCopyStatus.status(employee,d)
         :(pointDataActive
           ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":dayStatus(employee,d)||"PONTO NÃO IMPORTADO")
