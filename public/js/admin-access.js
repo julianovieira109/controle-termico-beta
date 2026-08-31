@@ -221,18 +221,16 @@ async function loadDashboard(){
     await Promise.all([loadDashboardOperations(),loadDashboardAlerts()]);
   }catch(error){
     console.error("[DASHBOARD]",error);
-    if($("dashboard-alert-list")){
+    if($("dashboard-alert-month")){
+  $("dashboard-alert-month").onchange=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
+}
+if($("dashboard-alert-list")){
       $("dashboard-alert-list").innerHTML='<div class="dashboard-alert-load-error">Não foi possível carregar todos os dados desta competência.</div>';
     }
   }
 }
 
-if($("dashboard-alert-refresh")){
-  $("dashboard-alert-refresh").onclick=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
-}
-if($("dashboard-alert-month")){
-  $("dashboard-alert-month").onchange=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
-}
+
 if($("dashboard-alert-list")){
   $("dashboard-alert-list").onclick=event=>{
     const button=event.target.closest("[data-dashboard-alert-action]");

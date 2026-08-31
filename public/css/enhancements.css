@@ -2251,3 +2251,11 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
 .dashboard-review-callout.is-clear small{
   color:#146c43;
 }
+
+/* V1.0.25 beta.7 — competência com atualização automática */
+.dashboard-period-controls{
+  align-items:flex-end;
+}
+.dashboard-period-controls label{
+  margin:0;
+}
