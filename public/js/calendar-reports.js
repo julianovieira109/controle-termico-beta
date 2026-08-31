@@ -856,13 +856,30 @@ let lastReportValidation=null;
 function invalidateReportValidation(){
   lastReportValidation=null;
   const panel=$("report-validation-panel");
+  const toggle=$("report-validation-toggle");
   if(panel)panel.hidden=true;
+  if(toggle){ toggle.hidden=true; toggle.textContent="Ver validação"; }
 }
+
+function setReportValidationVisibility(show){
+  const panel=$("report-validation-panel");
+  const toggle=$("report-validation-toggle");
+  if(!panel)return;
+  panel.hidden=!show;
+  if(toggle){
+    toggle.hidden=!lastReportValidation;
+    toggle.textContent=show?"Ocultar validação":"Ver validação";
+  }
+}
+
+if($("report-validation-toggle"))$("report-validation-toggle").onclick=()=>{
+  const panel=$("report-validation-panel");
+  if(panel)setReportValidationVisibility(panel.hidden);
+};
 
 function renderReportValidation(result,month){
   const panel=$("report-validation-panel");
   if(!panel)return;
-  panel.hidden=false;
   panel.classList.remove("is-ok","has-warning","has-blocker");
   const hasBlocker=result.blockers.length>0;
   const hasWarning=result.warnings.length>0;
@@ -879,6 +896,8 @@ function renderReportValidation(result,month){
   if(result.warnings.length)groups.push(`<div class="report-validation-group"><h4>Avisos para conferência</h4><ul>${result.warnings.map(item=>`<li>${escapeHtml(item.message)}</li>`).join("")}</ul></div>`);
   if(!result.blockers.length&&!result.warnings.length)groups.push('<div class="report-validation-group"><strong>✓ Nenhuma inconsistência encontrada para a seleção atual.</strong></div>');
   $("report-validation-details").innerHTML=groups.join("");
+  // Mantém a tela limpa quando está tudo aprovado; avisos e bloqueios abrem automaticamente.
+  setReportValidationVisibility(hasBlocker||hasWarning);
 }
 
 function validateReportBeforeGeneration(month,employees){
@@ -889,6 +908,7 @@ function validateReportBeforeGeneration(month,employees){
     thermalConfig:thermalRestSettings,
     pointCompetenceBranches
   });
+  lastReportValidation={month,valid:result.valid,generated:false};
   renderReportValidation(result,month);
   return result;
 }
@@ -924,7 +944,6 @@ $("report-generate").onclick=async()=>{
   }
 
   const validation=validateReportBeforeGeneration(month,selectedEmployees);
-  lastReportValidation={month,valid:validation.valid,generated:false};
   if(!validation.valid){
     summary.className="full feedback error";
     summary.textContent=`Validação bloqueou a geração: ${validation.blockers.length} pendência(s) crítica(s). Corrija os itens indicados acima.`;
