@@ -868,7 +868,13 @@ function setReportValidationVisibility(show){
   panel.hidden=!show;
   if(toggle){
     toggle.hidden=!lastReportValidation;
-    toggle.textContent=show?"Ocultar validação":"Ver validação";
+    if(show){
+      toggle.textContent="Ocultar validação";
+    }else if(lastReportValidation?.summary){
+      toggle.textContent=lastReportValidation.summary;
+    }else{
+      toggle.textContent="Ver validação";
+    }
   }
 }
 
@@ -896,8 +902,10 @@ function renderReportValidation(result,month){
   if(result.warnings.length)groups.push(`<div class="report-validation-group"><h4>Avisos para conferência</h4><ul>${result.warnings.map(item=>`<li>${escapeHtml(item.message)}</li>`).join("")}</ul></div>`);
   if(!result.blockers.length&&!result.warnings.length)groups.push('<div class="report-validation-group"><strong>✓ Nenhuma inconsistência encontrada para a seleção atual.</strong></div>');
   $("report-validation-details").innerHTML=groups.join("");
-  // Mantém a tela limpa quando está tudo aprovado; avisos e bloqueios abrem automaticamente.
-  setReportValidationVisibility(hasBlocker||hasWarning);
+  // Mantém a validação sempre recolhida após a conferência.
+  // Avisos e bloqueios permanecem visíveis no resumo compacto e os detalhes
+  // só são exibidos quando o usuário solicitar.
+  setReportValidationVisibility(false);
 }
 
 function validateReportBeforeGeneration(month,employees){
@@ -908,7 +916,12 @@ function validateReportBeforeGeneration(month,employees){
     thermalConfig:thermalRestSettings,
     pointCompetenceBranches
   });
-  lastReportValidation={month,valid:result.valid,generated:false};
+  lastReportValidation={
+    month,
+    valid:result.valid,
+    generated:false,
+    summary:`Validação: ${result.counts.ok} aptos · ${result.counts.warnings} avisos · ${result.counts.blockers} bloqueios — Ver detalhes`
+  };
   renderReportValidation(result,month);
   return result;
 }
