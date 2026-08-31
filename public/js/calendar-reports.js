@@ -821,27 +821,77 @@ function refreshReportEmployeeList(){
 }
 
 
+if($("report-employee-select"))$("report-employee-select").onchange=invalidateReportValidation;
+
 $("report-all-employees").onchange=()=>{
   if($("report-all-employees").checked){
     $("report-employee-select").value="";
   }
   refreshReportEmployeeList();
+  invalidateReportValidation();
 };
 
 $("report-company").onchange=()=>{
   refreshReportBranchOptions();
   refreshReportShiftOptions();
   refreshReportEmployeeList();
+  invalidateReportValidation();
 };
 
 $("report-branch").onchange=()=>{
   refreshReportShiftOptions();
   refreshReportEmployeeList();
+  invalidateReportValidation();
 };
 
 ["report-shift","report-month"].forEach(id=>{
-  $(id).onchange=refreshReportEmployeeList;
+  $(id).onchange=()=>{
+    refreshReportEmployeeList();
+    invalidateReportValidation();
+  };
 });
+
+let lastReportValidation=null;
+
+function invalidateReportValidation(){
+  lastReportValidation=null;
+  const panel=$("report-validation-panel");
+  if(panel)panel.hidden=true;
+}
+
+function renderReportValidation(result,month){
+  const panel=$("report-validation-panel");
+  if(!panel)return;
+  panel.hidden=false;
+  panel.classList.remove("is-ok","has-warning","has-blocker");
+  const hasBlocker=result.blockers.length>0;
+  const hasWarning=result.warnings.length>0;
+  panel.classList.add(hasBlocker?"has-blocker":hasWarning?"has-warning":"is-ok");
+  $("report-validation-badge").textContent=hasBlocker?"Bloqueado":hasWarning?"Com avisos":"Aprovado";
+  $("report-validation-subtitle").textContent=`Competência ${reportMonthLabel(month)} — conferência executada antes da geração.`;
+  $("report-validation-counts").innerHTML=`
+    <div><strong>${result.counts.employees}</strong><span>Selecionados</span></div>
+    <div><strong>${result.counts.ok}</strong><span>Aptos</span></div>
+    <div><strong>${result.counts.warnings}</strong><span>Avisos</span></div>
+    <div><strong>${result.counts.blockers}</strong><span>Bloqueios</span></div>`;
+  const groups=[];
+  if(result.blockers.length)groups.push(`<div class="report-validation-group"><h4>Bloqueios — corrija antes de gerar</h4><ul>${result.blockers.map(item=>`<li>${escapeHtml(item.message)}</li>`).join("")}</ul></div>`);
+  if(result.warnings.length)groups.push(`<div class="report-validation-group"><h4>Avisos para conferência</h4><ul>${result.warnings.map(item=>`<li>${escapeHtml(item.message)}</li>`).join("")}</ul></div>`);
+  if(!result.blockers.length&&!result.warnings.length)groups.push('<div class="report-validation-group"><strong>✓ Nenhuma inconsistência encontrada para a seleção atual.</strong></div>');
+  $("report-validation-details").innerHTML=groups.join("");
+}
+
+function validateReportBeforeGeneration(month,employees){
+  if(!window.ReportValidator)throw new Error("O módulo de validação prévia não foi carregado.");
+  const result=window.ReportValidator.validate({
+    month,
+    employees,
+    thermalConfig:thermalRestSettings,
+    pointCompetenceBranches
+  });
+  renderReportValidation(result,month);
+  return result;
+}
 
 $("report-generate").onclick=async()=>{
   const month=$("report-month").value;
@@ -871,6 +921,14 @@ $("report-generate").onclick=async()=>{
       return;
     }
     selectedEmployees=[employee];
+  }
+
+  const validation=validateReportBeforeGeneration(month,selectedEmployees);
+  lastReportValidation={month,valid:validation.valid,generated:false};
+  if(!validation.valid){
+    summary.className="full feedback error";
+    summary.textContent=`Validação bloqueou a geração: ${validation.blockers.length} pendência(s) crítica(s). Corrija os itens indicados acima.`;
+    return;
   }
 
   const skippedEmployees=[];
@@ -983,6 +1041,10 @@ $("report-generate").onclick=async()=>{
   }
   $("report-output").innerHTML=html;
   const skippedCount=policyBlocked.length+blockedEmployees.length+withoutShift.length;
+  if(lastReportValidation&&lastReportValidation.month===month){
+    lastReportValidation.valid=true;
+    lastReportValidation.generated=true;
+  }
   summary.className="full feedback success";
   summary.textContent=`Geração concluída: ${thermalCount} ficha(s) de Repouso Térmico (${thermalAutomaticCount} automática(s), ${thermalBlankCopyCount} cópia(s) manual(is) e ${thermalManualCount} manual(is)), ${mealCount} ficha(s) de Refeição manual`+
     `${skippedCount?` e ${skippedCount} colaborador(es) sem ficha`:""}.`;
@@ -993,6 +1055,11 @@ let reportPrintInProgress=false;
 $("report-print").onclick=event=>{
   if(!$("report-output").innerHTML.trim()){
     alert("Gere a ficha antes de imprimir.");
+    return;
+  }
+  const currentMonth=$("report-month").value;
+  if(!lastReportValidation||!lastReportValidation.valid||!lastReportValidation.generated||lastReportValidation.month!==currentMonth){
+    alert("A impressão foi bloqueada porque a seleção atual não possui uma validação concluída. Gere novamente as fichas para validar antes de imprimir.");
     return;
   }
 
@@ -1016,6 +1083,7 @@ $("report-clear").onclick=()=>{
   $("report-generation-summary").className="full feedback";
   $("report-generation-summary").textContent="";
   showReportSkippedDetails([]);
+  invalidateReportValidation();
   refreshReportEmployeeList();
 };
 

@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.22-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.22-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.22-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.22-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.22-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.22-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.23-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.23-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.23-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.23-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.23-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.23-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -106,7 +106,7 @@
 
         <div class="login-card-footer">
           <span>Controle Térmico</span>
-          <span>Versão 1.0.22 Beta</span>
+          <span>Versão 1.0.23 Beta</span>
         </div>
       </form>
 
@@ -255,7 +255,7 @@
       <span class="sidebar-nav-heading">Ajuda e suporte</span>
       <button class="nav-btn nav-btn-support" data-view="manual" title="Manual do Sistema"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></svg></span><span class="nav-label">Manual do Sistema</span></button>
     </nav>
-    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.22 Beta</small></div>
+    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.23 Beta</small></div>
   </aside>
 
   <main class="main">
@@ -975,6 +975,14 @@
             <button type="button" id="report-print" class="secondary">Imprimir</button>
             <button type="button" id="report-clear" class="secondary">Limpar</button>
           </div>
+          <section id="report-validation-panel" class="full report-validation-panel" hidden aria-live="polite">
+            <div class="report-validation-head">
+              <div><strong>Validação prévia</strong><small id="report-validation-subtitle">Confira a competência antes da geração.</small></div>
+              <span id="report-validation-badge" class="report-validation-badge">Aguardando</span>
+            </div>
+            <div id="report-validation-counts" class="report-validation-counts"></div>
+            <div id="report-validation-details" class="report-validation-details"></div>
+          </section>
           <p id="report-generation-summary" class="full feedback" aria-live="polite"></p>
           <details id="report-skipped-details" class="full report-skipped-details" hidden aria-live="polite"></details>
         </div>
@@ -2258,12 +2266,13 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.22-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.22-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.22-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.22-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.22-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.22-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.22-beta.1"></script>
+  <script src="/js/core.js?v=1.0.23-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.0.23-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.0.23-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.0.23-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.23-beta.1"></script>
+  <script src="/js/report-validator.js?v=1.0.23-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.0.23-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.0.23-beta.1"></script>
 </body>
 </html>
