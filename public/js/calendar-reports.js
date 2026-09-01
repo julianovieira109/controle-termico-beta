@@ -1008,6 +1008,7 @@ function renderReportSimulator(employee,day,plan){
     message.textContent="Não há marcações de jornada suficientes neste dia para montar a simulação.";
     timeline.innerHTML="";
     details.innerHTML="";
+    if($("report-rest-audit"))$("report-rest-audit").innerHTML="";
     return;
   }
 
@@ -1049,6 +1050,51 @@ function renderReportSimulator(employee,day,plan){
     cards.push(`<article><span>Refeição</span><strong>${escapeHtml(markings[1])} – ${escapeHtml(markings[2])}</strong></article>`);
   }
   details.innerHTML=cards.join("");
+
+  const auditContainer=$("report-rest-audit");
+  if(auditContainer&&window.RestAudit){
+    const audit=RestAudit.auditDay(
+      employee.point_schedules?.[day.iso]||"",
+      rests,
+      employee.shift_description||""
+    );
+    const summaryCards=[
+      `<article><span>Regra aplicada</span><strong>${audit.ruleWorkMinutes} min contínuos</strong><small>limite de trabalho contínuo</small></article>`,
+      `<article><span>Duração-base</span><strong>${audit.ruleRestMinutes} min</strong><small>por repouso calculado</small></article>`,
+      `<article><span>Fonte do cálculo</span><strong>Cartão de ponto</strong><small>${audit.markings.length} marcação(ões) utilizada(s)</small></article>`,
+      `<article><span>Limite diário</span><strong>até ${audit.dailyLimit} repouso(s)</strong><small>${audit.overtimeMinutes>0?`${audit.overtimeMinutes} min extras identificados`:"sem acréscimo por hora extra"}</small></article>`
+    ].join("");
+
+    const restRows=audit.items.length
+      ?audit.items.map(item=>`
+        <article class="rest-audit-item ${item.status==="Conforme"?"ok":"review"}">
+          <div class="rest-audit-title">
+            <div><span>Repouso ${item.index}</span><strong>${item.startLabel} – ${item.endLabel}</strong></div>
+            <b>${item.status}</b>
+          </div>
+          <dl>
+            <div><dt>Trecho do ponto</dt><dd>${item.periodLabel}</dd></div>
+            <div><dt>Trabalho antes</dt><dd>${item.continuousBefore} min</dd></div>
+            <div><dt>Duração</dt><dd>${item.duration} min</dd></div>
+            <div><dt>Contagem</dt><dd>reinicia após o repouso</dd></div>
+          </dl>
+          <p>${escapeHtml(item.explanation)}</p>
+        </article>`).join("")
+      :`<div class="rest-audit-empty">Nenhum repouso foi calculado para este dia.</div>`;
+
+    const mealNote=audit.meal
+      ?`<div class="rest-audit-meal"><strong>Refeição:</strong> ${RestAudit.formatMinutes(audit.meal.start)} – ${RestAudit.formatMinutes(audit.meal.end)}. A refeição separa os períodos de trabalho usados na conferência.</div>`
+      :"";
+
+    auditContainer.innerHTML=`
+      <div class="rest-audit-heading">
+        <div><span class="eyebrow">V1.0.27 · Auditoria explicativa</span><h5>Por que cada repouso foi gerado?</h5></div>
+        <small>Somente leitura — nenhuma regra ou horário é alterado aqui.</small>
+      </div>
+      <div class="rest-audit-summary">${summaryCards}</div>
+      ${mealNote}
+      <div class="rest-audit-list">${restRows}</div>`;
+  }
 }
 
 async function openReportSimulator(){
@@ -1088,6 +1134,7 @@ async function openReportSimulator(){
     $("report-simulator-message").textContent="Não há dias com marcações do ponto para este colaborador na competência selecionada.";
     $("report-simulator-timeline").innerHTML="";
     $("report-simulator-details").innerHTML="";
+    if($("report-rest-audit"))$("report-rest-audit").innerHTML="";
     return;
   }
 

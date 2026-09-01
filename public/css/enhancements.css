@@ -2442,3 +2442,116 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
     justify-content:flex-start;
   }
 }
+
+
+/* V1.0.27 Beta — Auditoria explicativa de cada repouso */
+.report-rest-audit{
+  margin-top:16px;
+  padding-top:14px;
+  border-top:1px solid #dbe4ea;
+}
+.rest-audit-heading{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.rest-audit-heading h5{
+  margin:3px 0 0;
+  color:var(--heading);
+  font-size:14px;
+}
+.rest-audit-heading>small{
+  color:#667085;
+  font-size:9px;
+}
+.rest-audit-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-top:10px;
+}
+.rest-audit-summary article{
+  padding:9px 10px;
+  border:1px solid #dde5eb;
+  border-radius:10px;
+  background:#fff;
+}
+.rest-audit-summary span,
+.rest-audit-summary strong,
+.rest-audit-summary small{display:block}
+.rest-audit-summary span{font-size:8px;color:#667085}
+.rest-audit-summary strong{margin-top:3px;font-size:11px;color:var(--heading)}
+.rest-audit-summary small{margin-top:2px;font-size:8px;color:#7b8794}
+.rest-audit-meal{
+  margin-top:9px;
+  padding:8px 10px;
+  border:1px solid #ead9a8;
+  border-radius:9px;
+  background:#fffaf0;
+  color:#75550c;
+  font-size:9px;
+}
+.rest-audit-list{
+  display:grid;
+  gap:8px;
+  margin-top:10px;
+}
+.rest-audit-item{
+  padding:11px;
+  border:1px solid #dce5ea;
+  border-left-width:4px;
+  border-radius:10px;
+  background:#fff;
+}
+.rest-audit-item.ok{border-left-color:#16835f}
+.rest-audit-item.review{border-left-color:#c98919}
+.rest-audit-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+}
+.rest-audit-title span,
+.rest-audit-title strong{display:block}
+.rest-audit-title span{font-size:8px;color:#667085}
+.rest-audit-title strong{margin-top:2px;font-size:12px;color:var(--heading)}
+.rest-audit-title b{
+  padding:3px 7px;
+  border-radius:999px;
+  background:#eef8f2;
+  color:#196442;
+  font-size:8px;
+}
+.rest-audit-item.review .rest-audit-title b{background:#fff6df;color:#805b00}
+.rest-audit-item dl{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin:9px 0 0;
+}
+.rest-audit-item dl>div{
+  min-width:0;
+  padding:6px 8px;
+  border-radius:8px;
+  background:#f7f9fb;
+}
+.rest-audit-item dt{font-size:8px;color:#7b8794}
+.rest-audit-item dd{margin:2px 0 0;font-size:9px;font-weight:700;color:#344054}
+.rest-audit-item p{margin:8px 0 0;color:#5d6976;font-size:9px;line-height:1.45}
+.rest-audit-empty{
+  padding:10px;
+  border:1px dashed #cfd9e1;
+  border-radius:9px;
+  color:#667085;
+  font-size:9px;
+  text-align:center;
+}
+@media(max-width:800px){
+  .rest-audit-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rest-audit-item dl{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:520px){
+  .rest-audit-summary,.rest-audit-item dl{grid-template-columns:1fr}
+}
