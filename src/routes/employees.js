@@ -174,6 +174,9 @@ router.get("/",async(req,res,next)=>{
       params.push(`%${req.query.search}%`);
       where+=` AND (e.full_name ILIKE $${params.length} OR e.registration ILIKE $${params.length})`;
     }
+    if(req.query.historyMode==="master"){
+      where+=" AND NULLIF(TRIM(e.full_name),'') IS NOT NULL AND TRIM(e.full_name)<>'-'";
+    }
     if(req.query.missingShift==="true"){
       where+=" AND e.shift_id IS NULL";
     }

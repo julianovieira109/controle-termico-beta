@@ -74,7 +74,9 @@
               <b aria-hidden="true">→</b>
               <span>${safe(historyValue(change.to,key))}</span>
             </div>`).join("")}</div>`
-          :`<p>${item.action==="CREATE"?"Registro inicial do colaborador.":"Registro de auditoria preservado pelo sistema."}</p>`;
+          :`<p>${item.action==="CREATE"
+            ?"Registro inicial do colaborador."
+            :"Alteração anterior — detalhes não disponíveis nesta versão."}</p>`;
 
         return `<article class="employee-history-entry">
           <div class="employee-history-entry-head">
@@ -101,14 +103,20 @@
 
     result.innerHTML='<div class="employee-history-empty">Pesquisando...</div>';
     try{
-      const query=new URLSearchParams({status:"ALL"});
+      const query=new URLSearchParams({status:"ALL",historyMode:"master"});
       if(term)query.set("search",term);
       const rows=await api(`/api/employees?${query.toString()}`);
       const limited=(Array.isArray(rows)?rows:[]).slice(0,100);
       count.textContent=`${limited.length} encontrado${limited.length===1?"":"s"}`;
       result.innerHTML=limited.length?limited.map(employee=>`
-        <button type="button" class="employee-history-person ${String(employee.id)===String(selectedEmployeeId)?"active":""}" data-history-employee="${safe(employee.id)}">
-          <strong>${safe(employee.full_name)}</strong>
+        <button type="button"
+                class="employee-history-person ${String(employee.id)===String(selectedEmployeeId)?"active":""}"
+                data-history-employee="${safe(employee.id)}"
+                aria-pressed="${String(employee.id)===String(selectedEmployeeId)?"true":"false"}">
+          <span class="employee-history-person-main">
+            <strong>${safe(employee.full_name)}</strong>
+            <em>${String(employee.id)===String(selectedEmployeeId)?"Selecionado":""}</em>
+          </span>
           <span>Matrícula ${safe(employee.registration||"não informada")}</span>
           <small>${safe(employee.company_name||"-")} · ${safe(employee.branch_name||"-")}</small>
         </button>`).join("")
@@ -146,8 +154,16 @@
     $("employee-history-employee-list")?.addEventListener("click",event=>{
       const button=event.target.closest("[data-history-employee]");
       if(!button)return;
-      document.querySelectorAll("[data-history-employee]").forEach(el=>el.classList.remove("active"));
+      document.querySelectorAll("[data-history-employee]").forEach(el=>{
+        el.classList.remove("active");
+        el.setAttribute("aria-pressed","false");
+        const badge=el.querySelector("em");
+        if(badge)badge.textContent="";
+      });
       button.classList.add("active");
+      button.setAttribute("aria-pressed","true");
+      const badge=button.querySelector("em");
+      if(badge)badge.textContent="Selecionado";
       loadEmployeeHistory(button.dataset.historyEmployee);
     });
     tab.addEventListener("click",()=>{
