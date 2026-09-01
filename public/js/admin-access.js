@@ -733,11 +733,21 @@ function updateUserRoleFields(){
   const companyLabel=$("user-company-label");
   const branchesArea=$("user-branches-area");
   const calendarPermission=$("user-calendar-permission");
+  const occurrencesPermission=$("user-occurrences-permission");
+  const occurrencesAccess=$("user-occurrences-access");
   const companyField=$("user-company");
+  const isAdminProfile=(profile?.base_role||"RH")==="ADMIN";
+  const canAuthorizeOccurrences=currentUser?.isMasterAdmin===true&&isAdminProfile;
+  const isMasterProfile=profile?.master_admin===true;
 
   if(companyLabel)companyLabel.hidden=!isRh;
   if(branchesArea)branchesArea.hidden=!isRh;
   if(calendarPermission)calendarPermission.hidden=!isRh;
+  if(occurrencesPermission)occurrencesPermission.hidden=!canAuthorizeOccurrences;
+  if(occurrencesAccess){
+    occurrencesAccess.disabled=isMasterProfile;
+    if(isMasterProfile)occurrencesAccess.checked=true;
+  }
   if(companyField)companyField.required=isRh;
 
   if(!isRh){
@@ -745,6 +755,7 @@ function updateUserRoleFields(){
     if($("user-branch-checks"))$("user-branch-checks").innerHTML="";
     if($("user-select-all-branches"))$("user-select-all-branches").checked=false;
     if($("user-calendar-access"))$("user-calendar-access").checked=false;
+    if(!isAdminProfile && $("user-occurrences-access"))$("user-occurrences-access").checked=false;
     if($("user-branch-feedback"))$("user-branch-feedback").hidden=true;
   }else if(companyField?.value){
     fillUserBranchChecks(selectedUserBranches());
@@ -1188,6 +1199,7 @@ $("user-form").onsubmit=async e=>{
       companyId:role==="RH"?$("user-company").value:null,
       branchIds:role==="RH"?branchIds:[],
       calendarAccess:role==="RH"&&$("user-calendar-access").checked,
+      occurrencesAccess:role==="ADMIN"&&$("user-occurrences-access")?.checked===true,
       active:$("user-active").value==="true"
     };
 
@@ -1217,6 +1229,7 @@ function resetUserForm(){
   $("user-form").reset();
   $("user-id").value="";
   $("user-calendar-access").checked=false;
+  if($("user-occurrences-access"))$("user-occurrences-access").checked=false;
   $("user-select-all-branches").checked=false;
   $("user-branch-feedback").hidden=true;
   $("user-form-feedback").textContent="";
@@ -1274,6 +1287,7 @@ window.editUser=id=>{
   $("user-password-label").hidden=true;
   $("user-save-button").textContent="Salvar alterações";
   $("user-calendar-access").checked=Boolean(u.calendar_access);
+  if($("user-occurrences-access"))$("user-occurrences-access").checked=Boolean(u.occurrences_access);
 
   updateUserRoleFields();
 

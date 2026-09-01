@@ -3122,3 +3122,87 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
 @media(max-width:1000px){.occurrences-summary{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.occurrences-hero{align-items:stretch;flex-direction:column}.occurrences-period{min-width:0}.occurrences-summary{grid-template-columns:repeat(2,1fr)}.occurrences-detail-head,.occurrences-actions{align-items:stretch;flex-direction:column}.occurrences-search{min-width:0}.occurrences-footer{flex-direction:column}}
 @media(max-width:430px){.occurrences-summary{grid-template-columns:1fr 1fr}}
+
+
+/* V1.0.31 beta.4 — filtros, gráficos e impressão do Controle de Ocorrências */
+.occurrences-toolbar{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) minmax(155px,.75fr) auto;gap:9px;align-items:end;min-width:min(720px,100%)}
+.occurrences-toolbar label{margin:0}.occurrences-print-button{min-height:40px;white-space:nowrap}
+.occurrences-print-header{display:none}
+.occurrences-charts{margin:0 0 14px;padding:16px;border:1px solid var(--line);border-radius:15px;background:var(--card)}
+.occurrences-charts-head{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:12px}
+.occurrences-charts-head h3{margin:2px 0 3px;color:var(--heading)}.occurrences-charts-head p{margin:0;color:var(--muted);font-size:10px}
+.occurrences-kpi-line{display:flex;gap:8px;flex-wrap:wrap}.occurrences-kpi-line span{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--line);border-radius:9px;color:var(--muted);font-size:9px}.occurrences-kpi-line strong{color:var(--heading);font-size:16px}
+.occurrences-charts-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:12px}
+.occurrences-chart-card{padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.occurrences-chart-title{margin-bottom:9px}.occurrences-chart-title strong,.occurrences-chart-title span{display:block}.occurrences-chart-title strong{color:var(--heading);font-size:11px}.occurrences-chart-title span{margin-top:2px;color:var(--muted);font-size:9px}
+.occurrences-bar-chart{display:grid;gap:6px}.occurrences-bar-row{display:grid;grid-template-columns:125px minmax(0,1fr);gap:8px;align-items:center}
+.occurrences-bar-label{display:flex;align-items:center;justify-content:space-between;gap:7px;color:var(--muted);font-size:8px}.occurrences-bar-label b{color:var(--heading)}
+.occurrences-bar-track{height:7px;border-radius:999px;background:color-mix(in srgb,var(--line) 70%,transparent);overflow:hidden}.occurrences-bar-track i{display:block;height:100%;border-radius:inherit;background:var(--p)}
+.occurrences-chart-loading{padding:28px;text-align:center;color:var(--muted)}
+.occurrences-donut-wrap{display:grid;grid-template-columns:145px minmax(0,1fr);gap:15px;align-items:center;min-height:180px}
+.occurrences-donut{--occ-chart-1:#b42318;--occ-chart-2:#b87800;--occ-chart-3:#376f9f;--occ-chart-4:#7256a8;--occ-chart-5:#d04b37;--occ-chart-6:#8aa0ad;display:grid;place-items:center;width:138px;height:138px;border-radius:50%;background:var(--line);position:relative}
+.occurrences-donut:after{content:"";position:absolute;inset:28px;border-radius:50%;background:var(--card)}
+.occurrences-donut>div{position:relative;z-index:1;display:grid;text-align:center}.occurrences-donut strong{font-size:22px;color:var(--heading)}.occurrences-donut span{font-size:8px;color:var(--muted)}
+.occurrences-donut-legend{display:grid;gap:7px}.occurrences-donut-legend span{display:grid;grid-template-columns:8px 1fr auto;gap:6px;align-items:center;color:var(--muted);font-size:8px}.occurrences-donut-legend i{width:8px;height:8px;border-radius:50%}.occurrences-donut-legend b{color:var(--heading)}
+.theme-dark #app .occurrences-chart-card{background:#172935;border-color:#35505f}.theme-dark #app .occurrences-donut:after{background:#172935}
+@media(max-width:1100px){.occurrences-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));min-width:0}.occurrences-charts-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.occurrences-toolbar{grid-template-columns:1fr}.occurrences-charts-head{align-items:stretch;flex-direction:column}.occurrences-donut-wrap{grid-template-columns:1fr;justify-items:center}.occurrences-donut-legend{width:100%}}
+
+@media print{
+  body.occurrences-print-active{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;background:#fff!important}
+  body.occurrences-print-active #app{display:block!important}
+  body.occurrences-print-active .sidebar,
+  body.occurrences-print-active .topbar,
+  body.occurrences-print-active #app>.mobile-menu-overlay,
+  body.occurrences-print-active .view:not(#occurrences),
+  body.occurrences-print-active #occurrences .occurrences-hero,
+  body.occurrences-print-active #occurrences .occurrences-source-status,
+  body.occurrences-print-active #occurrences .occurrences-actions,
+  body.occurrences-print-active #occurrences .occurrences-active-filter,
+  body.occurrences-print-active #occurrences .occurrences-footer small,
+  body.occurrences-print-active #toast-container{display:none!important}
+  body.occurrences-print-active .main{display:block!important;padding:0!important;margin:0!important;width:100%!important;max-width:none!important}
+  body.occurrences-print-active #occurrences{display:block!important;padding:0!important;margin:0!important}
+  body.occurrences-print-active .occurrences-print-header{display:flex!important;align-items:flex-start;justify-content:space-between;gap:12mm;margin:0 0 5mm;padding:0 0 4mm;border-bottom:1.5px solid #263746}
+  body.occurrences-print-active .occurrences-print-header h2{margin:1.5mm 0 1mm;font-size:15pt;color:#1f2f3d}
+  body.occurrences-print-header p{margin:0}
+  body.occurrences-print-active .occurrences-print-header p{margin:0;color:#5f6d77;font-size:8pt}
+  body.occurrences-print-active .occurrences-print-meta{display:grid;gap:1mm;min-width:48mm;text-align:right;font-size:8pt}
+  body.occurrences-print-active .occurrences-print-meta strong{font-size:9pt}
+  body.occurrences-print-active .occurrences-summary{grid-template-columns:repeat(6,1fr)!important;gap:2mm!important;margin:0 0 4mm!important}
+  body.occurrences-print-active .occurrences-summary article{min-height:15mm!important;padding:2.3mm 2.5mm!important;border-radius:2.5mm!important;box-shadow:none!important;transform:none!important;break-inside:avoid}
+  body.occurrences-print-active .occurrences-summary span{min-height:0!important;font-size:6.2pt!important}
+  body.occurrences-print-active .occurrences-summary strong{margin-top:1mm;font-size:15pt!important}
+  body.occurrences-print-active .occurrences-summary small{font-size:5.8pt!important}
+  body.occurrences-print-active .occurrences-charts{padding:3mm!important;margin:0 0 4mm!important;border-radius:3mm!important;break-inside:avoid}
+  body.occurrences-print-active .occurrences-charts-head{margin-bottom:2.5mm!important}
+  body.occurrences-print-active .occurrences-charts-head h3{font-size:10pt!important}
+  body.occurrences-print-active .occurrences-charts-head p{font-size:6pt!important}
+  body.occurrences-print-active .occurrences-kpi-line span{padding:1.3mm 2mm!important;font-size:6pt!important}
+  body.occurrences-print-active .occurrences-kpi-line strong{font-size:9pt!important}
+  body.occurrences-print-active .occurrences-charts-grid{grid-template-columns:1.5fr .75fr!important;gap:3mm!important}
+  body.occurrences-print-active .occurrences-chart-card{padding:2.5mm!important;border-radius:2.5mm!important}
+  body.occurrences-print-active .occurrences-bar-chart{gap:1.1mm!important}
+  body.occurrences-print-active .occurrences-bar-row{grid-template-columns:30mm 1fr!important;gap:2mm!important}
+  body.occurrences-print-active .occurrences-bar-label{font-size:5.5pt!important}
+  body.occurrences-print-active .occurrences-bar-track{height:1.6mm!important}
+  body.occurrences-print-active .occurrences-donut-wrap{grid-template-columns:30mm 1fr!important;gap:3mm!important;min-height:33mm!important}
+  body.occurrences-print-active .occurrences-donut{width:29mm!important;height:29mm!important}
+  body.occurrences-print-active .occurrences-donut:after{inset:6mm!important;background:#fff!important}
+  body.occurrences-print-active .occurrences-donut strong{font-size:10pt!important}
+  body.occurrences-print-active .occurrences-donut span,.occurrences-donut-legend span{font-size:5.5pt!important}
+  body.occurrences-print-active .occurrences-detail-panel{padding:0!important;border-radius:2mm!important;box-shadow:none!important}
+  body.occurrences-print-active .occurrences-detail-head{padding:2.5mm 3mm!important;margin:0!important}
+  body.occurrences-print-active .occurrences-detail-head h3{font-size:10pt!important}
+  body.occurrences-print-active .occurrences-detail-head p{font-size:6pt!important}
+  body.occurrences-print-active .occurrences-table-wrap{max-height:none!important;overflow:visible!important}
+  body.occurrences-print-active .occurrences-table{min-width:0!important;width:100%!important;table-layout:fixed!important;font-size:5.7pt!important}
+  body.occurrences-print-active .occurrences-table th{position:static!important;padding:1.4mm .7mm!important;font-size:5.2pt!important;white-space:normal!important}
+  body.occurrences-print-active .occurrences-table td{padding:1.2mm .7mm!important;font-size:5.4pt!important}
+  body.occurrences-print-active .occurrences-table th:first-child,
+  body.occurrences-print-active .occurrences-table td:first-child{width:29%!important}
+  body.occurrences-print-active .occurrence-employee{min-width:0!important}
+  body.occurrences-print-active .occurrence-employee strong{font-size:5.8pt!important}
+  body.occurrences-print-active .occurrence-employee small{font-size:4.8pt!important}
+  body.occurrences-print-active .occurrences-footer{display:block!important;padding:2mm 3mm!important;font-size:6pt!important}
+}

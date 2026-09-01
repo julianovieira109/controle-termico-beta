@@ -510,9 +510,13 @@ function showApp(){
   });
 
   const hasPermission=key=>isAdmin||currentUser.permissions?.[key]===true;
+  const hasOccurrencesAccess=isMasterAdmin||(isAdmin&&currentUser.permissions?.["occurrences.view"]===true);
 
   document.querySelectorAll("[data-permission]").forEach(el=>{
     el.style.display=hasPermission(el.dataset.permission)?"":"none";
+  });
+  document.querySelectorAll('[data-special-permission="occurrences.view"]').forEach(el=>{
+    el.style.display=hasOccurrencesAccess?"":"none";
   });
 
   const canCalendar=hasPermission("calendar.manage");
@@ -625,6 +629,14 @@ function navigate(view){
   if(button?.dataset.permission && currentUser.role!=="ADMIN" && currentUser.permissions?.[button.dataset.permission]!==true){
     toast("Seu perfil não possui acesso a esta área.","error");
     return;
+  }
+  if(view==="occurrences"){
+    const allowed=currentUser.isMasterAdmin===true||
+      (currentUser.role==="ADMIN"&&currentUser.permissions?.["occurrences.view"]===true);
+    if(!allowed){
+      toast("Seu usuário não possui autorização para acessar o Controle de Ocorrências.","error");
+      return;
+    }
   }
 
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));

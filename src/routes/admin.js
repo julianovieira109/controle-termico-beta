@@ -419,7 +419,15 @@ router.get("/users",async(_req,res,next)=>{
         (SELECT allowed FROM profile_permissions pp
          WHERE pp.profile_id=u.profile_id AND pp.permission_key='calendar.manage' LIMIT 1),
         FALSE
-      ) calendar_access
+      ) calendar_access,
+      CASE
+        WHEN COALESCE(p.master_admin,FALSE)=TRUE THEN TRUE
+        ELSE COALESCE(
+          (SELECT allowed FROM user_permissions up
+           WHERE up.user_id=u.id AND up.permission_key='occurrences.view' AND up.allowed=TRUE LIMIT 1),
+          FALSE
+        )
+      END occurrences_access
       FROM users u
       LEFT JOIN companies c ON c.id=u.company_id
       LEFT JOIN user_profiles p ON p.id=u.profile_id
@@ -430,7 +438,7 @@ router.get("/users",async(_req,res,next)=>{
 router.post("/users",async(req,res,next)=>{
   const client=await pool.connect();
   try{
-    const {name,email,password,profileId,companyId,branchIds=[],calendarAccess=false,active=true}=req.body;
+    const {name,email,password,profileId,companyId,branchIds=[],calendarAccess=false,occurrencesAccess=false,active=true}=req.body;
     if(!name||!email||!password||!profileId)return res.status(400).json({error:"Preencha os campos obrigatórios."});
     if(password.length<8)return res.status(400).json({error:"A senha deve ter no mínimo 8 caracteres."});
 
@@ -474,6 +482,18 @@ router.post("/users",async(req,res,next)=>{
         );
       }
     }
+    if(role==="ADMIN"&&Boolean(occurrencesAccess)){
+      if(!requesterIsMaster(req)){
+        await client.query("ROLLBACK");
+        return res.status(403).json({error:"Somente o Administrador Master pode autorizar o Controle de Ocorrências para outro administrador."});
+      }
+      await client.query(
+        `INSERT INTO user_permissions(user_id,permission_key,allowed)
+         VALUES($1,'occurrences.view',TRUE)
+         ON CONFLICT(user_id,permission_key) DO UPDATE SET allowed=TRUE`,
+        [rows[0].id]
+      );
+    }
     await client.query("COMMIT");
     await audit(req,"CREATE","users",rows[0].id);
     res.status(201).json(rows[0]);
@@ -492,7 +512,7 @@ router.post("/users",async(req,res,next)=>{
 router.put("/users/:id",async(req,res,next)=>{
   const client=await pool.connect();
   try{
-    const {name,email,password,profileId,companyId,branchIds=[],calendarAccess=false,active=true}=req.body;
+    const {name,email,password,profileId,companyId,branchIds=[],calendarAccess=false,occurrencesAccess=false,active=true}=req.body;
     if(!name||!email||!profileId)return res.status(400).json({error:"Preencha os campos obrigatórios."});
 
     const target=await userAccessRecord(client,req.params.id);
@@ -566,6 +586,12 @@ router.put("/users/:id",async(req,res,next)=>{
       );
     }
 
+    const priorOccurrencePermission=await client.query(
+      "SELECT allowed FROM user_permissions WHERE user_id=$1 AND permission_key='occurrences.view' LIMIT 1",
+      [req.params.id]
+    );
+    const hadOccurrenceAccess=priorOccurrencePermission.rows[0]?.allowed===true;
+
     await client.query("DELETE FROM user_branches WHERE user_id=$1",[req.params.id]);
     await client.query("DELETE FROM user_permissions WHERE user_id=$1",[req.params.id]);
 
@@ -580,6 +606,17 @@ router.put("/users/:id",async(req,res,next)=>{
         await client.query(
           `INSERT INTO user_permissions(user_id,permission_key,allowed)
            VALUES($1,'calendar.manage',TRUE)`,
+          [req.params.id]
+        );
+      }
+    }
+
+    if(role==="ADMIN"){
+      const allowOccurrences=requesterIsMaster(req)?Boolean(occurrencesAccess):hadOccurrenceAccess;
+      if(allowOccurrences){
+        await client.query(
+          `INSERT INTO user_permissions(user_id,permission_key,allowed)
+           VALUES($1,'occurrences.view',TRUE)`,
           [req.params.id]
         );
       }

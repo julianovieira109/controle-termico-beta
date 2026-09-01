@@ -40,6 +40,12 @@ function requirePermission(permissionKey){
   };
 }
 
+function requireOccurrencesAccess(req,res,next){
+  if(req.user?.role==="ADMIN"&&req.user?.isMasterAdmin===true)return next();
+  if(req.user?.role==="ADMIN"&&req.user?.permissions?.["occurrences.view"]===true)return next();
+  return res.status(403).json({error:"Seu usuário não possui autorização para acessar o Controle de Ocorrências."});
+}
+
 function applyScope(req,_res,next){
   req.scope={
     isAdmin:req.user?.role==="ADMIN",
@@ -56,4 +62,4 @@ function requireCalendarAccess(req,res,next){
   return res.status(403).json({error:"Seu usuário não possui acesso às configurações de feriados e folgas."});
 }
 
-module.exports={authenticate,requireAdmin,requireMasterAdmin,requirePermission,applyScope,requireCalendarAccess};
+module.exports={authenticate,requireAdmin,requireMasterAdmin,requirePermission,applyScope,requireCalendarAccess,requireOccurrencesAccess};

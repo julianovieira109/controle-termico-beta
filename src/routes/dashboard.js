@@ -1,6 +1,6 @@
 const express=require("express");
 const pool=require("../db/pool");
-const {authenticate,applyScope,requirePermission}=require("../middleware/auth");
+const {authenticate,applyScope,requirePermission,requireOccurrencesAccess}=require("../middleware/auth");
 const DashboardAlerts=require("../lib/dashboard-alerts");
 const router=express.Router();
 router.use(authenticate,applyScope,requirePermission("dashboard.view"));
@@ -256,26 +256,41 @@ router.get("/competence-compare",async(req,res,next)=>{
   }catch(error){next(error);}
 });
 
-router.get("/occurrences",async(req,res,next)=>{
+router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
   try{
     const month=String(req.query.month||"");
+    const companyId=String(req.query.companyId||"").trim();
+    const branchId=String(req.query.branchId||"").trim();
     if(!/^\d{4}-\d{2}$/.test(month)){
       return res.status(400).json({error:"Informe a competência no formato AAAA-MM."});
     }
 
     const params=[`${month}-01`];
-    let scope="";
+    const filters=[];
     if(!req.scope.isAdmin){
-      params.push(req.scope.companyId,req.scope.branchIds);
-      scope=" AND p.company_id=$2 AND p.branch_id=ANY($3::uuid[])";
+      params.push(req.scope.companyId);
+      filters.push(`p.company_id=$${params.length}`);
+      params.push(req.scope.branchIds);
+      filters.push(`p.branch_id=ANY($${params.length}::uuid[])`);
     }
+    if(companyId){
+      params.push(companyId);
+      filters.push(`p.company_id=$${params.length}::uuid`);
+    }
+    if(branchId){
+      params.push(branchId);
+      filters.push(`p.branch_id=$${params.length}::uuid`);
+    }
+    const pointFilter=filters.length?` AND ${filters.join(" AND ")}`:"";
 
     const {rows}=await pool.query(`
       SELECT
         e.id employee_id,
         e.full_name,
         e.registration,
+        c.id company_id,
         c.trade_name company_name,
+        b.id branch_id,
         b.name branch_name,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='FOLGA')::int days_off,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FALTA','ABSENT'))::int absences,
@@ -295,9 +310,9 @@ router.get("/occurrences",async(req,res,next)=>{
       JOIN branches b ON b.id=p.branch_id
       WHERE p.work_date>=($1::date - INTERVAL '1 day')
         AND p.work_date<($1::date + INTERVAL '1 month')
-        ${scope}
-      GROUP BY e.id,e.full_name,e.registration,c.trade_name,b.name
-      ORDER BY e.full_name
+        ${pointFilter}
+      GROUP BY e.id,e.full_name,e.registration,c.id,c.trade_name,b.id,b.name
+      ORDER BY c.trade_name,b.name,e.full_name
     `,params);
 
     const summary=rows.reduce((acc,row)=>{
@@ -309,11 +324,23 @@ router.get("/occurrences",async(req,res,next)=>{
     },{});
 
     const importParams=[month];
-    let importScope="";
+    const importFilters=[];
     if(!req.scope.isAdmin){
-      importParams.push(req.scope.companyId,req.scope.branchIds);
-      importScope=" AND i.company_id=$2 AND i.branch_id=ANY($3::uuid[])";
+      importParams.push(req.scope.companyId);
+      importFilters.push(`i.company_id=$${importParams.length}`);
+      importParams.push(req.scope.branchIds);
+      importFilters.push(`i.branch_id=ANY($${importParams.length}::uuid[])`);
     }
+    if(companyId){
+      importParams.push(companyId);
+      importFilters.push(`i.company_id=$${importParams.length}::uuid`);
+    }
+    if(branchId){
+      importParams.push(branchId);
+      importFilters.push(`i.branch_id=$${importParams.length}::uuid`);
+    }
+    const importFilter=importFilters.length?` AND ${importFilters.join(" AND ")}`:"";
+
     const {rows:imports}=await pool.query(`
       SELECT DISTINCT i.company_id,i.branch_id,c.trade_name company_name,b.name branch_name
       FROM employee_imports i
@@ -321,12 +348,11 @@ router.get("/occurrences",async(req,res,next)=>{
       LEFT JOIN branches b ON b.id=i.branch_id
       WHERE i.import_type='PONTO_SENIOR'
         AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
-        ${importScope}
+        ${importFilter}
       ORDER BY company_name,branch_name
     `,importParams);
 
-    res.json({month,summary,employees:rows,imports});
+    res.json({month,companyId:companyId||null,branchId:branchId||null,summary,employees:rows,imports});
   }catch(error){next(error);}
 });
-
 module.exports=router;
