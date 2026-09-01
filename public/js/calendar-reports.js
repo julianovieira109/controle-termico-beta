@@ -929,6 +929,181 @@ function validateReportBeforeGeneration(month,employees){
   return result;
 }
 
+
+function simulatorSelectedEmployee(){
+  if($("report-all-employees")?.checked)return null;
+  return reportEmployeeSelected();
+}
+
+function simulatorParseMarkings(description=""){
+  return String(description||"").match(/(?:[01]?\d|2[0-3]):[0-5]\d/g)||[];
+}
+
+function simulatorTimelineSegments(employee,day,rests=[]){
+  const markings=simulatorParseMarkings(employee.point_schedules?.[day.iso]||"");
+  if(markings.length<2)return {markings,segments:[]};
+
+  const toMinutes=value=>{
+    const [h,m]=String(value).split(":").map(Number);
+    return h*60+m;
+  };
+  let values=markings.map(toMinutes);
+  for(let i=1;i<values.length;i++){
+    while(values[i]<=values[i-1])values[i]+=1440;
+  }
+
+  const segments=[];
+  const addWork=(start,end,label)=>{
+    if(end>start)segments.push({type:"work",start,end,label});
+  };
+  const addBreak=(start,end,label,type="meal")=>{
+    if(end>start)segments.push({type,start,end,label});
+  };
+
+  if(values.length===2){
+    addWork(values[0],values[1],"Jornada");
+  }else{
+    addWork(values[0],values[1],"Trabalho");
+    addBreak(values[1],values[2],"Refeição","meal");
+    addWork(values[2],values[3],"Trabalho");
+  }
+
+  // Split work segments around rests, preserving meal.
+  let finalSegments=[];
+  for(const segment of segments){
+    if(segment.type!=="work"){
+      finalSegments.push(segment);
+      continue;
+    }
+    let cursor=segment.start;
+    const inside=(rests||[])
+      .filter(rest=>rest.start>=segment.start&&rest.end<=segment.end)
+      .sort((a,b)=>a.start-b.start);
+    for(const rest of inside){
+      if(rest.start>cursor)finalSegments.push({type:"work",start:cursor,end:rest.start,label:"Trabalho"});
+      finalSegments.push({type:"rest",start:rest.start,end:rest.end,label:"Repouso térmico"});
+      cursor=rest.end;
+    }
+    if(cursor<segment.end)finalSegments.push({type:"work",start:cursor,end:segment.end,label:"Trabalho"});
+  }
+  return {markings,segments:finalSegments};
+}
+
+function simulatorFormatDuration(start,end){
+  const minutes=Math.max(0,Math.round(end-start));
+  const h=Math.floor(minutes/60);
+  const m=minutes%60;
+  return h?`${h}h${m?` ${m}min`:""}`:`${m} min`;
+}
+
+function renderReportSimulator(employee,day,plan){
+  const rests=(plan?.get(`${employee.id}|${day.iso}`)||[]).slice(0,4);
+  const {markings,segments}=simulatorTimelineSegments(employee,day,rests);
+  const message=$("report-simulator-message");
+  const timeline=$("report-simulator-timeline");
+  const details=$("report-simulator-details");
+
+  if(!segments.length){
+    message.className="report-simulator-message warning";
+    message.textContent="Não há marcações de jornada suficientes neste dia para montar a simulação.";
+    timeline.innerHTML="";
+    details.innerHTML="";
+    return;
+  }
+
+  message.className="report-simulator-message success";
+  message.textContent=`${day.br} (${day.weekName}) · ${rests.length} repouso(s) calculado(s).`;
+
+  const start=Math.min(...segments.map(x=>x.start));
+  const end=Math.max(...segments.map(x=>x.end));
+  const span=Math.max(1,end-start);
+
+  timeline.innerHTML=`
+    <div class="simulator-scale">
+      <span>${ThermalSchedule.formatMinutes(start)}</span>
+      <span>${ThermalSchedule.formatMinutes(end)}</span>
+    </div>
+    <div class="simulator-track">
+      ${segments.map(segment=>{
+        const left=((segment.start-start)/span)*100;
+        const width=Math.max(1.5,((segment.end-segment.start)/span)*100);
+        return `<div class="simulator-segment ${segment.type}" style="left:${left}%;width:${width}%"
+          title="${escapeHtml(segment.label)}: ${ThermalSchedule.formatMinutes(segment.start)}–${ThermalSchedule.formatMinutes(segment.end)}">
+          <span>${escapeHtml(segment.label)}</span>
+        </div>`;
+      }).join("")}
+    </div>`;
+
+  const cards=[];
+  if(markings.length){
+    cards.push(`<article><span>Marcações do ponto</span><strong>${markings.map(escapeHtml).join(" · ")}</strong></article>`);
+  }
+  rests.forEach((rest,index)=>{
+    cards.push(`<article class="rest-detail">
+      <span>Repouso ${index+1}</span>
+      <strong>${ThermalSchedule.formatMinutes(rest.start)} – ${ThermalSchedule.formatMinutes(rest.end)}</strong>
+      <small>${simulatorFormatDuration(rest.start,rest.end)}</small>
+    </article>`);
+  });
+  if(markings.length===4){
+    cards.push(`<article><span>Refeição</span><strong>${escapeHtml(markings[1])} – ${escapeHtml(markings[2])}</strong></article>`);
+  }
+  details.innerHTML=cards.join("");
+}
+
+async function openReportSimulator(){
+  const month=$("report-month")?.value;
+  if(!month)return toast("Selecione o mês de referência.","warning");
+  if($("report-all-employees")?.checked){
+    return toast("Para simular, selecione apenas um colaborador.","warning");
+  }
+  const employee=simulatorSelectedEmployee();
+  if(!employee)return toast("Selecione um colaborador para visualizar a jornada.","warning");
+
+  try{
+    await applyPointDataToEmployees(month);
+  }catch(error){
+    return toast(`Não foi possível consultar o ponto: ${error.message}`,"error");
+  }
+
+  const monthDays=reportMonthDays(month);
+  const plan=ThermalSchedule.buildMonthPlan([employee],monthDays,{
+    ...thermalRestSettings,
+    usePointData:pointDataActive
+  });
+  const available=monthDays.filter(day=>employee.point_schedules?.[day.iso]);
+
+  $("report-simulator-panel").hidden=false;
+  $("report-simulator-employee").innerHTML=`
+    <strong>${escapeHtml(employee.full_name)}</strong>
+    <span>${escapeHtml(employee.registration||"sem matrícula")} · ${escapeHtml(employee.shift_name||"sem turno")}</span>`;
+
+  const select=$("report-simulator-day");
+  select.innerHTML=available.length
+    ?available.map(day=>`<option value="${day.iso}">${day.br} — ${escapeHtml(day.weekName)}</option>`).join("")
+    :'<option value="">Nenhum dia com jornada disponível</option>';
+
+  if(!available.length){
+    $("report-simulator-message").className="report-simulator-message warning";
+    $("report-simulator-message").textContent="Não há dias com marcações do ponto para este colaborador na competência selecionada.";
+    $("report-simulator-timeline").innerHTML="";
+    $("report-simulator-details").innerHTML="";
+    return;
+  }
+
+  const render=()=>{
+    const day=monthDays.find(item=>item.iso===select.value)||available[0];
+    renderReportSimulator(employee,day,plan);
+  };
+  select.onchange=render;
+  render();
+}
+
+if($("report-simulator-open"))$("report-simulator-open").onclick=openReportSimulator;
+if($("report-simulator-close"))$("report-simulator-close").onclick=()=>{
+  $("report-simulator-panel").hidden=true;
+};
+
 $("report-generate").onclick=async()=>{
   const month=$("report-month").value;
   const all=$("report-all-employees").checked;

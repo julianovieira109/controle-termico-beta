@@ -2310,3 +2310,111 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
 .dashboard-load-failure strong{font-size:11px;color:#9c332d}
 .dashboard-load-failure span{margin-top:3px;font-size:9px;color:#76504d}
 .dashboard-load-failure button{flex:0 0 auto}
+
+
+/* V1.0.26 Beta — Simulador Visual de Jornada */
+.report-simulator-panel{
+  margin-top:4px;
+  padding:16px;
+  border:1px solid #cddbe6;
+  border-radius:14px;
+  background:#f9fbfc;
+}
+.report-simulator-head{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+}
+.report-simulator-head h4{margin:3px 0 4px;color:var(--heading);font-size:16px}
+.report-simulator-head p{margin:0;color:#607080;font-size:11px}
+.report-simulator-controls{
+  display:grid;
+  grid-template-columns:minmax(180px,260px) 1fr;
+  gap:12px;
+  align-items:end;
+  margin-top:14px;
+}
+.report-simulator-employee{
+  min-height:44px;
+  padding:8px 11px;
+  border:1px solid #dce4ea;
+  border-radius:10px;
+  background:#fff;
+}
+.report-simulator-employee strong,
+.report-simulator-employee span{display:block}
+.report-simulator-employee strong{font-size:11px;color:var(--heading)}
+.report-simulator-employee span{margin-top:2px;font-size:9px;color:#667085}
+.report-simulator-message{
+  margin-top:12px;
+  padding:9px 11px;
+  border-radius:9px;
+  font-size:10px;
+}
+.report-simulator-message.success{background:#eef8f2;color:#196442;border:1px solid #c8e5d3}
+.report-simulator-message.warning{background:#fff8e8;color:#805b00;border:1px solid #ead395}
+.report-simulator-timeline{margin-top:16px}
+.simulator-scale{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:5px;
+  color:#687785;
+  font-size:9px;
+}
+.simulator-track{
+  position:relative;
+  height:64px;
+  border:1px solid #d8e1e7;
+  border-radius:12px;
+  background:#eef2f5;
+  overflow:hidden;
+}
+.simulator-segment{
+  position:absolute;
+  top:0;
+  bottom:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:3px;
+  border-right:1px solid rgba(255,255,255,.65);
+}
+.simulator-segment span{
+  overflow:hidden;
+  padding:0 5px;
+  color:#fff;
+  font-size:8px;
+  font-weight:700;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.simulator-segment.work{background:#2f77a8}
+.simulator-segment.rest{background:#16835f}
+.simulator-segment.meal{background:#d39418}
+.report-simulator-details{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-top:12px;
+}
+.report-simulator-details article{
+  padding:10px;
+  border:1px solid #dde5eb;
+  border-radius:10px;
+  background:#fff;
+}
+.report-simulator-details span,
+.report-simulator-details strong,
+.report-simulator-details small{display:block}
+.report-simulator-details span{color:#667085;font-size:9px}
+.report-simulator-details strong{margin-top:4px;color:var(--heading);font-size:11px}
+.report-simulator-details small{margin-top:2px;color:#16835f;font-size:9px}
+@media(max-width:800px){
+  .report-simulator-controls{grid-template-columns:1fr}
+  .report-simulator-details{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:520px){
+  .report-simulator-head{flex-direction:column}
+  .report-simulator-details{grid-template-columns:1fr}
+}
