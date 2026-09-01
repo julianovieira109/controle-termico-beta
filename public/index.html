@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.31-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.31-beta.2">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.2">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.2">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.2">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.2">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.2">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -249,13 +249,14 @@
       <button class="nav-btn admin-only" data-view="users" title="Usuários"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3"/><path d="M4.5 19c.5-3.2 2.3-5 5.5-5 1.4 0 2.5.3 3.4 1"/><path d="M17.5 13.5v6M14.5 16.5h6"/></svg></span><span class="nav-label">Usuários</span></button>
       <button class="nav-btn" data-view="employees" data-permission="employees.view" title="Colaboradores"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M3.5 19c.5-3.3 2.3-5 5.5-5s5 1.7 5.5 5M14 15c.8-.7 1.8-1 3-1 2.3 0 3.6 1.3 4 3.7"/></svg></span><span class="nav-label">Colaboradores</span></button>
       <button class="nav-btn" data-view="reports" data-permission="reports.view" title="Relatórios"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h4M9 12h7M9 16h7"/></svg></span><span class="nav-label">Relatórios</span></button>
+      <button class="nav-btn" data-view="occurrences" data-permission="reports.view" title="Controle de ocorrências"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5M8 17h3"/><circle cx="17" cy="16.5" r="2.5"/></svg></span><span class="nav-label">Ocorrências</span></button>
       <button class="nav-btn" data-view="settings" data-permission="settings.view" title="Configurações"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></span><span class="nav-label">Configurações</span></button>
     </nav>
     <nav class="sidebar-nav-support" aria-label="Ajuda">
       <span class="sidebar-nav-heading">Ajuda e suporte</span>
       <button class="nav-btn nav-btn-support" data-view="manual" title="Manual do Sistema"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></svg></span><span class="nav-label">Manual do Sistema</span></button>
     </nav>
-    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.26 Beta</small></div>
+    <div class="sidebar-version"><span>Controle Térmico</span><small>V1.0.31 Beta</small></div>
   </aside>
 
   <main class="main">
@@ -1130,29 +1131,6 @@
           <details id="report-skipped-details" class="full report-skipped-details" hidden aria-live="polite"></details>
         </div>
       </div>
-
-      <div class="panel no-print competence-compare-panel">
-        <div class="panel-head">
-          <div>
-            <span class="eyebrow">Análise entre períodos</span>
-            <h3>Comparador entre competências</h3>
-            <p class="hint">Compare dois meses do Cartão de Ponto antes de conferir ou gerar relatórios.</p>
-          </div>
-          <button type="button" class="secondary" id="competence-compare-toggle">Comparar competências</button>
-        </div>
-        <div id="competence-compare-body" hidden>
-          <div class="competence-compare-controls">
-            <label>Competência anterior<input type="month" id="competence-compare-a"></label>
-            <span class="competence-compare-arrow">→</span>
-            <label>Competência atual<input type="month" id="competence-compare-b"></label>
-            <button type="button" class="primary" id="competence-compare-run">Comparar</button>
-          </div>
-          <div id="competence-compare-status" class="feedback"></div>
-          <div id="competence-compare-summary" class="competence-compare-summary"></div>
-          <div id="competence-compare-alerts" class="competence-compare-alerts"></div>
-        </div>
-      </div>
-
       <div id="report-output"></div>
 
       <div id="report-print-center" class="app-modal report-print-center no-print" hidden>
@@ -1398,7 +1376,78 @@
       </div>
     </section>
 
-    <section id="settings" class="view">
+    
+    <section id="occurrences" class="view">
+      <div class="occurrences-hero">
+        <div>
+          <span class="eyebrow">Controle operacional</span>
+          <h3>Controle de Ocorrências</h3>
+          <p>Acompanhe as ocorrências importadas do Cartão de Ponto Senior por competência e por colaborador.</p>
+        </div>
+        <div class="occurrences-period">
+          <label>Competência
+            <input type="month" id="occurrences-month">
+          </label>
+        </div>
+      </div>
+
+      <div id="occurrences-source-status" class="occurrences-source-status">
+        <span>Cartão de Ponto</span>
+        <strong id="occurrences-import-status">Carregando...</strong>
+      </div>
+
+      <div class="occurrences-summary" id="occurrences-summary">
+        <article data-key="days_off"><span>Folgas</span><strong id="occ-sum-days-off">—</strong><small>registros</small></article>
+        <article data-key="absences"><span>Faltas</span><strong id="occ-sum-absences">—</strong><small>registros</small></article>
+        <article data-key="bank_hours"><span>BH / Banco de Horas</span><strong id="occ-sum-bank-hours">—</strong><small>ocorrências</small></article>
+        <article data-key="medical"><span>Atestados</span><strong id="occ-sum-medical">—</strong><small>registros</small></article>
+        <article data-key="vacations"><span>Férias</span><strong id="occ-sum-vacations">—</strong><small>dias</small></article>
+        <article data-key="dsr"><span>DSR</span><strong id="occ-sum-dsr">—</strong><small>registros</small></article>
+        <article data-key="licenses"><span>Licenças</span><strong id="occ-sum-licenses">—</strong><small>registros</small></article>
+        <article data-key="leaves"><span>Afastamentos</span><strong id="occ-sum-leaves">—</strong><small>registros</small></article>
+        <article data-key="compensated"><span>Compensados</span><strong id="occ-sum-compensated">—</strong><small>registros</small></article>
+        <article data-key="courses"><span>Curso</span><strong id="occ-sum-courses">—</strong><small>registros</small></article>
+        <article data-key="bereavement"><span>Óbito</span><strong id="occ-sum-bereavement">—</strong><small>registros</small></article>
+        <article class="review-card" data-key="review_days"><span>Dias para revisão</span><strong id="occ-sum-review-days">—</strong><small>conferir ponto</small></article>
+      </div>
+
+      <section class="panel occurrences-detail-panel">
+        <div class="panel-head occurrences-detail-head">
+          <div>
+            <span class="eyebrow">Detalhamento</span>
+            <h3>Ocorrências por colaborador</h3>
+            <p class="hint">Use a busca ou clique em um indicador acima para filtrar os colaboradores.</p>
+          </div>
+          <div class="occurrences-actions">
+            <label class="occurrences-search">Buscar colaborador
+              <input id="occurrences-search" type="search" placeholder="Nome ou matrícula">
+            </label>
+            <button type="button" class="secondary" id="occurrences-clear-filter">Limpar filtro</button>
+          </div>
+        </div>
+        <div id="occurrences-active-filter" class="occurrences-active-filter" hidden></div>
+        <div class="table-wrap occurrences-table-wrap">
+          <table class="occurrences-table">
+            <thead>
+              <tr>
+                <th>Colaborador</th><th>Folgas</th><th>Faltas</th><th>BH</th><th>Atestados</th>
+                <th>Férias</th><th>DSR</th><th>Licenças</th><th>Afast.</th><th>Comp.</th>
+                <th>Curso</th><th>Óbito</th><th>Revisão</th>
+              </tr>
+            </thead>
+            <tbody id="occurrences-table-body">
+              <tr><td colspan="13" class="muted">Selecione uma competência.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="occurrences-footer">
+          <span id="occurrences-visible-count">0 colaboradores exibidos</span>
+          <small>Fonte: ocorrências reconhecidas no Cartão de Ponto importado.</small>
+        </div>
+      </section>
+    </section>
+
+<section id="settings" class="view">
       <div class="settings-tabs">
         <button class="settings-tab active admin-only master-only" data-settings-tab="visual">Visual</button>
         <button class="settings-tab admin-only master-only" data-settings-tab="support">Suporte</button>
@@ -2494,17 +2543,17 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.31-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.31-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.31-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.31-beta.1"></script>
-  <script src="/js/report-validator.js?v=1.0.31-beta.1"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.31-beta.1"></script>
-  <script src="/js/rest-audit.js?v=1.0.31-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.1"></script>
-  <script src="/js/employee-history-admin.js?v=1.0.31-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.31-beta.1"></script>
-  <script src="/js/competence-compare.js?v=1.0.31-beta.1"></script>
+  <script src="/js/core.js?v=1.0.31-beta.2"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.2"></script>
+  <script src="/js/admin-access.js?v=1.0.31-beta.2"></script>
+  <script src="/js/employees-imports.js?v=1.0.31-beta.2"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.31-beta.2"></script>
+  <script src="/js/report-validator.js?v=1.0.31-beta.2"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.31-beta.2"></script>
+  <script src="/js/rest-audit.js?v=1.0.31-beta.2"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.2"></script>
+  <script src="/js/employee-history-admin.js?v=1.0.31-beta.2"></script>
+  <script src="/js/settings-system.js?v=1.0.31-beta.2"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.2"></script>
 </body>
 </html>

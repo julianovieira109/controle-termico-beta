@@ -633,7 +633,7 @@ function navigate(view){
   const activeNavigationButton=document.querySelector(`[data-view="${view}"]`);
   activeNavigationButton?.classList.add("active");
   activeNavigationButton?.setAttribute("aria-current","page");
-  const titles={dashboard:"Painel",companies:"Empresas e filiais",users:"Usuários",employees:"Colaboradores",reports:"Relatórios",settings:"Configurações",help:"Assistente de Ajuda",manual:"Manual do Sistema"};
+  const titles={dashboard:"Painel",companies:"Empresas e filiais",users:"Usuários",employees:"Colaboradores",reports:"Relatórios",occurrences:"Controle de Ocorrências",settings:"Configurações",help:"Assistente de Ajuda",manual:"Manual do Sistema"};
   $("page-title").textContent=titles[view];
   $("page-title").classList.toggle("help-title-contrast",view==="help");
   if(view==="companies")loadCompanyBranchAdmin();
@@ -643,6 +643,7 @@ function navigate(view){
     loadEmployees();
   }
   if(view==="reports")prepareReports();
+  if(view==="occurrences" && typeof loadOccurrencesControl==="function")loadOccurrencesControl();
   if(view==="settings")prepareSettingsAccess();
   if(view==="manual")prepareManual();
 }

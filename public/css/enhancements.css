@@ -3093,3 +3093,32 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
 .theme-dark #app .competence-compare-controls,.theme-dark #app .competence-compare-summary article{background:#172935;border-color:#35505f}
 @media(max-width:900px){.competence-compare-summary{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.competence-compare-controls,.competence-compare-summary{grid-template-columns:1fr}.competence-compare-arrow{display:none}.competence-compare-controls button{width:100%}}
+
+
+/* V1.0.31 beta.2 — Controle detalhado de ocorrências */
+.occurrences-hero{display:flex;align-items:end;justify-content:space-between;gap:18px;padding:18px 20px;margin-bottom:12px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.occurrences-hero h3{margin:3px 0 4px;color:var(--heading)}.occurrences-hero p{margin:0;color:var(--muted)}
+.occurrences-period{min-width:190px}.occurrences-period label{margin:0}
+.occurrences-source-status{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:10px 13px;border:1px solid #b9dfc5;border-radius:11px;background:#f2fbf5;font-size:10px}
+.occurrences-source-status span{font-weight:800;color:#496055}.occurrences-source-status strong{color:#137333}
+.occurrences-source-status.is-missing{border-color:#f0c3bd;background:#fff5f3}.occurrences-source-status.is-missing strong{color:#b42318}
+.occurrences-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.occurrences-summary article{position:relative;overflow:hidden;cursor:pointer;padding:13px 14px;border:1px solid var(--line);border-left:4px solid var(--p);border-radius:12px;background:var(--card);transition:.18s ease}
+.occurrences-summary article:hover,.occurrences-summary article.active-filter{transform:translateY(-1px);border-color:color-mix(in srgb,var(--p) 55%,var(--line));box-shadow:0 6px 18px rgba(18,45,60,.08)}
+.occurrences-summary article.active-filter{outline:2px solid color-mix(in srgb,var(--p) 20%,transparent)}
+.occurrences-summary article.review-card{border-left-color:#b42318}
+.occurrences-summary span{display:block;min-height:25px;color:var(--muted);font-size:9px;font-weight:800}.occurrences-summary strong{display:block;color:var(--heading);font-size:24px;line-height:1}.occurrences-summary small{display:block;margin-top:5px;color:var(--muted);font-size:8px}
+.occurrences-detail-panel{padding:0;overflow:hidden}.occurrences-detail-head{padding:14px 16px;border-bottom:1px solid var(--line)}
+.occurrences-actions{display:flex;align-items:end;gap:8px}.occurrences-search{min-width:230px;margin:0}
+.occurrences-active-filter{margin:10px 14px 0;padding:8px 10px;border:1px solid color-mix(in srgb,var(--p) 30%,var(--line));border-radius:9px;background:color-mix(in srgb,var(--p) 5%,var(--card));font-size:9px;color:var(--muted)}
+.occurrences-table-wrap{max-height:520px;overflow:auto}.occurrences-table{min-width:1180px}
+.occurrences-table th{position:sticky;top:0;z-index:2;white-space:nowrap;background:var(--card)}
+.occurrences-table td:not(:first-child),.occurrences-table th:not(:first-child){text-align:center}
+.occurrence-employee{min-width:235px}.occurrence-employee strong,.occurrence-employee small{display:block}.occurrence-employee small{margin-top:2px;color:var(--muted);font-size:8px}
+.occurrence-review{font-weight:900;color:#b42318;background:#fff3f1}
+.occurrences-footer{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:9px}
+.theme-dark #app .occurrences-source-status{background:#173027;border-color:#315a48}.theme-dark #app .occurrences-source-status.is-missing{background:#362321;border-color:#6b3e39}
+.theme-dark #app .occurrence-review{background:#3a2624;color:#ffb4a9}
+@media(max-width:1000px){.occurrences-summary{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.occurrences-hero{align-items:stretch;flex-direction:column}.occurrences-period{min-width:0}.occurrences-summary{grid-template-columns:repeat(2,1fr)}.occurrences-detail-head,.occurrences-actions{align-items:stretch;flex-direction:column}.occurrences-search{min-width:0}.occurrences-footer{flex-direction:column}}
+@media(max-width:430px){.occurrences-summary{grid-template-columns:1fr 1fr}}

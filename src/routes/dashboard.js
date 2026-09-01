@@ -256,4 +256,77 @@ router.get("/competence-compare",async(req,res,next)=>{
   }catch(error){next(error);}
 });
 
+router.get("/occurrences",async(req,res,next)=>{
+  try{
+    const month=String(req.query.month||"");
+    if(!/^\d{4}-\d{2}$/.test(month)){
+      return res.status(400).json({error:"Informe a competência no formato AAAA-MM."});
+    }
+
+    const params=[`${month}-01`];
+    let scope="";
+    if(!req.scope.isAdmin){
+      params.push(req.scope.companyId,req.scope.branchIds);
+      scope=" AND p.company_id=$2 AND p.branch_id=ANY($3::uuid[])";
+    }
+
+    const {rows}=await pool.query(`
+      SELECT
+        e.id employee_id,
+        e.full_name,
+        e.registration,
+        c.trade_name company_name,
+        b.name branch_name,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='FOLGA')::int days_off,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FALTA','ABSENT'))::int absences,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.occurrence,'')) ~ '(^|[^A-Z])BH([^A-Z]|$)')::int bank_hours,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('ATESTADO','MEDICAL'))::int medical,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FERIAS','FÉRIAS','VACATION'))::int vacations,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='DSR')::int dsr,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('LICENCA','LICENÇA','LICENSE'))::int licenses,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('AFASTAMENTO','LEAVE'))::int leaves,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='COMPENSADO')::int compensated,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='CURSO')::int courses,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('OBITO','ÓBITO'))::int bereavement,
+        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('REVIEW','NO_MARKINGS'))::int review_days
+      FROM employee_point_days p
+      JOIN employees e ON e.id=p.employee_id
+      JOIN companies c ON c.id=p.company_id
+      JOIN branches b ON b.id=p.branch_id
+      WHERE p.work_date>=($1::date - INTERVAL '1 day')
+        AND p.work_date<($1::date + INTERVAL '1 month')
+        ${scope}
+      GROUP BY e.id,e.full_name,e.registration,c.trade_name,b.name
+      ORDER BY e.full_name
+    `,params);
+
+    const summary=rows.reduce((acc,row)=>{
+      for(const key of [
+        "days_off","absences","bank_hours","medical","vacations","dsr",
+        "licenses","leaves","compensated","courses","bereavement","review_days"
+      ]) acc[key]=(acc[key]||0)+Number(row[key]||0);
+      return acc;
+    },{});
+
+    const importParams=[month];
+    let importScope="";
+    if(!req.scope.isAdmin){
+      importParams.push(req.scope.companyId,req.scope.branchIds);
+      importScope=" AND i.company_id=$2 AND i.branch_id=ANY($3::uuid[])";
+    }
+    const {rows:imports}=await pool.query(`
+      SELECT DISTINCT i.company_id,i.branch_id,c.trade_name company_name,b.name branch_name
+      FROM employee_imports i
+      LEFT JOIN companies c ON c.id=i.company_id
+      LEFT JOIN branches b ON b.id=i.branch_id
+      WHERE i.import_type='PONTO_SENIOR'
+        AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
+        ${importScope}
+      ORDER BY company_name,branch_name
+    `,importParams);
+
+    res.json({month,summary,employees:rows,imports});
+  }catch(error){next(error);}
+});
+
 module.exports=router;
