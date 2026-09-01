@@ -184,4 +184,76 @@ router.get("/operations",async(req,res,next)=>{
   }catch(error){next(error);}
 });
 
+router.get("/competence-compare",async(req,res,next)=>{
+  try{
+    const months=[String(req.query.monthA||""),String(req.query.monthB||"")];
+    if(months.some(month=>!/^\d{4}-\d{2}$/.test(month))){
+      return res.status(400).json({error:"Informe as duas competências no formato AAAA-MM."});
+    }
+
+    async function snapshot(month){
+      const importParams=[month];
+      let importScope="";
+      if(!req.scope.isAdmin){
+        importParams.push(req.scope.companyId,req.scope.branchIds);
+        importScope=" AND i.company_id=$2 AND i.branch_id=ANY($3::uuid[])";
+      }
+      const {rows:imports}=await pool.query(`
+        SELECT DISTINCT i.company_id,i.branch_id
+        FROM employee_imports i
+        WHERE i.import_type='PONTO_SENIOR'
+          AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
+          ${importScope}
+      `,importParams);
+
+      const pointParams=[`${month}-01`];
+      let pointScope="";
+      if(!req.scope.isAdmin){
+        pointParams.push(req.scope.companyId,req.scope.branchIds);
+        pointScope=" AND p.company_id=$2 AND p.branch_id=ANY($3::uuid[])";
+      }
+      const {rows:summary}=await pool.query(`
+        SELECT
+          COUNT(DISTINCT p.employee_id)::int employees,
+          COUNT(*)::int days,
+          COUNT(*) FILTER(WHERE p.eligible_for_automatic_rest=TRUE)::int eligible_days,
+          COUNT(*) FILTER(WHERE p.point_state='REVIEW')::int review_days,
+          COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FALTA','ABSENT'))::int absence_days,
+          COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FERIAS','FÉRIAS','VACATION'))::int vacation_days,
+          COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('ATESTADO','MEDICAL'))::int medical_days
+        FROM employee_point_days p
+        WHERE p.work_date>=($1::date - INTERVAL '1 day')
+          AND p.work_date<($1::date + INTERVAL '1 month')
+          ${pointScope}
+      `,pointParams);
+
+      const {rows:states}=await pool.query(`
+        SELECT UPPER(COALESCE(p.point_state,'OUTRO')) state,COUNT(*)::int total
+        FROM employee_point_days p
+        WHERE p.work_date>=($1::date - INTERVAL '1 day')
+          AND p.work_date<($1::date + INTERVAL '1 month')
+          ${pointScope}
+        GROUP BY UPPER(COALESCE(p.point_state,'OUTRO'))
+        ORDER BY total DESC
+      `,pointParams);
+
+      return {
+        month,
+        imports:imports.length,
+        employees:summary[0]?.employees||0,
+        days:summary[0]?.days||0,
+        eligibleDays:summary[0]?.eligible_days||0,
+        reviewDays:summary[0]?.review_days||0,
+        absenceDays:summary[0]?.absence_days||0,
+        vacationDays:summary[0]?.vacation_days||0,
+        medicalDays:summary[0]?.medical_days||0,
+        states
+      };
+    }
+
+    const [a,b]=await Promise.all(months.map(snapshot));
+    res.json({a,b});
+  }catch(error){next(error);}
+});
+
 module.exports=router;

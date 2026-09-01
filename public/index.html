@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.30-beta.2">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.30-beta.2">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.30-beta.2">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.30-beta.2">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.30-beta.2">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.30-beta.2">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.31-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -1128,6 +1128,28 @@
           </section>
           <p id="report-generation-summary" class="full feedback" aria-live="polite"></p>
           <details id="report-skipped-details" class="full report-skipped-details" hidden aria-live="polite"></details>
+        </div>
+      </div>
+
+      <div class="panel no-print competence-compare-panel">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow">Análise entre períodos</span>
+            <h3>Comparador entre competências</h3>
+            <p class="hint">Compare dois meses do Cartão de Ponto antes de conferir ou gerar relatórios.</p>
+          </div>
+          <button type="button" class="secondary" id="competence-compare-toggle">Comparar competências</button>
+        </div>
+        <div id="competence-compare-body" hidden>
+          <div class="competence-compare-controls">
+            <label>Competência anterior<input type="month" id="competence-compare-a"></label>
+            <span class="competence-compare-arrow">→</span>
+            <label>Competência atual<input type="month" id="competence-compare-b"></label>
+            <button type="button" class="primary" id="competence-compare-run">Comparar</button>
+          </div>
+          <div id="competence-compare-status" class="feedback"></div>
+          <div id="competence-compare-summary" class="competence-compare-summary"></div>
+          <div id="competence-compare-alerts" class="competence-compare-alerts"></div>
         </div>
       </div>
 
@@ -2472,16 +2494,17 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.30-beta.2"></script>
-  <script src="/js/help-manual.js?v=1.0.30-beta.2"></script>
-  <script src="/js/admin-access.js?v=1.0.30-beta.2"></script>
-  <script src="/js/employees-imports.js?v=1.0.30-beta.2"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.30-beta.2"></script>
-  <script src="/js/report-validator.js?v=1.0.30-beta.2"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.30-beta.2"></script>
-  <script src="/js/rest-audit.js?v=1.0.30-beta.2"></script>
-  <script src="/js/calendar-reports.js?v=1.0.30-beta.2"></script>
-  <script src="/js/employee-history-admin.js?v=1.0.30-beta.2"></script>
-  <script src="/js/settings-system.js?v=1.0.30-beta.2"></script>
+  <script src="/js/core.js?v=1.0.31-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.0.31-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.0.31-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.31-beta.1"></script>
+  <script src="/js/report-validator.js?v=1.0.31-beta.1"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.31-beta.1"></script>
+  <script src="/js/rest-audit.js?v=1.0.31-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.1"></script>
+  <script src="/js/employee-history-admin.js?v=1.0.31-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.0.31-beta.1"></script>
+  <script src="/js/competence-compare.js?v=1.0.31-beta.1"></script>
 </body>
 </html>

@@ -3078,3 +3078,18 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
     display:block!important;
   }
 }
+
+/* V1.0.31 beta.1 — Comparador entre competências */
+.competence-compare-panel{margin-top:14px}
+.competence-compare-controls{display:grid;grid-template-columns:minmax(170px,1fr) auto minmax(170px,1fr) auto;gap:10px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.competence-compare-arrow{align-self:center;padding-top:15px;color:var(--muted);font-weight:900}
+.competence-compare-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
+.competence-compare-summary article{display:grid;gap:5px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--card)}
+.competence-compare-summary span{color:var(--muted);font-size:9px}
+.competence-compare-summary div{display:flex;align-items:center;gap:7px}.competence-compare-summary b{font-size:18px;color:var(--heading)}.competence-compare-summary i{color:var(--muted);font-style:normal}
+.competence-compare-summary small{font-size:9px;font-weight:800}.competence-compare-summary small.up{color:#9a6700}.competence-compare-summary small.down{color:#b42318}.competence-compare-summary small.same{color:#137333}
+.competence-compare-alerts{margin-top:11px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--p) 4%,var(--card))}
+.competence-compare-alerts strong{color:var(--heading)}.competence-compare-alerts p{margin:5px 0 0;color:var(--muted);font-size:10px}
+.theme-dark #app .competence-compare-controls,.theme-dark #app .competence-compare-summary article{background:#172935;border-color:#35505f}
+@media(max-width:900px){.competence-compare-summary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.competence-compare-controls,.competence-compare-summary{grid-template-columns:1fr}.competence-compare-arrow{display:none}.competence-compare-controls button{width:100%}}
