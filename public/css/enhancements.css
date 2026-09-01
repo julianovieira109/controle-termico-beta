@@ -2418,3 +2418,27 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
   .report-simulator-head{flex-direction:column}
   .report-simulator-details{grid-template-columns:1fr}
 }
+
+
+/* V1.0.26 beta.3 — conferência do cálculo como ação auxiliar */
+.report-validation-head-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.report-check-rest-button{
+  font-size:9px;
+  min-height:30px;
+  padding:5px 9px;
+}
+@media(max-width:640px){
+  .report-validation-head{
+    align-items:flex-start;
+  }
+  .report-validation-head-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+}

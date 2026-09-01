@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 
-test('relatórios possuem botão e painel do simulador',()=>{
+test('relatórios possuem ação auxiliar e painel de conferência',()=>{
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
   assert.match(html,/id="report-simulator-open"/);
   assert.match(html,/id="report-simulator-panel"/);
@@ -22,5 +22,5 @@ test('simulador não altera nem substitui geração da ficha',()=>{
   const js=fs.readFileSync(path.join(__dirname,'../public/js/calendar-reports.js'),'utf8');
   const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
   assert.match(js,/\$\("report-generate"\)\.onclick=async/);
-  assert.match(html,/Esta visualização não altera a ficha/);
+  assert.match(html,/Esta conferência não altera a ficha/);
 });

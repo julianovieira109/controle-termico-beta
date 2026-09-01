@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.26-beta.2">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.26-beta.2">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.26-beta.2">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.26-beta.2">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.26-beta.2">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.26-beta.2">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.26-beta.3">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.26-beta.3">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.26-beta.3">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.26-beta.3">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.26-beta.3">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.26-beta.3">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -1090,7 +1090,6 @@
 
           <div class="full actions">
             <button type="button" id="report-generate" class="primary">Gerar ficha</button>
-            <button type="button" id="report-simulator-open" class="secondary">Simular jornada</button>
             <button type="button" id="report-print" class="secondary">Imprimir</button>
             <button type="button" id="report-clear" class="secondary">Limpar</button>
             <button type="button" id="report-validation-toggle" class="secondary" hidden>Ver validação</button>
@@ -1098,9 +1097,9 @@
           <section id="report-simulator-panel" class="full report-simulator-panel" hidden aria-live="polite">
             <div class="report-simulator-head">
               <div>
-                <span class="eyebrow">Simulação visual</span>
-                <h4>Jornada e repousos calculados</h4>
-                <p>Esta visualização não altera a ficha. Ela apenas explica os horários já calculados pelo sistema.</p>
+                <span class="eyebrow">Conferência do cálculo</span>
+                <h4>Conferir cálculo do repouso</h4>
+                <p>Esta conferência não altera a ficha. Ela apenas mostra como o sistema chegou aos horários calculados.</p>
               </div>
               <button type="button" id="report-simulator-close" class="secondary compact">Fechar</button>
             </div>
@@ -1117,7 +1116,10 @@
           <section id="report-validation-panel" class="full report-validation-panel" hidden aria-live="polite">
             <div class="report-validation-head">
               <div><strong>Validação prévia</strong><small id="report-validation-subtitle">Confira a competência antes da geração.</small></div>
-              <span id="report-validation-badge" class="report-validation-badge">Aguardando</span>
+              <div class="report-validation-head-actions">
+                <button type="button" id="report-simulator-open" class="secondary compact report-check-rest-button">Conferir cálculo do repouso</button>
+                <span id="report-validation-badge" class="report-validation-badge">Aguardando</span>
+              </div>
             </div>
             <div id="report-validation-counts" class="report-validation-counts"></div>
             <div id="report-validation-details" class="report-validation-details"></div>
@@ -2405,14 +2407,14 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.26-beta.2"></script>
-  <script src="/js/help-manual.js?v=1.0.26-beta.2"></script>
-  <script src="/js/admin-access.js?v=1.0.26-beta.2"></script>
-  <script src="/js/employees-imports.js?v=1.0.26-beta.2"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.26-beta.2"></script>
-  <script src="/js/report-validator.js?v=1.0.26-beta.2"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.26-beta.2"></script>
-  <script src="/js/calendar-reports.js?v=1.0.26-beta.2"></script>
-  <script src="/js/settings-system.js?v=1.0.26-beta.2"></script>
+  <script src="/js/core.js?v=1.0.26-beta.3"></script>
+  <script src="/js/help-manual.js?v=1.0.26-beta.3"></script>
+  <script src="/js/admin-access.js?v=1.0.26-beta.3"></script>
+  <script src="/js/employees-imports.js?v=1.0.26-beta.3"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.26-beta.3"></script>
+  <script src="/js/report-validator.js?v=1.0.26-beta.3"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.26-beta.3"></script>
+  <script src="/js/calendar-reports.js?v=1.0.26-beta.3"></script>
+  <script src="/js/settings-system.js?v=1.0.26-beta.3"></script>
 </body>
 </html>
