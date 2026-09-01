@@ -2,75 +2,46 @@ const express=require("express");
 const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission}=require("../middleware/auth");
+const {getHolidays}=require("../services/online-holidays");
 
 const router=express.Router();
-
-function addDays(date,days){
-  const result=new Date(date);
-  result.setUTCDate(result.getUTCDate()+days);
-  return result;
-}
-
-function easterSunday(year){
-  const a=year%19;
-  const b=Math.floor(year/100);
-  const c=year%100;
-  const d=Math.floor(b/4);
-  const e=b%4;
-  const f=Math.floor((b+8)/25);
-  const g=Math.floor((b-f+1)/3);
-  const h=(19*a+b-d-g+15)%30;
-  const i=Math.floor(c/4);
-  const k=c%4;
-  const l=(32+2*e+2*i-h-k)%7;
-  const m=Math.floor((a+11*h+22*l)/451);
-  const month=Math.floor((h+l-7*m+114)/31);
-  const day=((h+l-7*m+114)%31)+1;
-  return new Date(Date.UTC(year,month-1,day));
-}
-
-function isoDate(date){
-  return date.toISOString().slice(0,10);
-}
-
-function automaticHolidays(year){
-  const easter=easterSunday(year);
-  return [
-    [`${year}-01-01`,"Confraternização Universal"],
-    [isoDate(addDays(easter,-48)),"Carnaval - Segunda-feira"],
-    [isoDate(addDays(easter,-47)),"Carnaval - Terça-feira"],
-    [isoDate(addDays(easter,-2)),"Paixão de Cristo"],
-    [`${year}-04-21`,"Tiradentes"],
-    [`${year}-05-01`,"Dia Mundial do Trabalho"],
-    [isoDate(addDays(easter,60)),"Corpus Christi"],
-    [`${year}-09-07`,"Independência do Brasil"],
-    [`${year}-10-12`,"Nossa Senhora Aparecida"],
-    [`${year}-11-02`,"Finados"],
-    [`${year}-11-15`,"Proclamação da República"],
-    [`${year}-11-20`,"Dia Nacional de Zumbi e da Consciência Negra"],
-    [`${year}-12-25`,"Natal"]
-  ];
-}
 
 async function ensureAutomaticHolidays(year){
   const start=`${year}-01-01`;
   const end=`${year}-12-31`;
+  const result=await getHolidays(year);
+  const client=await pool.connect();
 
-  // Remove somente os feriados automáticos do ano selecionado.
-  // Feriados manuais são preservados.
-  await pool.query(
-    `DELETE FROM holidays
-     WHERE automatic=TRUE
-       AND holiday_date BETWEEN $1::date AND $2::date`,
-    [start,end]
-  );
+  try{
+    await client.query("BEGIN");
 
-  for(const [date,description] of automaticHolidays(year)){
-    await pool.query(
-      `INSERT INTO holidays(company_id,branch_id,holiday_date,description,automatic)
-       VALUES(NULL,NULL,$1::date,$2,TRUE)`,
-      [date,description]
+    // A partir desta versão, somente feriados automáticos são utilizados.
+    // Registros manuais antigos são preservados no banco por segurança,
+    // mas não são mais exibidos nem aplicados pelo endpoint de feriados.
+    await client.query(
+      `DELETE FROM holidays
+       WHERE automatic=TRUE
+         AND holiday_date BETWEEN $1::date AND $2::date`,
+      [start,end]
     );
+
+    for(const holiday of result.holidays){
+      await client.query(
+        `INSERT INTO holidays(company_id,branch_id,holiday_date,description,automatic)
+         VALUES(NULL,NULL,$1::date,$2,TRUE)
+         ON CONFLICT(company_id,branch_id,holiday_date)
+         DO UPDATE SET description=EXCLUDED.description,automatic=TRUE`,
+        [holiday.date,holiday.name]
+      );
+    }
+
+    await client.query("COMMIT");
+    return result;
+  }catch(error){
+    await client.query("ROLLBACK").catch(()=>{});
+    throw error;
+  }finally{
+    client.release();
   }
 }
 
@@ -96,7 +67,7 @@ router.post("/holidays/generate",async(req,res,next)=>{
       [year]
     );
 
-    await ensureAutomaticHolidays(year);
+    const onlineResult=await ensureAutomaticHolidays(year);
 
     const params=[year];
     let scopeWhere="";
@@ -111,6 +82,7 @@ router.post("/holidays/generate",async(req,res,next)=>{
       LEFT JOIN companies c ON c.id=h.company_id
       LEFT JOIN branches b ON b.id=h.branch_id
       WHERE EXTRACT(YEAR FROM h.holiday_date)=$1
+        AND h.automatic=TRUE
       ${scopeWhere}
       ORDER BY h.holiday_date
     `,params);
@@ -120,7 +92,10 @@ router.post("/holidays/generate",async(req,res,next)=>{
       year,
       total:rows.length,
       automaticTotal,
-      regenerated:before.rows[0].total>0
+      regenerated:before.rows[0].total>0,
+      source:onlineResult.source,
+      provider:onlineResult.provider,
+      warning:onlineResult.warning
     });
 
     res.json({
@@ -128,6 +103,9 @@ router.post("/holidays/generate",async(req,res,next)=>{
       total:rows.length,
       automaticTotal,
       regenerated:before.rows[0].total>0,
+      source:onlineResult.source,
+      provider:onlineResult.provider,
+      warning:onlineResult.warning,
       holidays:rows
     });
   }catch(e){next(e);}
@@ -138,7 +116,7 @@ router.get("/holidays",async(req,res,next)=>{
     const year=Number(req.query.year||new Date().getFullYear());
 
     const params=[];
-    let where="WHERE 1=1";
+    let where="WHERE h.automatic=TRUE";
 
     if(!req.scope.isAdmin){
       params.push(req.scope.companyId,req.scope.branchIds);

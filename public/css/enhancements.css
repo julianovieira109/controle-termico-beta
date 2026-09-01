@@ -2826,3 +2826,64 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
 @media(max-width:800px){
   #settings-employee-history .panel{padding:14px}
 }
+
+
+/* V1.0.28 beta.4 — Feriados automáticos atualizados online */
+.holiday-online-panel{padding:18px 20px}
+.holiday-online-head{
+  align-items:flex-end;
+  gap:20px;
+}
+.holiday-year-only{
+  flex:0 0 150px;
+}
+.holiday-year-only label{
+  display:grid;
+  gap:5px;
+  font-size:9px;
+  color:#667085;
+}
+.holiday-year-only select{
+  min-height:40px;
+  font-size:12px;
+  font-weight:700;
+}
+.holiday-online-status{
+  margin-top:12px;
+  padding:10px 12px;
+  border:1px solid #dce5eb;
+  border-radius:9px;
+  background:#f8fafc;
+  color:#52606d;
+  font-size:9px;
+}
+.holiday-online-status.loading{
+  border-color:#cbdce8;
+  background:#f2f7fb;
+  color:#375d78;
+}
+.holiday-online-status.success{
+  border-color:#b8dfcc;
+  background:#f1faf5;
+  color:#216247;
+}
+.holiday-online-status.warning{
+  border-color:#ecd89c;
+  background:#fffaf0;
+  color:#74570c;
+}
+.holiday-online-status.error{
+  border-color:#ebc4c4;
+  background:#fff5f5;
+  color:#8a3030;
+}
+.holiday-online-table th:first-child,
+.holiday-online-table td:first-child{width:130px}
+.holiday-online-table th:nth-child(2),
+.holiday-online-table td:nth-child(2){width:150px;text-transform:capitalize}
+.holiday-online-table th:last-child,
+.holiday-online-table td:last-child{width:120px}
+@media(max-width:650px){
+  .holiday-online-head{align-items:stretch}
+  .holiday-year-only{flex-basis:100%}
+}

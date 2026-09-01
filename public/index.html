@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.28-beta.3">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.28-beta.3">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.28-beta.3">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.28-beta.3">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.28-beta.3">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.28-beta.3">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.28-beta.4">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.28-beta.4">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.28-beta.4">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.28-beta.4">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.28-beta.4">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.28-beta.4">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -1321,7 +1321,7 @@
         <button class="settings-tab admin-only master-only" data-settings-tab="support">Suporte</button>
         <button class="settings-tab admin-only master-only" data-settings-tab="security-access">Segurança e acessos</button>
         <button class="settings-tab admin-only master-only" data-settings-tab="employee-history">Histórico de colaboradores</button>
-        <button class="settings-tab calendar-access-only" data-settings-tab="calendar">Feriados e folgas</button>
+        <button class="settings-tab calendar-access-only" data-settings-tab="calendar">Feriados</button>
         <button class="settings-tab admin-only" data-settings-tab="shifts">Turnos</button>
         <button class="settings-tab admin-only master-only" data-settings-tab="thermal-rest">Repouso automático</button>
         <button class="settings-tab admin-only" data-settings-tab="job-reports">Cargos e relatórios</button>
@@ -2244,109 +2244,42 @@
       </div>
 
       <div id="settings-calendar" class="calendar-access-only" hidden>
-
-    
-      <div class="calendar-tabs no-print">
-        <button class="calendar-tab active" data-calendar-tab="holidays">Feriados</button>
-        <button class="calendar-tab" data-calendar-tab="days-off">Folgas por colaborador</button>
-      </div>
-
-      <div id="calendar-holidays">
-        <div class="panel">
-          <h3>Feriados do ano</h3>
-          <p class="hint">Ao trocar o ano, os feriados automáticos daquele ano serão gerados e exibidos imediatamente.</p>
-          <div class="holiday-year-bar">
-            <label>Ano
-              <select id="holiday-year"></select>
-            </label>
-            <button type="button" class="primary" id="holiday-generate">Atualizar feriados do ano</button>
-            <span id="holiday-generate-status" class="hint"></span>
+        <div class="panel holiday-online-panel">
+          <div class="panel-head holiday-online-head">
+            <div>
+              <span class="eyebrow">Calendário automático</span>
+              <h3>Feriados do ano</h3>
+              <p class="hint">Selecione o ano. O sistema consulta a lista online e atualiza os feriados automaticamente.</p>
+            </div>
+            <div class="holiday-year-only">
+              <label>Ano
+                <select id="holiday-year"></select>
+              </label>
+            </div>
           </div>
 
-          <hr class="section-divider">
-
-          <h3>Acrescentar feriado manual</h3>
-          <form id="holiday-form" class="form-grid">
-            <input type="hidden" id="holiday-id">
-
-            <label>Empresa
-              <select id="holiday-company"></select>
-            </label>
-
-            <label>Filial
-              <select id="holiday-branch"></select>
-            </label>
-
-            <label>Data
-              <input id="holiday-date" type="date" required>
-            </label>
-
-            <label>Descrição
-              <input id="holiday-description" required placeholder="Ex.: Feriado municipal">
-            </label>
-
-            <label>Tipo
-              <select id="holiday-automatic">
-                <option value="false">Manual</option>
-                <option value="true">Automático</option>
-              </select>
-            </label>
-
-            <div class="full actions">
-              <button class="primary">Salvar feriado</button>
-              <button type="button" class="secondary" id="holiday-cancel">Cancelar</button>
-            </div>
-          </form>
+          <div id="holiday-generate-status" class="holiday-online-status">
+            Selecione um ano para consultar os feriados.
+          </div>
         </div>
 
         <div class="panel">
-          <div class="panel-head"><h3 id="holiday-list-title">Feriados gerados</h3><span id="holiday-count" class="badge-count">0 feriados</span></div>
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">Consulta automática</span>
+              <h3 id="holiday-list-title">Feriados gerados</h3>
+            </div>
+            <span id="holiday-count" class="badge-count">0 feriados</span>
+          </div>
           <div class="table-wrap">
-            <table>
+            <table class="holiday-online-table">
               <thead>
-                <tr><th>Data</th><th>Descrição</th><th>Empresa</th><th>Filial</th><th>Tipo</th><th>Ações</th></tr>
+                <tr><th>Data</th><th>Dia da semana</th><th>Descrição</th><th>Origem</th></tr>
               </thead>
               <tbody id="holiday-list"></tbody>
             </table>
           </div>
         </div>
-      </div>
-
-      <div id="calendar-days-off" hidden>
-        <div class="panel">
-          <h3>Marcar folga em uma data específica</h3>
-          <form id="day-off-form" class="form-grid">
-            <label>Colaborador
-              <input id="day-off-employee" list="day-off-employee-list" placeholder="Digite o nome ou matrícula" required>
-              <datalist id="day-off-employee-list"></datalist>
-            </label>
-
-            <label>Data da folga
-              <input id="day-off-date" type="date" required>
-            </label>
-
-            <label>Motivo/descrição
-              <input id="day-off-description" value="Folga">
-            </label>
-
-            <div class="full actions">
-              <button class="primary">Marcar folga</button>
-            </div>
-          </form>
-        </div>
-
-        <div class="panel">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Data</th><th>Colaborador</th><th>Empresa/Filial</th><th>Descrição</th><th>Ação</th></tr>
-              </thead>
-              <tbody id="day-off-list"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    
       </div>
     </section>
   </main>
@@ -2454,16 +2387,16 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.28-beta.3"></script>
-  <script src="/js/help-manual.js?v=1.0.28-beta.3"></script>
-  <script src="/js/admin-access.js?v=1.0.28-beta.3"></script>
-  <script src="/js/employees-imports.js?v=1.0.28-beta.3"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.28-beta.3"></script>
-  <script src="/js/report-validator.js?v=1.0.28-beta.3"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.28-beta.3"></script>
-  <script src="/js/rest-audit.js?v=1.0.28-beta.3"></script>
-  <script src="/js/calendar-reports.js?v=1.0.28-beta.3"></script>
-  <script src="/js/employee-history-admin.js?v=1.0.28-beta.3"></script>
-  <script src="/js/settings-system.js?v=1.0.28-beta.3"></script>
+  <script src="/js/core.js?v=1.0.28-beta.4"></script>
+  <script src="/js/help-manual.js?v=1.0.28-beta.4"></script>
+  <script src="/js/admin-access.js?v=1.0.28-beta.4"></script>
+  <script src="/js/employees-imports.js?v=1.0.28-beta.4"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.28-beta.4"></script>
+  <script src="/js/report-validator.js?v=1.0.28-beta.4"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.28-beta.4"></script>
+  <script src="/js/rest-audit.js?v=1.0.28-beta.4"></script>
+  <script src="/js/calendar-reports.js?v=1.0.28-beta.4"></script>
+  <script src="/js/employee-history-admin.js?v=1.0.28-beta.4"></script>
+  <script src="/js/settings-system.js?v=1.0.28-beta.4"></script>
 </body>
 </html>

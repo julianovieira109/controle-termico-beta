@@ -76,45 +76,15 @@ async function loadCalendarSection(){
 
 async function prepareCalendar(){
   const currentYear=new Date().getFullYear();
-  if(!$("holiday-year").options.length){
-    $("holiday-year").innerHTML=Array.from({length:7},(_,i)=>currentYear-2+i)
+  const yearSelect=$("holiday-year");
+
+  if(yearSelect&&!yearSelect.options.length){
+    yearSelect.innerHTML=Array.from({length:9},(_,i)=>currentYear-3+i)
       .map(year=>`<option value="${year}" ${year===currentYear?"selected":""}>${year}</option>`).join("");
   }
 
-  if(!companies.length)await loadCompanies();
-  if(!branches.length)await loadBranches();
-
-  calendarEmployees=await api("/api/reports/employees");
-  fillHolidaySelectors();
-  fillDayOffEmployees();
   await generateAndLoadHolidays();
-  await loadDaysOff();
 }
-
-function fillHolidaySelectors(){
-  const companyMap=[...new Map(calendarEmployees.map(e=>[e.company_name,e])).values()];
-  $("holiday-company").innerHTML=`<option value="">Geral</option>`+
-    companyMap.map(e=>`<option value="${companies.find(c=>c.trade_name===e.company_name)?.id||""}">${escapeHtml(e.company_name)}</option>`).join("");
-
-  fillHolidayBranches();
-
-  if(currentUser.role!=="ADMIN"){
-    $("holiday-company").disabled=true;
-    $("holiday-branch").disabled=false;
-  }
-}
-
-function fillHolidayBranches(){
-  const companyId=$("holiday-company").value;
-  const allowed=currentUser.role==="ADMIN"
-    ? branches
-    : branches.filter(b=>(currentUser.branchIds||[]).includes(b.id));
-
-  $("holiday-branch").innerHTML=`<option value="">Todas</option>`+
-    allowed.filter(b=>!companyId||b.company_id===companyId)
-      .map(b=>`<option value="${b.id}">${escapeHtml(b.name)}</option>`).join("");
-}
-$("holiday-company").onchange=fillHolidayBranches;
 
 function formatApiDate(value){
   if(!value)return "-";
@@ -128,74 +98,52 @@ function formatApiDate(value){
   return Number.isNaN(date.getTime())?"Data inválida":date.toLocaleDateString("pt-BR");
 }
 
-async function loadHolidays(){
-  const year=Number($("holiday-year")?.value||new Date().getFullYear());
-  holidays=await api(`/api/calendar/holidays?year=${year}`);
+function holidayWeekday(value){
+  const iso=String(value||"").slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return "-";
+  const [year,month,day]=iso.split("-").map(Number);
+  return new Intl.DateTimeFormat("pt-BR",{weekday:"long",timeZone:"UTC"})
+    .format(new Date(Date.UTC(year,month-1,day)));
+}
+
+function renderAutomaticHolidays(year,source="ONLINE"){
+  const list=$("holiday-list");
+  if(!list)return;
 
   $("holiday-list-title").textContent=`Feriados de ${year}`;
   $("holiday-count").textContent=`${holidays.length} feriado${holidays.length===1?"":"s"}`;
 
-  $("holiday-list").innerHTML=holidays.length
+  const origin=source==="ONLINE"?"Online":"Reserva local";
+  list.innerHTML=holidays.length
     ? holidays.map(h=>`<tr>
-        <td>${formatApiDate(h.holiday_date)}</td>
+        <td><strong>${formatApiDate(h.holiday_date)}</strong></td>
+        <td>${escapeHtml(holidayWeekday(h.holiday_date))}</td>
         <td>${escapeHtml(h.description)}</td>
-        <td>${escapeHtml(h.company_name||"Geral")}</td>
-        <td>${escapeHtml(h.branch_name||"Todas")}</td>
-        <td>${h.automatic?'<span class="auto-lock">Automático</span>':"Manual"}</td>
-        <td>${h.automatic
-          ? '<span class="auto-lock">Protegido</span>'
-          : `<button class="action-btn" data-ui-action="editHoliday" data-ui-id="${h.id}">Editar</button>
-             <button class="action-btn danger" data-ui-action="deleteHoliday" data-ui-id="${h.id}">Excluir</button>`}
-        </td>
+        <td><span class="auto-lock">${origin}</span></td>
       </tr>`).join("")
-    : `<tr><td colspan="6">Nenhum feriado encontrado para ${year}.</td></tr>`;
-
-  if(typeof refreshHolidayGenerationState==="function"){
-    await refreshHolidayGenerationState();
-  }
+    : `<tr><td colspan="4">Nenhum feriado encontrado para ${year}.</td></tr>`;
 }
 
-
-async function refreshHolidayGenerationState(){
-  let year=Number($("holiday-year").value);
-  const status=$("holiday-generate-status");
-  const button=$("holiday-generate");
-
-  if(!Number.isInteger(year)||year<2000||year>2100){
-    year=new Date().getFullYear();
-    $("holiday-year").value=String(year);
-  }
-
-  const saved=holidays.filter(h=>h.automatic===true).length;
-  if(saved>0){
-    status.textContent=`${saved} feriado(s) automático(s) de ${year} estão gravados e permanecerão fixos até uma nova geração.`;
-    button.textContent="Regerar feriados do ano";
-  }else{
-    status.textContent=`Nenhum feriado automático foi gerado para ${year}.`;
-    button.textContent="Gerar feriados do ano";
-  }
+async function loadHolidays(){
+  let year=Number($("holiday-year")?.value||new Date().getFullYear());
+  if(!Number.isInteger(year)||year<1900||year>2199)year=new Date().getFullYear();
+  holidays=await api(`/api/calendar/holidays?year=${year}`);
+  renderAutomaticHolidays(year,"ONLINE");
 }
 
 async function generateAndLoadHolidays(){
-  let year=Number($("holiday-year").value);
+  let year=Number($("holiday-year")?.value||new Date().getFullYear());
   const status=$("holiday-generate-status");
 
-  if(!Number.isInteger(year)||year<2000||year>2100){
+  if(!Number.isInteger(year)||year<1900||year>2199){
     year=new Date().getFullYear();
-    $("holiday-year").value=String(year);
+    if($("holiday-year"))$("holiday-year").value=String(year);
   }
 
-  const existingAutomatic=holidays.filter(h=>h.automatic===true).length;
-
-  if(existingAutomatic>0){
-    const confirmed=await confirmAction(
-      `Os feriados automáticos de ${year} já estão gravados. Deseja gerar novamente? Os feriados automáticos desse ano serão substituídos pela lista padrão atual. Feriados manuais serão preservados.`,
-      "Regerar feriados do ano"
-    );
-    if(!confirmed)return;
+  if(status){
+    status.className="holiday-online-status loading";
+    status.textContent=`Consultando feriados de ${year} online...`;
   }
-
-  status.textContent=`${existingAutomatic>0?"Regerando":"Gerando"} feriados de ${year}...`;
 
   try{
     const result=await api("/api/calendar/holidays/generate",{
@@ -203,130 +151,27 @@ async function generateAndLoadHolidays(){
       body:JSON.stringify({year})
     });
 
-    await loadHolidays();
-    status.textContent=`${result.automaticTotal??0} feriado(s) automático(s) de ${year} gravados. Eles permanecerão fixos até você gerar novamente.`;
-    $("holiday-generate").textContent="Regerar feriados do ano";
+    holidays=Array.isArray(result.holidays)?result.holidays:[];
+    renderAutomaticHolidays(year,result.source);
+
+    if(status){
+      const online=result.source==="ONLINE";
+      status.className=`holiday-online-status ${online?"success":"warning"}`;
+      status.innerHTML=online
+        ? `<strong>Atualizado online.</strong> ${result.automaticTotal??holidays.length} feriado(s) de ${year} sincronizados pela ${escapeHtml(result.provider||"fonte online")}.`
+        : `<strong>Fonte online indisponível.</strong> O sistema utilizou a lista interna de segurança para ${year}. ${result.warning?escapeHtml(result.warning):""}`;
+    }
   }catch(error){
-    status.textContent=error.message;
+    if(status){
+      status.className="holiday-online-status error";
+      status.textContent=error.message||"Não foi possível atualizar os feriados.";
+    }
   }
 }
 
-$("holiday-year").onchange=async()=>{
-  await loadHolidays();
-  await refreshHolidayGenerationState();
-};
-
-$("holiday-generate").onclick=generateAndLoadHolidays;
-
-$("holiday-form").onsubmit=async e=>{
-  e.preventDefault();
-  const id=$("holiday-id").value;
-  const body={
-    companyId:$("holiday-company").value||null,
-    branchId:$("holiday-branch").value||null,
-    holidayDate:$("holiday-date").value,
-    description:$("holiday-description").value,
-    automatic:$("holiday-automatic").value==="true"
-  };
-
-  await api(id?`/api/calendar/holidays/${id}`:"/api/calendar/holidays",{
-    method:id?"PUT":"POST",
-    body:JSON.stringify(body)
-  });
-
-  resetHolidayForm();
-  await loadHolidays();
-};
-
-function resetHolidayForm(){
-  $("holiday-form").reset();
-  $("holiday-id").value="";
-  fillHolidaySelectors();
+if($("holiday-year")){
+  $("holiday-year").onchange=generateAndLoadHolidays;
 }
-$("holiday-cancel").onclick=resetHolidayForm;
-
-window.editHoliday=id=>{
-  const h=holidays.find(x=>x.id===id);
-  if(!h)return;
-  $("holiday-id").value=h.id;
-  $("holiday-company").value=h.company_id||"";
-  fillHolidayBranches();
-  $("holiday-branch").value=h.branch_id||"";
-  $("holiday-date").value=String(h.holiday_date).slice(0,10);
-  $("holiday-description").value=h.description;
-  $("holiday-automatic").value=String(h.automatic);
-  window.scrollTo({top:0,behavior:"smooth"});
-};
-
-window.deleteHoliday=async id=>{
-  if(!confirm("Excluir este feriado?"))return;
-  await api(`/api/calendar/holidays/${id}`,{method:"DELETE"});
-  await loadHolidays();
-};
-
-function fillDayOffEmployees(){
-  $("day-off-employee-list").innerHTML=calendarEmployees
-    .map(e=>`<option value="${escapeHtml(e.full_name)} — ${escapeHtml(e.registration||"sem matrícula")}"></option>`)
-    .join("");
-}
-
-function selectedDayOffEmployee(){
-  const value=$("day-off-employee").value.trim();
-  return calendarEmployees.find(e=>`${e.full_name} — ${e.registration||"sem matrícula"}`===value)
-      || calendarEmployees.find(e=>e.full_name.toLowerCase()===value.toLowerCase())
-      || null;
-}
-
-async function loadDaysOff(){
-  specificDaysOff=await api("/api/calendar/days-off");
-  $("day-off-list").innerHTML=specificDaysOff.length
-    ? specificDaysOff.map(d=>`<tr>
-        <td>${formatApiDate(d.off_date)}</td>
-        <td>${escapeHtml(d.full_name)}<br><small>${escapeHtml(d.registration||"-")}</small></td>
-        <td>${escapeHtml(d.company_name)}<br><small>${escapeHtml(d.branch_name)}</small></td>
-        <td>${escapeHtml(d.description)}</td>
-        <td><button class="action-btn danger" data-ui-action="deleteDayOff" data-ui-id="${d.id}">Excluir</button></td>
-      </tr>`).join("")
-    : `<tr><td colspan="5">Nenhuma folga específica cadastrada.</td></tr>`;
-}
-
-$("day-off-form").onsubmit=async e=>{
-  e.preventDefault();
-  const employee=selectedDayOffEmployee();
-  if(!employee){
-    alert("Selecione um colaborador válido.");
-    return;
-  }
-
-  await api("/api/calendar/days-off",{
-    method:"POST",
-    body:JSON.stringify({
-      employeeId:employee.id,
-      offDate:$("day-off-date").value,
-      description:$("day-off-description").value||"Folga"
-    })
-  });
-
-  $("day-off-form").reset();
-  $("day-off-description").value="Folga";
-  await loadDaysOff();
-};
-
-window.deleteDayOff=async id=>{
-  if(!confirm("Excluir esta folga?"))return;
-  await api(`/api/calendar/days-off/${id}`,{method:"DELETE"});
-  await loadDaysOff();
-};
-
-document.querySelectorAll(".calendar-tab").forEach(btn=>{
-  btn.onclick=()=>{
-    document.querySelectorAll(".calendar-tab").forEach(x=>x.classList.remove("active"));
-    btn.classList.add("active");
-    const tab=btn.dataset.calendarTab;
-    $("calendar-holidays").hidden=tab!=="holidays";
-    $("calendar-days-off").hidden=tab!=="days-off";
-  };
-});
 
 let reportEmployees=[];
 let pointImportPreview=null;
