@@ -622,6 +622,46 @@ if($("point-import-form"))$("point-import-form").onsubmit=async event=>{
   }finally{setButtonLoading(button,false);}
 };
 
+
+async function refreshReportsAfterPointImport(importResult){
+  const importedMonth=String(importResult?.period?.end||importResult?.period?.start||"").slice(0,7);
+  if(!/^\d{4}-\d{2}$/.test(importedMonth))return {importedMonth:null,regenerated:false};
+
+  // Sempre descarta a validação anterior e recarrega as marcações diretamente do banco.
+  invalidateReportValidation();
+  await applyPointDataToEmployees(importedMonth);
+
+  const currentMonth=$("report-month")?.value||"";
+  if(currentMonth!==importedMonth){
+    return {importedMonth,regenerated:false,differentMonth:true};
+  }
+
+  const output=$("report-output");
+  const hadGeneratedSheets=Boolean(output?.querySelector(".report-sheet"));
+
+  if(hadGeneratedSheets){
+    // Não deixa a tela continuar exibindo uma ficha antiga após confirmação de um novo ponto.
+    output.innerHTML="";
+    const summary=$("report-generation-summary");
+    if(summary){
+      summary.className="full feedback";
+      summary.textContent="Cartão de Ponto atualizado. Recalculando as fichas com as marcações mais recentes...";
+    }
+
+    // Reutiliza exatamente os filtros já escolhidos pelo usuário.
+    await new Promise(resolve=>setTimeout(resolve,0));
+    $("report-generate")?.click();
+    return {importedMonth,regenerated:true};
+  }
+
+  const summary=$("report-generation-summary");
+  if(summary){
+    summary.className="full feedback success";
+    summary.textContent=`Cartão de Ponto de ${reportMonthLabel(importedMonth)} atualizado. As próximas fichas serão geradas com os dados mais recentes.`;
+  }
+  return {importedMonth,regenerated:false};
+}
+
 if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
   if(!pointImportPreview)return toast("Leia o arquivo antes de confirmar.","warning");
   if(!confirm(`Confirmar as marcações de ${pointImportPreview.totals.located} colaborador(es) localizado(s)?`))return;
@@ -633,6 +673,25 @@ if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
     $("point-import-feedback").textContent=`Importação concluída: ${data.employees} colaborador(es) e ${data.savedDays} dia(s) salvos.`;
     toast("Cartão de ponto importado com sucesso.","success");
     await loadPointImportHistory();
+
+    try{
+      const refresh=await refreshReportsAfterPointImport(data);
+      if(refresh.regenerated){
+        toast("As fichas exibidas foram atualizadas com o novo Cartão de Ponto.","success");
+      }else if(refresh.differentMonth){
+        toast(`Ponto atualizado para ${reportMonthLabel(refresh.importedMonth)}. Selecione essa competência para gerar as fichas atualizadas.`,"success");
+      }
+    }catch(refreshError){
+      console.error("[POINT_REPORT_REFRESH]",refreshError);
+      const output=$("report-output");
+      if(output?.querySelector(".report-sheet"))output.innerHTML="";
+      const summary=$("report-generation-summary");
+      if(summary){
+        summary.className="full feedback warning";
+        summary.textContent="O Cartão de Ponto foi salvo, mas as fichas abertas foram invalidadas. Clique em Gerar ficha para recalcular com os dados atualizados.";
+      }
+      toast("Ponto salvo. Gere novamente as fichas para aplicar as marcações atualizadas.","warning");
+    }
   }catch(error){toast(error.message,"error");$("point-import-feedback").textContent=error.message;}
   finally{setButtonLoading(button,false);}
 };
@@ -652,8 +711,8 @@ async function loadPointImportHistory(){
 
 async function applyPointDataToEmployees(month){
   const [rows,competence]=await Promise.all([
-    api(`/api/reports/point-days?month=${encodeURIComponent(month)}`),
-    api(`/api/reports/point-competence?month=${encodeURIComponent(month)}`)
+    api(`/api/reports/point-days?month=${encodeURIComponent(month)}&_=${Date.now()}`),
+    api(`/api/reports/point-competence?month=${encodeURIComponent(month)}&_=${Date.now()}`)
   ]);
   pointCompetenceBranches=new Set((competence.imports||[]).map(item=>String(item.branch_id)));
   pointDataActive=pointCompetenceBranches.size>0&&rows.length>0;

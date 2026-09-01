@@ -3909,6 +3909,24 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
       RETURNING id,created_at
     `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays})]);
     const importId=importResult.rows[0].id;
+    const importedPeriod=result.parsed.employees[0]?.period||null;
+
+    // A importação mais recente passa a ser a fonte oficial do período informado.
+    // Isso evita que dias/ocorrências de uma importação anterior permaneçam nas fichas
+    // quando deixaram de existir ou foram corrigidos no novo Cartão de Ponto.
+    if(importedPeriod?.start&&importedPeriod?.end){
+      const locatedIds=located.map(row=>row.employeeId).filter(Boolean);
+      if(locatedIds.length){
+        await client.query(`
+          DELETE FROM employee_point_days
+          WHERE employee_id=ANY($1::uuid[])
+            AND company_id=$2
+            AND branch_id=$3
+            AND work_date BETWEEN $4::date AND $5::date
+        `,[locatedIds,result.companyId,result.branchId,importedPeriod.start,importedPeriod.end]);
+      }
+    }
+
     let savedDays=0;
     for(const row of located){
       for(const day of row.days){
@@ -3927,8 +3945,8 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
       }
     }
     await client.query("COMMIT");
-    await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId});
-    res.json({success:true,importId,employees:located.length,savedDays,notFound:result.rows.length-located.length,period:result.parsed.employees[0]?.period});
+    await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId,period:importedPeriod,replacedPeriod:true});
+    res.json({success:true,importId,employees:located.length,savedDays,notFound:result.rows.length-located.length,period:importedPeriod,replacedPeriod:true});
   }catch(error){
     await client.query("ROLLBACK");
     if(error.status)return res.status(error.status).json({error:error.message});

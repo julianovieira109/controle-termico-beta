@@ -40,6 +40,7 @@ router.get("/employees",async(req,res,next)=>{
 
 router.get("/point-days",async(req,res,next)=>{
   try{
+    res.set("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
     const month=String(req.query.month||"");
     if(!/^\d{4}-\d{2}$/.test(month))return res.status(400).json({error:"Informe o mês no formato AAAA-MM."});
     const start=`${month}-01`;
@@ -63,6 +64,7 @@ router.get("/point-days",async(req,res,next)=>{
 
 router.get("/point-competence",async(req,res,next)=>{
   try{
+    res.set("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
     const month=String(req.query.month||"");
     if(!/^\d{4}-\d{2}$/.test(month))return res.status(400).json({error:"Informe o mês no formato AAAA-MM."});
     const params=[month];
