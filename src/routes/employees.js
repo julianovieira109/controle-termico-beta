@@ -192,6 +192,9 @@ router.get("/",async(req,res,next)=>{
 
 router.get("/:id/history",async(req,res,next)=>{
   try{
+    if(req.user?.role!=="ADMIN"||req.user?.isMasterAdmin!==true){
+      return res.status(403).json({error:"Histórico de colaboradores disponível somente para o Administrador Master."});
+    }
     const employeeResult=await pool.query(`
       SELECT e.id,e.full_name,e.registration,e.company_id,e.branch_id,
              c.trade_name company_name,b.name branch_name

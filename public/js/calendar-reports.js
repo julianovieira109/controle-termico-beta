@@ -32,7 +32,7 @@ document.querySelectorAll(".settings-tab").forEach(btn=>{
     document.querySelectorAll(".settings-tab").forEach(x=>x.classList.remove("active"));
     btn.classList.add("active");
 
-    ["visual","support","calendar","shifts","job-reports","senior-models","profiles","data"].forEach(tab=>{
+    ["visual","support","security-access","employee-history","calendar","shifts","thermal-rest","job-reports","senior-models","profiles","data"].forEach(tab=>{
       const panel=$(`settings-${tab}`);
       if(panel)panel.hidden=tab!==btn.dataset.settingsTab;
     });

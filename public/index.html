@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.28-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.28-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.28-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.28-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.28-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.28-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.28-beta.2">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.28-beta.2">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.28-beta.2">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.28-beta.2">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.28-beta.2">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.28-beta.2">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -839,26 +839,9 @@
             <div class="full actions modal-actions">
               <button class="primary" id="employee-save-button">Salvar colaborador</button>
               <button type="button" class="secondary" id="employee-cancel">Cancelar</button>
-              <button type="button" class="secondary employee-history-button" id="employee-history-open" hidden>Histórico</button>
               <span id="employee-form-feedback" class="feedback"></span>
             </div>
           </form>
-        </div>
-      </div>
-
-      <div id="employee-history-modal" class="app-modal" hidden>
-        <div class="app-modal-backdrop" data-close-employee-history></div>
-        <div class="app-modal-dialog employee-history-dialog" role="dialog" aria-modal="true" aria-labelledby="employee-history-title">
-          <div class="app-modal-header">
-            <div>
-              <span class="eyebrow">Histórico do colaborador</span>
-              <h3 id="employee-history-title">Alterações do cadastro</h3>
-              <small id="employee-history-subtitle">Carregando...</small>
-            </div>
-            <button type="button" class="modal-close" data-close-employee-history aria-label="Fechar">×</button>
-          </div>
-          <div class="employee-history-summary" id="employee-history-summary"></div>
-          <div class="employee-history-timeline" id="employee-history-list" aria-live="polite"></div>
         </div>
       </div>
 
@@ -1337,6 +1320,7 @@
         <button class="settings-tab active admin-only master-only" data-settings-tab="visual">Visual</button>
         <button class="settings-tab admin-only master-only" data-settings-tab="support">Suporte</button>
         <button class="settings-tab admin-only master-only" data-settings-tab="security-access">Segurança e acessos</button>
+        <button class="settings-tab admin-only master-only" data-settings-tab="employee-history">Histórico de colaboradores</button>
         <button class="settings-tab calendar-access-only" data-settings-tab="calendar">Feriados e folgas</button>
         <button class="settings-tab admin-only" data-settings-tab="shifts">Turnos</button>
         <button class="settings-tab admin-only master-only" data-settings-tab="thermal-rest">Repouso automático</button>
@@ -2215,6 +2199,50 @@
         </div>
       </div>
 
+
+      <div id="settings-employee-history" class="admin-only master-only" hidden>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">Auditoria administrativa</span>
+              <h3>Histórico de colaboradores</h3>
+              <p class="hint">Área exclusiva do Administrador Master. Consulte alterações de cadastro sem abrir a edição do colaborador.</p>
+            </div>
+          </div>
+
+          <div class="employee-history-admin-toolbar">
+            <input id="employee-history-search" type="search" placeholder="Pesquisar nome ou matrícula" autocomplete="off">
+            <button type="button" class="secondary" id="employee-history-search-button">Pesquisar</button>
+          </div>
+
+          <div class="employee-history-admin-layout">
+            <div class="employee-history-admin-list">
+              <div class="employee-history-admin-list-head">
+                <strong>Colaboradores</strong>
+                <span id="employee-history-result-count">0 encontrados</span>
+              </div>
+              <div id="employee-history-employee-list" class="employee-history-employee-list" aria-live="polite">
+                <div class="employee-history-empty">Digite um nome ou matrícula para consultar.</div>
+              </div>
+            </div>
+
+            <div class="employee-history-admin-detail">
+              <div class="employee-history-admin-detail-head">
+                <div>
+                  <span class="eyebrow">Linha do tempo</span>
+                  <h4 id="employee-history-title">Selecione um colaborador</h4>
+                  <small id="employee-history-subtitle">O histórico aparecerá aqui.</small>
+                </div>
+              </div>
+              <div class="employee-history-summary" id="employee-history-summary"></div>
+              <div class="employee-history-timeline" id="employee-history-list" aria-live="polite">
+                <div class="employee-history-empty">Nenhum colaborador selecionado.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="settings-calendar" class="calendar-access-only" hidden>
 
     
@@ -2426,15 +2454,16 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.28-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.28-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.28-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.28-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.28-beta.1"></script>
-  <script src="/js/report-validator.js?v=1.0.28-beta.1"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.28-beta.1"></script>
-  <script src="/js/rest-audit.js?v=1.0.28-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.28-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.28-beta.1"></script>
+  <script src="/js/core.js?v=1.0.28-beta.2"></script>
+  <script src="/js/help-manual.js?v=1.0.28-beta.2"></script>
+  <script src="/js/admin-access.js?v=1.0.28-beta.2"></script>
+  <script src="/js/employees-imports.js?v=1.0.28-beta.2"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.28-beta.2"></script>
+  <script src="/js/report-validator.js?v=1.0.28-beta.2"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.28-beta.2"></script>
+  <script src="/js/rest-audit.js?v=1.0.28-beta.2"></script>
+  <script src="/js/calendar-reports.js?v=1.0.28-beta.2"></script>
+  <script src="/js/employee-history-admin.js?v=1.0.28-beta.2"></script>
+  <script src="/js/settings-system.js?v=1.0.28-beta.2"></script>
 </body>
 </html>

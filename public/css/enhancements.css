@@ -2628,3 +2628,67 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
   .employee-history-changes>div{grid-template-columns:1fr}
   .employee-history-changes b{text-align:left}
 }
+
+
+/* V1.0.28 beta.2 — histórico exclusivo em Configurações / ADM Master */
+.employee-history-admin-toolbar{
+  display:flex;
+  gap:8px;
+  margin:12px 0;
+}
+.employee-history-admin-toolbar input{flex:1;min-width:0}
+.employee-history-admin-layout{
+  display:grid;
+  grid-template-columns:minmax(250px,.72fr) minmax(0,1.6fr);
+  gap:12px;
+}
+.employee-history-admin-list,
+.employee-history-admin-detail{
+  min-width:0;
+  border:1px solid #dde5eb;
+  border-radius:11px;
+  background:#fff;
+  padding:11px;
+}
+.employee-history-admin-list-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-bottom:8px;
+}
+.employee-history-admin-list-head strong{font-size:11px;color:var(--heading)}
+.employee-history-admin-list-head span{font-size:8px;color:#7b8794}
+.employee-history-employee-list{
+  display:grid;
+  gap:6px;
+  max-height:480px;
+  overflow:auto;
+}
+.employee-history-person{
+  display:block;
+  width:100%;
+  padding:9px 10px;
+  border:1px solid #e1e7ec;
+  border-radius:9px;
+  background:#f9fbfc;
+  text-align:left;
+  cursor:pointer;
+}
+.employee-history-person strong,
+.employee-history-person span,
+.employee-history-person small{display:block}
+.employee-history-person strong{font-size:10px;color:var(--heading)}
+.employee-history-person span{margin-top:2px;font-size:8px;color:#667085}
+.employee-history-person small{margin-top:3px;font-size:8px;color:#7b8794}
+.employee-history-person.active{
+  border-color:#5f7890;
+  background:#eef3f7;
+}
+.employee-history-admin-detail-head h4{margin:3px 0 2px;color:var(--heading)}
+@media(max-width:800px){
+  .employee-history-admin-layout{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .employee-history-admin-toolbar{display:grid}
+}
