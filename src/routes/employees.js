@@ -12,6 +12,35 @@ function normalizeReportOverride(value){
   return policy;
 }
 
+function historyValue(value){
+  return value===undefined||value===null||value===""?null:value;
+}
+
+function employeeChangeDetails(before,after){
+  const fields=[
+    ["company_id","Empresa"],
+    ["branch_id","Filial"],
+    ["full_name","Nome"],
+    ["registration","Matrícula"],
+    ["admission_date","Admissão"],
+    ["shift_id","Turno"],
+    ["job_role_id","Cargo"],
+    ["status","Situação"],
+    ["report_policy_override","Exceção de relatórios"],
+    ["use_shift_days_off","Regra da folga semanal"],
+    ["weekly_days_off","Dias de folga"]
+  ];
+  const changes={};
+  for(const [key,label] of fields){
+    const oldValue=historyValue(before?.[key]);
+    const newValue=historyValue(after?.[key]);
+    if(JSON.stringify(oldValue)!==JSON.stringify(newValue)){
+      changes[key]={label,from:oldValue,to:newValue};
+    }
+  }
+  return changes;
+}
+
 
 const BLOCKED_EMPLOYEE_ROLES=new Set([
   "APRENDIZ DE AUXILIAR DE ADMINISTRACAO",
@@ -158,6 +187,50 @@ router.get("/",async(req,res,next)=>{
         e.full_name
     `,params);
     res.json(rows);
+  }catch(e){next(e);}
+});
+
+router.get("/:id/history",async(req,res,next)=>{
+  try{
+    const employeeResult=await pool.query(`
+      SELECT e.id,e.full_name,e.registration,e.company_id,e.branch_id,
+             c.trade_name company_name,b.name branch_name
+      FROM employees e
+      JOIN companies c ON c.id=e.company_id
+      JOIN branches b ON b.id=e.branch_id
+      WHERE e.id=$1
+      LIMIT 1
+    `,[req.params.id]);
+    const employee=employeeResult.rows[0];
+    if(!employee)return res.status(404).json({error:"Colaborador não encontrado."});
+
+    if(!req.scope.isAdmin){
+      const allowedBranchIds=(req.scope.branchIds||[]).map(String);
+      if(String(employee.company_id)!==String(req.scope.companyId)||!allowedBranchIds.includes(String(employee.branch_id))){
+        return res.status(403).json({error:"Colaborador fora do seu acesso."});
+      }
+    }
+
+    const {rows}=await pool.query(`
+      SELECT a.id,a.action,a.details,a.created_at,
+             COALESCE(u.name,u.email,'Sistema') actor_name
+      FROM audit_logs a
+      LEFT JOIN users u ON u.id=a.user_id
+      WHERE a.entity='employees' AND a.entity_id=$1
+      ORDER BY a.created_at DESC
+      LIMIT 200
+    `,[req.params.id]);
+
+    res.json({
+      employee:{
+        id:employee.id,
+        fullName:employee.full_name,
+        registration:employee.registration,
+        companyName:employee.company_name,
+        branchName:employee.branch_name
+      },
+      history:rows
+    });
   }catch(e){next(e);}
 });
 
@@ -367,7 +440,9 @@ router.put("/:id",async(req,res,next)=>{
     }
 
     const current=await pool.query(
-      `SELECT id,company_id,branch_id,job_role_id,shift_id,use_shift_days_off,weekly_days_off
+      `SELECT id,company_id,branch_id,full_name,registration,admission_date,
+              job_role_id,shift_id,report_policy_override,status,
+              use_shift_days_off,weekly_days_off
        FROM employees WHERE id=$1 LIMIT 1`,
       [req.params.id]
     );
@@ -477,7 +552,12 @@ router.put("/:id",async(req,res,next)=>{
       jobTitle,reportPolicyOverride,status,normalizedDays,useShiftDaysOff!==false,req.params.id
     ]);
 
-    await audit(req,"UPDATE","employees",req.params.id);
+    const changes=employeeChangeDetails(current.rows[0],rows[0]);
+    await audit(req,"UPDATE","employees",req.params.id,{
+      source:"MANUAL",
+      changes,
+      changedFields:Object.keys(changes)
+    });
     res.json(rows[0]);
   }catch(e){
     if(e.code==="23505"){

@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.27-beta.1">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.27-beta.1">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.27-beta.1">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.27-beta.1">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.27-beta.1">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.27-beta.1">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.28-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.28-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.28-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.28-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.28-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.28-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -839,11 +839,29 @@
             <div class="full actions modal-actions">
               <button class="primary" id="employee-save-button">Salvar colaborador</button>
               <button type="button" class="secondary" id="employee-cancel">Cancelar</button>
+              <button type="button" class="secondary employee-history-button" id="employee-history-open" hidden>Histórico</button>
               <span id="employee-form-feedback" class="feedback"></span>
             </div>
           </form>
         </div>
       </div>
+
+      <div id="employee-history-modal" class="app-modal" hidden>
+        <div class="app-modal-backdrop" data-close-employee-history></div>
+        <div class="app-modal-dialog employee-history-dialog" role="dialog" aria-modal="true" aria-labelledby="employee-history-title">
+          <div class="app-modal-header">
+            <div>
+              <span class="eyebrow">Histórico do colaborador</span>
+              <h3 id="employee-history-title">Alterações do cadastro</h3>
+              <small id="employee-history-subtitle">Carregando...</small>
+            </div>
+            <button type="button" class="modal-close" data-close-employee-history aria-label="Fechar">×</button>
+          </div>
+          <div class="employee-history-summary" id="employee-history-summary"></div>
+          <div class="employee-history-timeline" id="employee-history-list" aria-live="polite"></div>
+        </div>
+      </div>
+
       <div class="panel">
         <div id="dismissed-period-filters" class="dismissed-period-filters" hidden>
           <div>
@@ -2408,15 +2426,15 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.27-beta.1"></script>
-  <script src="/js/help-manual.js?v=1.0.27-beta.1"></script>
-  <script src="/js/admin-access.js?v=1.0.27-beta.1"></script>
-  <script src="/js/employees-imports.js?v=1.0.27-beta.1"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.27-beta.1"></script>
-  <script src="/js/report-validator.js?v=1.0.27-beta.1"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.27-beta.1"></script>
-  <script src="/js/rest-audit.js?v=1.0.27-beta.1"></script>
-  <script src="/js/calendar-reports.js?v=1.0.27-beta.1"></script>
-  <script src="/js/settings-system.js?v=1.0.27-beta.1"></script>
+  <script src="/js/core.js?v=1.0.28-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.0.28-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.0.28-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.0.28-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.28-beta.1"></script>
+  <script src="/js/report-validator.js?v=1.0.28-beta.1"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.28-beta.1"></script>
+  <script src="/js/rest-audit.js?v=1.0.28-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.0.28-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.0.28-beta.1"></script>
 </body>
 </html>

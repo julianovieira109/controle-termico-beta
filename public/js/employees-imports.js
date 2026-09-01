@@ -878,6 +878,7 @@ function resetEmployeeForm(){
   $("employee-days-off-mode").value="SHIFT";
   updateEmployeeDaysOffMode();
   $("employee-save-button").textContent="Salvar colaborador";
+  $("employee-history-open").hidden=true;
   $("employee-form-feedback").textContent="";
 }
 
@@ -942,12 +943,91 @@ window.editEmployee=async id=>{
     updateEmployeeDaysOffMode();
 
     $("employee-save-button").textContent="Salvar alterações";
+    $("employee-history-open").hidden=false;
     openEmployeeModal("Editar colaborador");
   }catch(error){
     console.error("[EMPLOYEE_EDIT_LOAD]",error);
     toast(error.message||"Não foi possível abrir o colaborador para edição.","error");
   }
 };
+
+function employeeHistoryLabel(key,entry={}){
+  const labels={
+    company_id:"Empresa",branch_id:"Filial",full_name:"Nome",registration:"Matrícula",
+    admission_date:"Admissão",shift_id:"Turno",job_role_id:"Cargo",status:"Situação",
+    report_policy_override:"Exceção de relatórios",use_shift_days_off:"Regra da folga semanal",
+    weekly_days_off:"Dias de folga"
+  };
+  return entry.label||labels[key]||key;
+}
+
+function employeeHistoryValue(value,key=""){
+  if(value===null||value===undefined||value==="")return "Não informado";
+  if(key==="use_shift_days_off")return value===true?"Folga padrão do turno":"Folga personalizada";
+  if(key==="weekly_days_off"&&Array.isArray(value)){
+    return value.map(day=>employeeWeekdayNames[Number(day)]||day).join(", ")||"Nenhuma";
+  }
+  if(typeof value==="boolean")return value?"Sim":"Não";
+  if(typeof value==="object")return JSON.stringify(value);
+  return String(value);
+}
+
+function closeEmployeeHistory(){
+  $("employee-history-modal").hidden=true;
+  if($("employee-modal").hidden)document.body.classList.remove("modal-open");
+}
+
+document.querySelectorAll("[data-close-employee-history]").forEach(element=>{
+  element.onclick=closeEmployeeHistory;
+});
+
+async function openEmployeeHistory(){
+  const id=$("employee-id").value;
+  if(!id)return;
+  $("employee-history-modal").hidden=false;
+  document.body.classList.add("modal-open");
+  $("employee-history-subtitle").textContent="Carregando histórico...";
+  $("employee-history-summary").innerHTML="";
+  $("employee-history-list").innerHTML='<div class="employee-history-empty">Consultando registros...</div>';
+
+  try{
+    const data=await api(`/api/employees/${id}/history`);
+    const employee=data.employee||{};
+    const history=Array.isArray(data.history)?data.history:[];
+    $("employee-history-subtitle").textContent=`${employee.fullName||"Colaborador"} · matrícula ${employee.registration||"não informada"}`;
+    $("employee-history-summary").innerHTML=`
+      <article><span>Empresa</span><strong>${escapeChecklistHtml(employee.companyName||"-")}</strong></article>
+      <article><span>Filial atual</span><strong>${escapeChecklistHtml(employee.branchName||"-")}</strong></article>
+      <article><span>Registros</span><strong>${history.length}</strong></article>`;
+
+    $("employee-history-list").innerHTML=history.length?history.map(item=>{
+      const changes=item.details?.changes||{};
+      const entries=Object.entries(changes);
+      const actionLabel=item.action==="CREATE"?"Cadastro criado":item.action==="UPDATE"?"Cadastro alterado":item.action==="DELETE"?"Cadastro excluído":item.action;
+      const changeHtml=entries.length
+        ?`<div class="employee-history-changes">${entries.map(([key,change])=>`
+          <div>
+            <strong>${escapeChecklistHtml(employeeHistoryLabel(key,change))}</strong>
+            <span>${escapeChecklistHtml(employeeHistoryValue(change.from,key))}</span>
+            <b aria-hidden="true">→</b>
+            <span>${escapeChecklistHtml(employeeHistoryValue(change.to,key))}</span>
+          </div>`).join("")}</div>`
+        :`<p>${item.action==="CREATE"?"Registro inicial do colaborador.":"Registro de auditoria preservado pelo sistema."}</p>`;
+      return `<article class="employee-history-entry">
+        <div class="employee-history-entry-head">
+          <div><strong>${escapeChecklistHtml(actionLabel)}</strong><span>${escapeChecklistHtml(item.actor_name||"Sistema")}</span></div>
+          <time>${new Date(item.created_at).toLocaleString("pt-BR")}</time>
+        </div>
+        ${changeHtml}
+      </article>`;
+    }).join(""):'<div class="employee-history-empty">Ainda não existem alterações registradas para este colaborador.</div>';
+  }catch(error){
+    $("employee-history-subtitle").textContent="Não foi possível carregar.";
+    $("employee-history-list").innerHTML=`<div class="employee-history-empty">${escapeChecklistHtml(error.message||"Erro ao consultar histórico.")}</div>`;
+  }
+}
+
+$("employee-history-open").onclick=openEmployeeHistory;
 
 window.deleteEmployee=async id=>{
   const employee=employeeRows.find(x=>String(x.id)===String(id));
