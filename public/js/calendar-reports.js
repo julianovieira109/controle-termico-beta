@@ -74,6 +74,38 @@ async function loadCalendarSection(){
   }
 }
 
+let holidayTypeSettings={NATIONAL:true,STATE:false,MUNICIPAL:false,OPTIONAL:false};
+
+function readHolidayTypeSettings(){
+  return {
+    NATIONAL:$("holiday-type-national")?.checked!==false,
+    STATE:$("holiday-type-state")?.checked===true,
+    MUNICIPAL:$("holiday-type-municipal")?.checked===true,
+    OPTIONAL:$("holiday-type-optional")?.checked===true
+  };
+}
+
+function applyHolidayTypeSettings(settings={}){
+  holidayTypeSettings={
+    NATIONAL:settings.NATIONAL!==false,
+    STATE:settings.STATE===true,
+    MUNICIPAL:settings.MUNICIPAL===true,
+    OPTIONAL:settings.OPTIONAL===true
+  };
+  if($("holiday-type-national"))$("holiday-type-national").checked=holidayTypeSettings.NATIONAL;
+  if($("holiday-type-state"))$("holiday-type-state").checked=holidayTypeSettings.STATE;
+  if($("holiday-type-municipal"))$("holiday-type-municipal").checked=holidayTypeSettings.MUNICIPAL;
+  if($("holiday-type-optional"))$("holiday-type-optional").checked=holidayTypeSettings.OPTIONAL;
+}
+
+async function loadHolidayTypeSettings(){
+  try{
+    applyHolidayTypeSettings(await api("/api/calendar/holiday-types"));
+  }catch{
+    applyHolidayTypeSettings(holidayTypeSettings);
+  }
+}
+
 async function prepareCalendar(){
   const currentYear=new Date().getFullYear();
   const yearSelect=$("holiday-year");
@@ -83,6 +115,7 @@ async function prepareCalendar(){
       .map(year=>`<option value="${year}" ${year===currentYear?"selected":""}>${year}</option>`).join("");
   }
 
+  await loadHolidayTypeSettings();
   await generateAndLoadHolidays();
 }
 
@@ -91,9 +124,7 @@ function formatApiDate(value){
   const text=String(value);
   const iso=text.slice(0,10);
   const parts=iso.split("-");
-  if(parts.length===3 && parts.every(Boolean)){
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
+  if(parts.length===3&&parts.every(Boolean))return `${parts[2]}/${parts[1]}/${parts[0]}`;
   const date=new Date(value);
   return Number.isNaN(date.getTime())?"Data inválida":date.toLocaleDateString("pt-BR");
 }
@@ -106,35 +137,34 @@ function holidayWeekday(value){
     .format(new Date(Date.UTC(year,month-1,day)));
 }
 
-function renderAutomaticHolidays(year,source="ONLINE"){
+function renderAutomaticHolidays(year){
   const list=$("holiday-list");
   if(!list)return;
-
   $("holiday-list-title").textContent=`Feriados de ${year}`;
   $("holiday-count").textContent=`${holidays.length} feriado${holidays.length===1?"":"s"}`;
 
-  const origin=source==="ONLINE"?"Online":"Reserva local";
   list.innerHTML=holidays.length
     ? holidays.map(h=>`<tr>
         <td><strong>${formatApiDate(h.holiday_date)}</strong></td>
         <td>${escapeHtml(holidayWeekday(h.holiday_date))}</td>
         <td>${escapeHtml(h.description)}</td>
-        <td><span class="auto-lock">${origin}</span></td>
+        <td>${h.branch_name
+          ?`<span class="holiday-scope local">${escapeHtml(h.branch_name)}</span>`
+          :'<span class="holiday-scope national">Todas as filiais</span>'}</td>
       </tr>`).join("")
-    : `<tr><td colspan="4">Nenhum feriado encontrado para ${year}.</td></tr>`;
+    : `<tr><td colspan="4">Nenhum feriado encontrado para ${year} com os tipos selecionados.</td></tr>`;
 }
 
 async function loadHolidays(){
   let year=Number($("holiday-year")?.value||new Date().getFullYear());
   if(!Number.isInteger(year)||year<1900||year>2199)year=new Date().getFullYear();
   holidays=await api(`/api/calendar/holidays?year=${year}`);
-  renderAutomaticHolidays(year,"ONLINE");
+  renderAutomaticHolidays(year);
 }
 
 async function generateAndLoadHolidays(){
   let year=Number($("holiday-year")?.value||new Date().getFullYear());
   const status=$("holiday-generate-status");
-
   if(!Number.isInteger(year)||year<1900||year>2199){
     year=new Date().getFullYear();
     if($("holiday-year"))$("holiday-year").value=String(year);
@@ -142,7 +172,7 @@ async function generateAndLoadHolidays(){
 
   if(status){
     status.className="holiday-online-status loading";
-    status.textContent=`Consultando feriados de ${year} online...`;
+    status.textContent=`Atualizando os tipos selecionados para ${year}...`;
   }
 
   try{
@@ -150,16 +180,15 @@ async function generateAndLoadHolidays(){
       method:"POST",
       body:JSON.stringify({year})
     });
-
     holidays=Array.isArray(result.holidays)?result.holidays:[];
-    renderAutomaticHolidays(year,result.source);
+    renderAutomaticHolidays(year);
 
     if(status){
-      const online=result.source==="ONLINE";
-      status.className=`holiday-online-status ${online?"success":"warning"}`;
-      status.innerHTML=online
-        ? `<strong>Atualizado online.</strong> ${result.automaticTotal??holidays.length} feriado(s) de ${year} sincronizados pela ${escapeHtml(result.provider||"fonte online")}.`
-        : `<strong>Fonte online indisponível.</strong> O sistema utilizou a lista interna de segurança para ${year}. ${result.warning?escapeHtml(result.warning):""}`;
+      const warnings=Array.isArray(result.warnings)?result.warnings:[];
+      status.className=`holiday-online-status ${warnings.length?"warning":"success"}`;
+      status.innerHTML=warnings.length
+        ?`<strong>Calendário atualizado com ressalvas.</strong> ${holidays.length} registro(s) aplicado(s). ${escapeHtml(warnings[0])}${warnings.length>1?` (+${warnings.length-1} aviso(s))`:""}`
+        :`<strong>Calendário atualizado.</strong> ${holidays.length} feriado(s) aplicado(s) para ${year}.`;
     }
   }catch(error){
     if(status){
@@ -169,9 +198,29 @@ async function generateAndLoadHolidays(){
   }
 }
 
-if($("holiday-year")){
-  $("holiday-year").onchange=generateAndLoadHolidays;
-}
+if($("holiday-year"))$("holiday-year").onchange=generateAndLoadHolidays;
+
+if($("holiday-types-save"))$("holiday-types-save").onclick=async()=>{
+  const button=$("holiday-types-save");
+  const feedback=$("holiday-types-feedback");
+  try{
+    setButtonLoading(button,true,"Salvando");
+    holidayTypeSettings=await api("/api/calendar/holiday-types",{
+      method:"PUT",
+      body:JSON.stringify(readHolidayTypeSettings())
+    });
+    applyHolidayTypeSettings(holidayTypeSettings);
+    if(feedback)feedback.textContent="Tipos salvos. Atualizando calendário...";
+    await generateAndLoadHolidays();
+    if(feedback)feedback.textContent="Configuração salva.";
+    toast("Tipos de feriados atualizados.","success");
+  }catch(error){
+    if(feedback)feedback.textContent=error.message;
+    toast(error.message,"error");
+  }finally{
+    setButtonLoading(button,false);
+  }
+};
 
 let reportEmployees=[];
 let pointImportPreview=null;
@@ -427,10 +476,27 @@ function buildMealSheet(employee,month){
   </section>`;
 }
 
+async function loadReportHolidaysForMonth(month){
+  const match=String(month||"").match(/^(\d{4})-(\d{2})$/);
+  if(!match)throw new Error("Competência inválida para carregar os feriados.");
+  const year=Number(match[1]);
+
+  const result=await api("/api/calendar/holidays/generate",{
+    method:"POST",
+    body:JSON.stringify({year})
+  });
+
+  holidays=Array.isArray(result.holidays)?result.holidays:[];
+  return {
+    year,
+    source:result.source||"UNKNOWN",
+    provider:result.provider||null,
+    warnings:Array.isArray(result.warnings)?result.warnings:[],
+    total:Number(result.automaticTotal??holidays.length)
+  };
+}
+
 async function prepareReports(){
-  if(!holidays.length){
-    try{ holidays=await api("/api/calendar/holidays"); }catch{}
-  }
   if(!companies.length)await loadCompanies();
   if(!branches.length)await loadBranches();
   if(!catalogs.shifts.length) await loadCatalogs();
@@ -1008,6 +1074,17 @@ $("report-generate").onclick=async()=>{
     alert("Selecione o mês de referência.");
     return;
   }
+
+  summary.textContent="Atualizando feriados da competência...";
+  try{
+    await loadReportHolidaysForMonth(month);
+  }catch(error){
+    summary.className="full feedback error";
+    summary.textContent=`Não foi possível atualizar os feriados da competência: ${error.message}`;
+    alert(`Não foi possível atualizar os feriados da competência ${reportMonthLabel(month)}.\n\n${error.message}`);
+    return;
+  }
+
   try{await applyPointDataToEmployees(month);}catch(error){return alert(`Não foi possível consultar o ponto importado: ${error.message}`);}
 
   let selectedEmployees=[];

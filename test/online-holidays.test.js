@@ -5,22 +5,24 @@ const path=require('node:path');
 const service=require('../src/services/online-holidays.js');
 
 test('fallback local preserva lista segura de feriados',()=>{
-  const rows=service.localFallback(2026);
-  assert.ok(rows.length>=12);
+  const rows=service.nationalFallback(2026);
+  assert.equal(rows.length,9);
   assert.ok(rows.some(row=>row.date==='2026-01-01'));
   assert.ok(rows.some(row=>row.date==='2026-12-25'));
 });
 
 test('normalização online aceita date/name',()=>{
   assert.deepEqual(
-    service.normalizeOnlineHoliday({date:'2026-09-07',name:'Independência do Brasil'}),
-    {date:'2026-09-07',name:'Independência do Brasil'}
+    service.normalizeOnlineHoliday({date:'2026-09-07',name:'Independência do Brasil',type:'NATIONAL'},'NATIONAL'),
+    {date:'2026-09-07',name:'Independência do Brasil',type:'NATIONAL'}
   );
 });
 
 test('rota de geração usa serviço online e retorna origem',()=>{
   const route=fs.readFileSync(path.join(__dirname,'../src/routes/calendar.js'),'utf8');
-  assert.match(route,/getHolidays/);
+  assert.match(route,/getNational/);
+  assert.match(route,/getOptional/);
+  assert.match(route,/getLocal/);
   assert.match(route,/source:onlineResult\.source/);
   assert.match(route,/provider:onlineResult\.provider/);
 });
@@ -46,5 +48,5 @@ test('interface de feriados mantém somente seleção de ano e lista automática
 test('troca do ano sincroniza automaticamente',()=>{
   const js=fs.readFileSync(path.join(__dirname,'../public/js/calendar-reports.js'),'utf8');
   assert.match(js,/\$\("holiday-year"\)\.onchange=generateAndLoadHolidays/);
-  assert.match(js,/Consultando feriados de \$\{year\} online/);
+  assert.match(js,/Atualizando os tipos selecionados para \$\{year\}/);
 });

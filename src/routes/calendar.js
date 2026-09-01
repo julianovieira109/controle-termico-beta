@@ -2,22 +2,85 @@ const express=require("express");
 const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission}=require("../middleware/auth");
-const {getHolidays}=require("../services/online-holidays");
+const {getNational,getOptional,getLocal}=require("../services/online-holidays");
 
 const router=express.Router();
 
-async function ensureAutomaticHolidays(year){
+const holidayTypeDefaults={
+  NATIONAL:true,
+  STATE:false,
+  MUNICIPAL:false,
+  OPTIONAL:false
+};
+
+function normalizeHolidayTypes(value={}){
+  return {
+    NATIONAL:value.NATIONAL!==false,
+    STATE:value.STATE===true,
+    MUNICIPAL:value.MUNICIPAL===true,
+    OPTIONAL:value.OPTIONAL===true
+  };
+}
+
+async function loadHolidayTypeSettings(){
+  const {rows}=await pool.query(`
+    SELECT setting_value
+    FROM system_settings
+    WHERE setting_key='holiday-types'
+      AND company_id IS NULL
+      AND branch_id IS NULL
+    ORDER BY updated_at DESC,id DESC
+    LIMIT 1
+  `);
+  return normalizeHolidayTypes({...holidayTypeDefaults,...(rows[0]?.setting_value||{})});
+}
+
+async function ensureAutomaticHolidays(year,settings){
   const start=`${year}-01-01`;
   const end=`${year}-12-31`;
-  const result=await getHolidays(year);
-  const client=await pool.connect();
+  const branchesResult=await pool.query(`
+    SELECT id,company_id,name,city,state
+    FROM branches
+    WHERE active=TRUE
+    ORDER BY name
+  `);
+  const activeBranches=branchesResult.rows;
+  const warnings=[];
+  const sources=new Set();
+  const prepared=[];
 
+  if(settings.NATIONAL){
+    const result=await getNational(year);
+    result.holidays.forEach(h=>prepared.push({...h,companyId:null,branchId:null}));
+    sources.add(result.source);
+    if(result.warning)warnings.push(`Nacionais: ${result.warning}`);
+  }
+
+  if(settings.OPTIONAL){
+    const result=await getOptional(year);
+    result.holidays.forEach(h=>prepared.push({...h,companyId:null,branchId:null}));
+    sources.add(result.source);
+    if(result.warning)warnings.push(`Pontos facultativos: ${result.warning}`);
+  }
+
+  for(const branch of activeBranches){
+    if(settings.STATE){
+      const result=await getLocal(year,"STATE",{state:branch.state,city:branch.city});
+      result.holidays.forEach(h=>prepared.push({...h,companyId:branch.company_id,branchId:branch.id}));
+      sources.add(result.source);
+      if(result.warning)warnings.push(`${branch.name} / estadual: ${result.warning}`);
+    }
+    if(settings.MUNICIPAL){
+      const result=await getLocal(year,"MUNICIPAL",{state:branch.state,city:branch.city});
+      result.holidays.forEach(h=>prepared.push({...h,companyId:branch.company_id,branchId:branch.id}));
+      sources.add(result.source);
+      if(result.warning)warnings.push(`${branch.name} / municipal: ${result.warning}`);
+    }
+  }
+
+  const client=await pool.connect();
   try{
     await client.query("BEGIN");
-
-    // A partir desta versão, somente feriados automáticos são utilizados.
-    // Registros manuais antigos são preservados no banco por segurança,
-    // mas não são mais exibidos nem aplicados pelo endpoint de feriados.
     await client.query(
       `DELETE FROM holidays
        WHERE automatic=TRUE
@@ -25,27 +88,57 @@ async function ensureAutomaticHolidays(year){
       [start,end]
     );
 
-    for(const holiday of result.holidays){
+    for(const holiday of prepared){
       await client.query(
         `INSERT INTO holidays(company_id,branch_id,holiday_date,description,automatic)
-         VALUES(NULL,NULL,$1::date,$2,TRUE)
+         VALUES($1,$2,$3::date,$4,TRUE)
          ON CONFLICT(company_id,branch_id,holiday_date)
          DO UPDATE SET description=EXCLUDED.description,automatic=TRUE`,
-        [holiday.date,holiday.name]
+        [holiday.companyId,holiday.branchId,holiday.date,holiday.name]
       );
     }
 
     await client.query("COMMIT");
-    return result;
   }catch(error){
     await client.query("ROLLBACK").catch(()=>{});
     throw error;
   }finally{
     client.release();
   }
+
+  return {
+    settings,
+    sources:[...sources],
+    source:sources.has("ONLINE")?"ONLINE":sources.has("LOCAL_FALLBACK")?"LOCAL_FALLBACK":"UNAVAILABLE",
+    provider:"feriados.dev",
+    warnings:[...new Set(warnings)].slice(0,20),
+    preparedTotal:prepared.length
+  };
 }
 
 router.use(authenticate,applyScope,requirePermission("calendar.manage"));
+
+router.get("/holiday-types",async(_req,res,next)=>{
+  try{
+    res.json(await loadHolidayTypeSettings());
+  }catch(error){next(error);}
+});
+
+router.put("/holiday-types",async(req,res,next)=>{
+  try{
+    if(req.user.role!=="ADMIN"){
+      return res.status(403).json({error:"Somente o administrador pode alterar os tipos de feriados."});
+    }
+    const settings=normalizeHolidayTypes(req.body||{});
+    const {rows}=await pool.query(`
+      INSERT INTO system_settings(setting_key,setting_value,company_id,branch_id)
+      VALUES('holiday-types',$1::jsonb,NULL,NULL)
+      RETURNING *
+    `,[JSON.stringify(settings)]);
+    await audit(req,"UPDATE","system_settings",rows[0].id,{settingKey:"holiday-types",settings});
+    res.json(settings);
+  }catch(error){next(error);}
+});
 
 function checkBranchScope(req, branchId){
   return req.scope.isAdmin || req.scope.branchIds.includes(branchId);
@@ -67,7 +160,8 @@ router.post("/holidays/generate",async(req,res,next)=>{
       [year]
     );
 
-    const onlineResult=await ensureAutomaticHolidays(year);
+    const holidayTypes=await loadHolidayTypeSettings();
+    const onlineResult=await ensureAutomaticHolidays(year,holidayTypes);
 
     const params=[year];
     let scopeWhere="";
@@ -95,7 +189,8 @@ router.post("/holidays/generate",async(req,res,next)=>{
       regenerated:before.rows[0].total>0,
       source:onlineResult.source,
       provider:onlineResult.provider,
-      warning:onlineResult.warning
+      warnings:onlineResult.warnings,
+      holidayTypes:onlineResult.settings
     });
 
     res.json({
@@ -105,7 +200,8 @@ router.post("/holidays/generate",async(req,res,next)=>{
       regenerated:before.rows[0].total>0,
       source:onlineResult.source,
       provider:onlineResult.provider,
-      warning:onlineResult.warning,
+      warnings:onlineResult.warnings,
+      holidayTypes:onlineResult.settings,
       holidays:rows
     });
   }catch(e){next(e);}

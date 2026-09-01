@@ -2887,3 +2887,73 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
   .holiday-online-head{align-items:stretch}
   .holiday-year-only{flex-basis:100%}
 }
+
+
+/* V1.0.28 beta.7 — seleção dos tipos de feriados */
+.holiday-type-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:9px;
+  margin-top:14px;
+}
+.holiday-type-card{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  padding:11px 12px;
+  border:1px solid #dce5eb;
+  border-radius:10px;
+  background:#fbfcfd;
+  cursor:pointer;
+}
+.holiday-type-card:has(input:checked){
+  border-color:#8fb1c9;
+  background:#f1f7fb;
+  box-shadow:inset 3px 0 0 var(--primary);
+}
+.holiday-type-card input{
+  margin-top:2px;
+  accent-color:var(--primary);
+}
+.holiday-type-card span{
+  display:grid;
+  gap:3px;
+}
+.holiday-type-card strong{
+  font-size:10px;
+  color:#263746;
+}
+.holiday-type-card small{
+  font-size:8px;
+  line-height:1.35;
+  color:#6b7785;
+}
+.holiday-type-actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-top:11px;
+}
+.holiday-scope{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 7px;
+  border-radius:999px;
+  font-size:8px;
+  font-weight:700;
+}
+.holiday-scope.national{
+  background:#edf5fa;
+  color:#2b5878;
+}
+.holiday-scope.local{
+  background:#f5f1e8;
+  color:#755c20;
+}
+@media(max-width:900px){
+  .holiday-type-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+  .holiday-type-grid{grid-template-columns:1fr}
+  .holiday-type-actions{align-items:stretch;flex-direction:column}
+}

@@ -1,5 +1,12 @@
 const https=require("https");
 
+const TYPE_MAP={
+  NATIONAL:"national",
+  STATE:"state",
+  MUNICIPAL:"municipal",
+  OPTIONAL:"optional"
+};
+
 function addDays(date,days){
   const result=new Date(date);
   result.setUTCDate(result.getUTCDate()+days);
@@ -16,30 +23,48 @@ function easterSunday(year){
 }
 function isoDate(date){return date.toISOString().slice(0,10);}
 
-function localFallback(year){
+function nationalFallback(year){
+  return [
+    {date:`${year}-01-01`,name:"Confraternização Universal",type:"NATIONAL"},
+    {date:`${year}-04-21`,name:"Tiradentes",type:"NATIONAL"},
+    {date:`${year}-05-01`,name:"Dia Mundial do Trabalho",type:"NATIONAL"},
+    {date:`${year}-09-07`,name:"Independência do Brasil",type:"NATIONAL"},
+    {date:`${year}-10-12`,name:"Nossa Senhora Aparecida",type:"NATIONAL"},
+    {date:`${year}-11-02`,name:"Finados",type:"NATIONAL"},
+    {date:`${year}-11-15`,name:"Proclamação da República",type:"NATIONAL"},
+    {date:`${year}-11-20`,name:"Dia Nacional de Zumbi e da Consciência Negra",type:"NATIONAL"},
+    {date:`${year}-12-25`,name:"Natal",type:"NATIONAL"}
+  ];
+}
+
+function optionalFallback(year){
   const easter=easterSunday(year);
   return [
-    {date:`${year}-01-01`,name:"Confraternização Universal"},
-    {date:isoDate(addDays(easter,-48)),name:"Carnaval - Segunda-feira"},
-    {date:isoDate(addDays(easter,-47)),name:"Carnaval - Terça-feira"},
-    {date:isoDate(addDays(easter,-2)),name:"Paixão de Cristo"},
-    {date:`${year}-04-21`,name:"Tiradentes"},
-    {date:`${year}-05-01`,name:"Dia Mundial do Trabalho"},
-    {date:isoDate(addDays(easter,60)),name:"Corpus Christi"},
-    {date:`${year}-09-07`,name:"Independência do Brasil"},
-    {date:`${year}-10-12`,name:"Nossa Senhora Aparecida"},
-    {date:`${year}-11-02`,name:"Finados"},
-    {date:`${year}-11-15`,name:"Proclamação da República"},
-    {date:`${year}-11-20`,name:"Dia Nacional de Zumbi e da Consciência Negra"},
-    {date:`${year}-12-25`,name:"Natal"}
+    {date:isoDate(addDays(easter,-48)),name:"Carnaval - Segunda-feira",type:"OPTIONAL"},
+    {date:isoDate(addDays(easter,-47)),name:"Carnaval - Terça-feira",type:"OPTIONAL"},
+    {date:isoDate(addDays(easter,-2)),name:"Paixão de Cristo",type:"OPTIONAL"},
+    {date:isoDate(addDays(easter,60)),name:"Corpus Christi",type:"OPTIONAL"}
   ];
+}
+
+function slugify(value){
+  return String(value||"")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase().replace(/[^a-z0-9]+/g,"-")
+    .replace(/^-+|-+$/g,"");
+}
+
+function cityCode(state,city){
+  const uf=String(state||"").trim().toUpperCase();
+  const slug=slugify(city);
+  return /^[A-Z]{2}$/.test(uf)&&slug?`${uf}-${slug}`:"";
 }
 
 function getJson(url,timeoutMs=7000){
   return new Promise((resolve,reject)=>{
     const request=https.get(url,{
       headers:{
-        "Accept":"application/json",
+        Accept:"application/json",
         "User-Agent":"Controle-Termico/1.0"
       }
     },response=>{
@@ -47,9 +72,7 @@ function getJson(url,timeoutMs=7000){
       response.setEncoding("utf8");
       response.on("data",chunk=>{
         body+=chunk;
-        if(body.length>1024*1024){
-          request.destroy(new Error("Resposta de feriados excedeu o limite permitido."));
-        }
+        if(body.length>2*1024*1024)request.destroy(new Error("Resposta de feriados excedeu o limite permitido."));
       });
       response.on("end",()=>{
         if(response.statusCode<200||response.statusCode>=300){
@@ -64,33 +87,81 @@ function getJson(url,timeoutMs=7000){
   });
 }
 
-function normalizeOnlineHoliday(item){
-  const date=String(item?.date||item?.data||"").slice(0,10);
+function unwrapList(data){
+  if(Array.isArray(data))return data;
+  if(Array.isArray(data?.data))return data.data;
+  if(Array.isArray(data?.holidays))return data.holidays;
+  return [];
+}
+
+function normalizeOnlineHoliday(item,fallbackType){
+  const rawDate=String(item?.date||item?.data||"");
+  const isoMatch=rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const brMatch=rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  const date=isoMatch?`${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`:
+    brMatch?`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`:"";
   const name=String(item?.name||item?.nome||item?.description||"").trim();
+  const rawType=String(item?.type||item?.tipo||fallbackType||"").trim().toLowerCase();
+  const type=rawType==="national"||rawType==="nacional"?"NATIONAL":
+    rawType==="state"||rawType==="estadual"?"STATE":
+    rawType==="municipal"?"MUNICIPAL":
+    rawType==="optional"||rawType==="facultativo"||rawType==="ponto facultativo"?"OPTIONAL":
+    String(fallbackType||"").toUpperCase();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!name)return null;
-  return {date,name};
+  return {date,name,type};
 }
 
-async function fetchOnlineHolidays(year){
-  const data=await getJson(`https://brasilapi.com.br/api/feriados/v1/${year}`);
-  if(!Array.isArray(data))throw new Error("Lista de feriados online inválida.");
-  const holidays=data.map(normalizeOnlineHoliday).filter(Boolean);
-  if(!holidays.length)throw new Error("O serviço online não retornou feriados para o ano solicitado.");
-  return holidays;
+async function fetchType(year,type,{state="",city=""}={}){
+  const providerType=TYPE_MAP[type];
+  if(!providerType)throw new Error("Tipo de feriado inválido.");
+
+  const params=new URLSearchParams({year:String(year),type:providerType});
+  if(type==="STATE"){
+    const uf=String(state||"").trim().toUpperCase();
+    if(!/^[A-Z]{2}$/.test(uf))throw new Error("UF da filial não informada.");
+    params.set("state",uf);
+  }
+  if(type==="MUNICIPAL"){
+    const code=cityCode(state,city);
+    if(!code)throw new Error("Cidade/UF da filial não informada.");
+    params.set("city",code);
+  }
+
+  const data=await getJson(`https://api.feriados.dev/api/v1/holidays?${params.toString()}`);
+  const rows=unwrapList(data).map(item=>normalizeOnlineHoliday(item,type)).filter(Boolean);
+  return rows.filter(row=>row.type===type||!row.type);
 }
 
-async function getHolidays(year){
+async function getNational(year){
   try{
-    const holidays=await fetchOnlineHolidays(year);
-    return {holidays,source:"ONLINE",provider:"BrasilAPI",warning:null};
+    const holidays=await fetchType(year,"NATIONAL");
+    if(!holidays.length)throw new Error("Fonte online não retornou feriados nacionais.");
+    return {holidays,source:"ONLINE",provider:"feriados.dev",warning:null};
   }catch(error){
-    return {
-      holidays:localFallback(year),
-      source:"LOCAL_FALLBACK",
-      provider:"Cálculo interno de segurança",
-      warning:error.message
-    };
+    return {holidays:nationalFallback(year),source:"LOCAL_FALLBACK",provider:"Lista nacional interna",warning:error.message};
   }
 }
 
-module.exports={getHolidays,fetchOnlineHolidays,localFallback,normalizeOnlineHoliday};
+async function getOptional(year){
+  try{
+    const holidays=await fetchType(year,"OPTIONAL");
+    if(!holidays.length)throw new Error("Fonte online não retornou pontos facultativos.");
+    return {holidays,source:"ONLINE",provider:"feriados.dev",warning:null};
+  }catch(error){
+    return {holidays:optionalFallback(year),source:"LOCAL_FALLBACK",provider:"Cálculo interno",warning:error.message};
+  }
+}
+
+async function getLocal(year,type,location){
+  try{
+    const holidays=await fetchType(year,type,location);
+    return {holidays,source:"ONLINE",provider:"feriados.dev",warning:null};
+  }catch(error){
+    return {holidays:[],source:"UNAVAILABLE",provider:"feriados.dev",warning:error.message};
+  }
+}
+
+module.exports={
+  TYPE_MAP,cityCode,slugify,normalizeOnlineHoliday,nationalFallback,optionalFallback,
+  fetchType,getNational,getOptional,getLocal
+};

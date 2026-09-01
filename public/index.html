@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.28-beta.4">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.28-beta.4">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.28-beta.4">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.28-beta.4">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.28-beta.4">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.28-beta.4">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.28-beta.7">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.28-beta.7">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.28-beta.7">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.28-beta.7">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.28-beta.7">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.28-beta.7">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -2248,14 +2248,38 @@
           <div class="panel-head holiday-online-head">
             <div>
               <span class="eyebrow">Calendário automático</span>
-              <h3>Feriados do ano</h3>
-              <p class="hint">Selecione o ano. O sistema consulta a lista online e atualiza os feriados automaticamente.</p>
+              <h3>Feriados utilizados pelo sistema</h3>
+              <p class="hint">Escolha quais tipos devem ser considerados. Ao mudar o ano, o calendário é atualizado automaticamente pela localização de cada filial.</p>
             </div>
             <div class="holiday-year-only">
               <label>Ano
                 <select id="holiday-year"></select>
               </label>
             </div>
+          </div>
+
+          <div class="holiday-type-grid">
+            <label class="holiday-type-card">
+              <input type="checkbox" id="holiday-type-national" checked>
+              <span><strong>Nacionais</strong><small>Válidos em todo o Brasil.</small></span>
+            </label>
+            <label class="holiday-type-card">
+              <input type="checkbox" id="holiday-type-state">
+              <span><strong>Estaduais</strong><small>Usa a UF cadastrada em cada filial.</small></span>
+            </label>
+            <label class="holiday-type-card">
+              <input type="checkbox" id="holiday-type-municipal">
+              <span><strong>Municipais</strong><small>Usa cidade e UF cadastradas na filial.</small></span>
+            </label>
+            <label class="holiday-type-card">
+              <input type="checkbox" id="holiday-type-optional">
+              <span><strong>Pontos facultativos</strong><small>Inclui datas como Carnaval e Corpus Christi.</small></span>
+            </label>
+          </div>
+
+          <div class="holiday-type-actions">
+            <button type="button" class="primary" id="holiday-types-save">Salvar tipos de feriados</button>
+            <span id="holiday-types-feedback" class="hint"></span>
           </div>
 
           <div id="holiday-generate-status" class="holiday-online-status">
@@ -2266,7 +2290,7 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <span class="eyebrow">Consulta automática</span>
+              <span class="eyebrow">Calendário aplicado</span>
               <h3 id="holiday-list-title">Feriados gerados</h3>
             </div>
             <span id="holiday-count" class="badge-count">0 feriados</span>
@@ -2274,13 +2298,13 @@
           <div class="table-wrap">
             <table class="holiday-online-table">
               <thead>
-                <tr><th>Data</th><th>Dia da semana</th><th>Descrição</th><th>Origem</th></tr>
+                <tr><th>Data</th><th>Dia da semana</th><th>Descrição</th><th>Aplicação</th></tr>
               </thead>
               <tbody id="holiday-list"></tbody>
             </table>
           </div>
         </div>
-      </div>
+      </div></div>
     </section>
   </main>
 </div>
@@ -2387,16 +2411,16 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.28-beta.4"></script>
-  <script src="/js/help-manual.js?v=1.0.28-beta.4"></script>
-  <script src="/js/admin-access.js?v=1.0.28-beta.4"></script>
-  <script src="/js/employees-imports.js?v=1.0.28-beta.4"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.28-beta.4"></script>
-  <script src="/js/report-validator.js?v=1.0.28-beta.4"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.28-beta.4"></script>
-  <script src="/js/rest-audit.js?v=1.0.28-beta.4"></script>
-  <script src="/js/calendar-reports.js?v=1.0.28-beta.4"></script>
-  <script src="/js/employee-history-admin.js?v=1.0.28-beta.4"></script>
-  <script src="/js/settings-system.js?v=1.0.28-beta.4"></script>
+  <script src="/js/core.js?v=1.0.28-beta.7"></script>
+  <script src="/js/help-manual.js?v=1.0.28-beta.7"></script>
+  <script src="/js/admin-access.js?v=1.0.28-beta.7"></script>
+  <script src="/js/employees-imports.js?v=1.0.28-beta.7"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.28-beta.7"></script>
+  <script src="/js/report-validator.js?v=1.0.28-beta.7"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.28-beta.7"></script>
+  <script src="/js/rest-audit.js?v=1.0.28-beta.7"></script>
+  <script src="/js/calendar-reports.js?v=1.0.28-beta.7"></script>
+  <script src="/js/employee-history-admin.js?v=1.0.28-beta.7"></script>
+  <script src="/js/settings-system.js?v=1.0.28-beta.7"></script>
 </body>
 </html>
