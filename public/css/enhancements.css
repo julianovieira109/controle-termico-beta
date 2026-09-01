@@ -3206,3 +3206,181 @@ body.theme-dark #employee-days-off-hint.days-off-warning{
   body.occurrences-print-active .occurrence-employee small{font-size:4.8pt!important}
   body.occurrences-print-active .occurrences-footer{display:block!important;padding:2mm 3mm!important;font-size:6pt!important}
 }
+
+
+/* V1.0.31 beta.5 — impressão isolada do Controle de Ocorrências */
+.occurrences-print-document{display:none}
+
+@media print{
+  body.occurrences-print-active > *:not(#occurrences-print-document){display:none!important}
+  body.occurrences-print-active #occurrences-print-document{
+    display:block!important;
+    position:static!important;
+    width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    color:#1f2f3d!important;
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+  }
+
+  body.occurrences-print-active #occurrences-print-document .occurrences-print-header{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:12mm!important;
+    margin:0 0 5mm!important;
+    padding:0 0 4mm!important;
+    border-bottom:1.5px solid #263746!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-print-header h2{
+    margin:1.5mm 0 1mm!important;
+    font-size:15pt!important;
+    color:#1f2f3d!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-print-header p{
+    margin:0!important;
+    color:#5f6d77!important;
+    font-size:8pt!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-print-meta{
+    display:grid!important;
+    gap:1mm!important;
+    min-width:48mm!important;
+    text-align:right!important;
+    color:#34414e!important;
+    font-size:8pt!important;
+  }
+
+  body.occurrences-print-active #occurrences-print-document .occurrences-summary{
+    display:grid!important;
+    grid-template-columns:repeat(6,1fr)!important;
+    gap:2mm!important;
+    margin:0 0 4mm!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-summary article{
+    display:block!important;
+    min-height:15mm!important;
+    padding:2.3mm 2.5mm!important;
+    border:1px solid #cbd5dc!important;
+    border-left:1.2mm solid #154c79!important;
+    border-radius:2.5mm!important;
+    background:#fff!important;
+    box-shadow:none!important;
+    transform:none!important;
+    break-inside:avoid!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-summary article.review-card{
+    border-left-color:#b42318!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-summary span{
+    display:block!important;
+    min-height:0!important;
+    color:#5f6d77!important;
+    font-size:6.2pt!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-summary strong{
+    display:block!important;
+    margin-top:1mm!important;
+    color:#1f2f3d!important;
+    font-size:15pt!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-summary small{
+    display:block!important;
+    margin-top:.7mm!important;
+    color:#6f7d87!important;
+    font-size:5.8pt!important;
+  }
+
+  body.occurrences-print-active #occurrences-print-document .occurrences-charts{
+    display:block!important;
+    padding:3mm!important;
+    margin:0 0 4mm!important;
+    border:1px solid #cbd5dc!important;
+    border-radius:3mm!important;
+    background:#fff!important;
+    break-inside:avoid!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-charts-head{
+    display:flex!important;
+    align-items:flex-end!important;
+    justify-content:space-between!important;
+    gap:4mm!important;
+    margin-bottom:2.5mm!important;
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-charts-head h3{font-size:10pt!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-charts-head p{font-size:6pt!important;color:#65717d!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-kpi-line{display:flex!important;gap:2mm!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-kpi-line span{
+    display:flex!important;align-items:center!important;gap:1.5mm!important;
+    padding:1.3mm 2mm!important;border:1px solid #d2dbe1!important;border-radius:2mm!important;
+    color:#65717d!important;font-size:6pt!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-kpi-line strong{font-size:9pt!important;color:#1f2f3d!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-charts-grid{
+    display:grid!important;grid-template-columns:1.5fr .75fr!important;gap:3mm!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-chart-card{
+    display:block!important;padding:2.5mm!important;border:1px solid #d5dde2!important;border-radius:2.5mm!important;background:#fff!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-chart-title strong{color:#1f2f3d!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-chart-title span{color:#687681!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-bar-chart{display:grid!important;gap:1.1mm!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-bar-row{
+    display:grid!important;grid-template-columns:30mm 1fr!important;gap:2mm!important;align-items:center!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-bar-label{
+    display:flex!important;justify-content:space-between!important;gap:1mm!important;color:#5f6d77!important;font-size:5.5pt!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-bar-track{
+    display:block!important;height:1.6mm!important;border-radius:999px!important;background:#e1e7eb!important;overflow:hidden!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-bar-track i{
+    display:block!important;height:100%!important;background:#154c79!important;border-radius:inherit!important
+  }
+
+  body.occurrences-print-active #occurrences-print-document .occurrences-donut-wrap{
+    display:grid!important;grid-template-columns:30mm 1fr!important;gap:3mm!important;align-items:center!important;min-height:33mm!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-donut{
+    display:grid!important;place-items:center!important;width:29mm!important;height:29mm!important;border-radius:50%!important;position:relative!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-donut:after{
+    content:""!important;position:absolute!important;inset:6mm!important;border-radius:50%!important;background:#fff!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-donut>div{position:relative!important;z-index:1!important;text-align:center!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-donut strong{font-size:10pt!important;color:#1f2f3d!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-donut span,
+  body.occurrences-print-active #occurrences-print-document .occurrences-donut-legend span{font-size:5.5pt!important;color:#65717d!important}
+
+  body.occurrences-print-active #occurrences-print-document .occurrences-detail-panel{
+    display:block!important;padding:0!important;border:1px solid #cbd5dc!important;border-radius:2mm!important;background:#fff!important;box-shadow:none!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-detail-head{display:block!important;padding:2.5mm 3mm!important;margin:0!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-detail-head h3{font-size:10pt!important;color:#1f2f3d!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-detail-head p{font-size:6pt!important;color:#65717d!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-table-wrap{display:block!important;max-height:none!important;overflow:visible!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-table{
+    display:table!important;min-width:0!important;width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:5.7pt!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-table thead{display:table-header-group!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-table tbody{display:table-row-group!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-table tr{display:table-row!important;break-inside:avoid!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-table th,
+  body.occurrences-print-active #occurrences-print-document .occurrences-table td{
+    display:table-cell!important;border:1px solid #cdd6dc!important;color:#263746!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-table th{
+    position:static!important;padding:1.4mm .7mm!important;background:#edf2f5!important;font-size:5.2pt!important;white-space:normal!important
+  }
+  body.occurrences-print-active #occurrences-print-document .occurrences-table td{padding:1.2mm .7mm!important;font-size:5.4pt!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-table th:first-child,
+  body.occurrences-print-active #occurrences-print-document .occurrences-table td:first-child{width:29%!important;text-align:left!important}
+  body.occurrences-print-active #occurrences-print-document .occurrence-employee{min-width:0!important}
+  body.occurrences-print-active #occurrences-print-document .occurrence-employee strong{display:block!important;font-size:5.8pt!important}
+  body.occurrences-print-active #occurrences-print-document .occurrence-employee small{display:block!important;color:#66747e!important;font-size:4.8pt!important}
+  body.occurrences-print-active #occurrences-print-document .occurrences-footer{
+    display:flex!important;justify-content:space-between!important;padding:2mm 3mm!important;color:#65717d!important;font-size:6pt!important
+  }
+}

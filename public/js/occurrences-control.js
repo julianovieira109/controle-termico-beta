@@ -227,12 +227,80 @@
     }
   }
 
-  function printReport(){
+  function buildPrintDocument(){
     updatePrintHeader();
-    document.body.classList.add("occurrences-print-active");
-    window.print();
+    const holder=$("occurrences-print-document");
+    if(!holder)return false;
+
+    const header=document.querySelector("#occurrences .occurrences-print-header")?.cloneNode(true);
+    const summary=document.querySelector("#occurrences .occurrences-summary")?.cloneNode(true);
+    const charts=document.querySelector("#occurrences .occurrences-charts")?.cloneNode(true);
+
+    if(!header||!summary||!charts)return false;
+
+    [header,summary,charts].forEach(root=>{
+      root.querySelectorAll("[id]").forEach(el=>el.removeAttribute("id"));
+    });
+
+    const tableRows=rows.length
+      ?rows.map(row=>`
+        <tr>
+          <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.registration||"Sem matrícula")} · ${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
+          <td>${number(row,"days_off")}</td><td>${number(row,"absences")}</td><td>${number(row,"bank_hours")}</td>
+          <td>${number(row,"medical")}</td><td>${number(row,"vacations")}</td><td>${number(row,"dsr")}</td>
+          <td>${number(row,"licenses")}</td><td>${number(row,"leaves")}</td><td>${number(row,"compensated")}</td>
+          <td>${number(row,"courses")}</td><td>${number(row,"bereavement")}</td><td>${number(row,"review_days")}</td>
+        </tr>`).join("")
+      :'<tr><td colspan="13">Nenhum registro encontrado para o filtro selecionado.</td></tr>';
+
+    const detail=document.createElement("section");
+    detail.className="panel occurrences-detail-panel";
+    detail.innerHTML=`
+      <div class="panel-head occurrences-detail-head">
+        <div>
+          <span class="eyebrow">Detalhamento</span>
+          <h3>Ocorrências por colaborador</h3>
+          <p class="hint">Relatório completo da empresa, filial e competência selecionadas.</p>
+        </div>
+      </div>
+      <div class="table-wrap occurrences-table-wrap">
+        <table class="occurrences-table">
+          <thead>
+            <tr>
+              <th>Colaborador</th><th>Folgas</th><th>Faltas</th><th>BH</th><th>Atestados</th>
+              <th>Férias</th><th>DSR</th><th>Licenças</th><th>Afast.</th><th>Comp.</th>
+              <th>Curso</th><th>Óbito</th><th>Revisão</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+      <div class="occurrences-footer">
+        <span>${rows.length} colaborador${rows.length===1?"":"es"} no relatório</span>
+        <small>Fonte: Cartão de Ponto Senior importado no Controle Térmico.</small>
+      </div>`;
+
+    holder.replaceChildren(header,summary,charts,detail);
+    holder.setAttribute("aria-hidden","false");
+    return true;
   }
-  function clearPrintMode(){document.body.classList.remove("occurrences-print-active");}
+
+  function printReport(){
+    if(!buildPrintDocument()){
+      if(typeof toast==="function")toast("Não foi possível preparar o relatório para impressão.","error");
+      return;
+    }
+    document.body.classList.add("occurrences-print-active");
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.print()));
+  }
+  function clearPrintMode(){
+    document.body.classList.remove("occurrences-print-active");
+    const holder=$("occurrences-print-document");
+    if(holder){
+      holder.replaceChildren();
+      holder.setAttribute("aria-hidden","true");
+    }
+  }
 
   function init(){
     const month=$("occurrences-month");
@@ -263,5 +331,5 @@
 
   document.addEventListener("DOMContentLoaded",init);
   global.loadOccurrencesControl=()=>load(false);
-  global.OccurrencesControl={normalize,number,currentFilters};
+  global.OccurrencesControl={normalize,number,currentFilters,buildPrintDocument};
 })(window);
