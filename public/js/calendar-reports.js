@@ -181,6 +181,8 @@ async function generateAndLoadHolidays(){
       body:JSON.stringify({year})
     });
     holidays=Array.isArray(result.holidays)?result.holidays:[];
+    invalidateReportHolidayCache(year);
+    reportHolidayCache.set(year,holidays.map(item=>({...item})));
     renderAutomaticHolidays(year);
 
     if(status){
@@ -477,10 +479,39 @@ function buildMealSheet(employee,month){
   </section>`;
 }
 
+const reportHolidayCache=new Map();
+
 async function loadReportHolidaysForMonth(month){
   const match=String(month||"").match(/^(\d{4})-(\d{2})$/);
   if(!match)throw new Error("Competência inválida para carregar os feriados.");
   const year=Number(match[1]);
+
+  // Relatórios usam primeiro os feriados já sincronizados no banco.
+  // Assim a geração não fica aguardando uma consulta externa em toda execução.
+  if(reportHolidayCache.has(year)){
+    holidays=reportHolidayCache.get(year).map(item=>({...item}));
+    return {year,source:"MEMORY_CACHE",provider:"Banco de dados",warnings:[],total:holidays.length};
+  }
+
+  let cached=await api(`/api/calendar/holidays?year=${year}`);
+  cached=Array.isArray(cached)?cached:[];
+
+  if(cached.length){
+    holidays=cached;
+    reportHolidayCache.set(year,cached.map(item=>({...item})));
+    return {year,source:"DATABASE_CACHE",provider:"Banco de dados",warnings:[],total:cached.length};
+  }
+
+  // Primeira utilização de um ano ainda não sincronizado:
+  // faz uma única sincronização automática para não gerar ficha sem feriados.
+  const settings=await api("/api/calendar/holiday-types").catch(()=>({NATIONAL:true}));
+  const hasEnabledType=["NATIONAL","STATE","MUNICIPAL","OPTIONAL"].some(type=>settings?.[type]===true);
+
+  if(!hasEnabledType){
+    holidays=[];
+    reportHolidayCache.set(year,[]);
+    return {year,source:"NO_HOLIDAYS_ENABLED",provider:null,warnings:[],total:0};
+  }
 
   const result=await api("/api/calendar/holidays/generate",{
     method:"POST",
@@ -488,13 +519,20 @@ async function loadReportHolidaysForMonth(month){
   });
 
   holidays=Array.isArray(result.holidays)?result.holidays:[];
+  reportHolidayCache.set(year,holidays.map(item=>({...item})));
+
   return {
     year,
-    source:result.source||"UNKNOWN",
+    source:result.source||"INITIAL_SYNC",
     provider:result.provider||null,
     warnings:Array.isArray(result.warnings)?result.warnings:[],
     total:Number(result.automaticTotal??holidays.length)
   };
+}
+
+function invalidateReportHolidayCache(year=null){
+  if(Number.isInteger(Number(year)))reportHolidayCache.delete(Number(year));
+  else reportHolidayCache.clear();
 }
 
 async function prepareReports(){
@@ -1076,13 +1114,13 @@ $("report-generate").onclick=async()=>{
     return;
   }
 
-  summary.textContent="Atualizando feriados da competência...";
+  summary.textContent="Carregando feriados da competência...";
   try{
     await loadReportHolidaysForMonth(month);
   }catch(error){
     summary.className="full feedback error";
-    summary.textContent=`Não foi possível atualizar os feriados da competência: ${error.message}`;
-    alert(`Não foi possível atualizar os feriados da competência ${reportMonthLabel(month)}.\n\n${error.message}`);
+    summary.textContent=`Não foi possível carregar os feriados da competência: ${error.message}`;
+    alert(`Não foi possível carregar os feriados da competência ${reportMonthLabel(month)}.\n\n${error.message}`);
     return;
   }
 
