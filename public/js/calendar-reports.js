@@ -424,7 +424,8 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
     const subHeaders='<th class="print-head">Saída</th><th class="print-head">Retorno</th>'.repeat(slots);
     const copyLabel=blankCopy?'<div class="thermal-continuation-label">Cópia para preenchimento manual</div>':"";
     const continuation=pageCount>1?`<div class="thermal-continuation-label">${pageIndex===0?"Página principal":`Continuação ${pageIndex+1} de ${pageCount}`} — repousos ${offset+1} a ${offset+slots}</div>`:"";
-    return `<section class="report-sheet thermal-report-sheet thermal-rests-${slots} month-days-${days.length}">
+    const reportType=blankCopy?"thermal-blank":"thermal";
+    return `<section class="report-sheet thermal-report-sheet thermal-rests-${slots} month-days-${days.length}" data-report-type="${reportType}" data-employee-id="${escapeHtml(employee.id)}" data-employee-name="${escapeHtml(employee.full_name)}">
       ${reportHeader(employee,"FICHA DE CONTROLE DE REPOUSO TÉRMICO",month)}${copyLabel}${continuation}
       <table class="report-table thermal-report-table"><colgroup><col class="col-date"><col class="col-day"><col span="${slots*2}" class="col-time"><col class="col-signature"></colgroup>
         <thead><tr><th class="print-head" rowspan="2">Data</th><th class="print-head" rowspan="2">Dia</th>${restHeaders}<th class="print-head print-sign-head" rowspan="2">Assinatura do colaborador</th></tr><tr>${subHeaders}</tr></thead>
@@ -456,7 +457,7 @@ function buildMealSheet(employee,month){
   }).join("");
 
   const totalDays=reportMonthDays(month).length;
-  return `<section class="report-sheet meal-report-sheet month-days-${totalDays}">
+  return `<section class="report-sheet meal-report-sheet month-days-${totalDays}" data-report-type="meal" data-employee-id="${escapeHtml(employee.id)}" data-employee-name="${escapeHtml(employee.full_name)}">
     ${reportHeader(employee,"FICHA DE CONTROLE DE REFEIÇÃO",month)}
     <table class="report-table meal-report-table">
       <colgroup>
@@ -1199,7 +1200,7 @@ $("report-generate").onclick=async()=>{
   let mealCount=0;
   for(const employee of selectedEmployees){
     if(selectedEmployees.length>1){
-      html+=`<div class="report-group-title">${escapeHtml(employee.full_name)} — ${escapeHtml(employee.registration||"sem matrícula")}</div>`;
+      html+=`<div class="report-group-title" data-employee-id="${escapeHtml(employee.id)}">${escapeHtml(employee.full_name)} — ${escapeHtml(employee.registration||"sem matrícula")}</div>`;
     }
     if(reportPolicyAllows(employee.report_policy,"thermal")){
       html+=buildThermalSheet(employee,month,thermalPlan);
@@ -1231,9 +1232,68 @@ $("report-generate").onclick=async()=>{
 };
 
 let reportPrintInProgress=false;
-$("report-print").onclick=event=>{
+
+function reportPrintSheets(){
+  return [...document.querySelectorAll("#report-output .report-sheet[data-report-type]")];
+}
+
+function printCenterSelection(){
+  const selectedTypes=new Set();
+  if($("print-center-type-thermal")?.checked)selectedTypes.add("thermal");
+  if($("print-center-type-blank")?.checked)selectedTypes.add("thermal-blank");
+  if($("print-center-type-meal")?.checked)selectedTypes.add("meal");
+  return {
+    selectedTypes,
+    employeeId:$("print-center-employee")?.value||""
+  };
+}
+
+function printCenterMatchingSheets(){
+  const {selectedTypes,employeeId}=printCenterSelection();
+  return reportPrintSheets().filter(sheet=>
+    selectedTypes.has(sheet.dataset.reportType) &&
+    (!employeeId||String(sheet.dataset.employeeId)===String(employeeId))
+  );
+}
+
+function updatePrintCenterSummary(){
+  const all=reportPrintSheets();
+  const matches=printCenterMatchingSheets();
+  const count=type=>all.filter(sheet=>sheet.dataset.reportType===type).length;
+
+  if($("print-center-thermal-count"))$("print-center-thermal-count").textContent=String(count("thermal"));
+  if($("print-center-blank-count"))$("print-center-blank-count").textContent=String(count("thermal-blank"));
+  if($("print-center-meal-count"))$("print-center-meal-count").textContent=String(count("meal"));
+  if($("print-center-total-count"))$("print-center-total-count").textContent=String(matches.length);
+
+  const feedback=$("print-center-feedback");
+  if(feedback){
+    feedback.className=`feedback ${matches.length?"":"warning"}`;
+    feedback.textContent=matches.length
+      ?`${matches.length} ficha(s) selecionada(s) para impressão.`
+      :"Nenhuma ficha corresponde à seleção atual.";
+  }
+}
+
+function populatePrintCenterEmployees(){
+  const select=$("print-center-employee");
+  if(!select)return;
+  const employees=new Map();
+  reportPrintSheets().forEach(sheet=>{
+    const id=String(sheet.dataset.employeeId||"");
+    const name=String(sheet.dataset.employeeName||"");
+    if(id&&name)employees.set(id,name);
+  });
+  select.innerHTML='<option value="">Todos os colaboradores gerados</option>'+
+    [...employees.entries()]
+      .sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"))
+      .map(([id,name])=>`<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`)
+      .join("");
+}
+
+function openPrintCenter(){
   if(!$("report-output").innerHTML.trim()){
-    alert("Gere a ficha antes de imprimir.");
+    alert("Gere a ficha antes de abrir a Central de impressão.");
     return;
   }
   const currentMonth=$("report-month").value;
@@ -1242,18 +1302,86 @@ $("report-print").onclick=event=>{
     return;
   }
 
-  // Impressão só pode ser iniciada por um toque/clique real do usuário.
-  // Evita chamadas programáticas que navegadores móveis classificam como automáticas.
+  populatePrintCenterEmployees();
+  if($("print-center-type-thermal"))$("print-center-type-thermal").checked=true;
+  if($("print-center-type-blank"))$("print-center-type-blank").checked=true;
+  if($("print-center-type-meal"))$("print-center-type-meal").checked=true;
+  if($("print-center-employee"))$("print-center-employee").value="";
+  updatePrintCenterSummary();
+  $("report-print-center").hidden=false;
+}
+
+function closePrintCenter(){
+  if($("report-print-center"))$("report-print-center").hidden=true;
+}
+
+function clearPrintFiltering(){
+  reportPrintSheets().forEach(sheet=>sheet.classList.remove("print-center-excluded"));
+  document.querySelectorAll("#report-output .report-group-title").forEach(title=>title.classList.remove("print-center-excluded"));
+  document.body.classList.remove("print-center-active");
+}
+
+function applyPrintCenterFiltering(matches){
+  const selected=new Set(matches);
+  const employeeIds=new Set(matches.map(sheet=>String(sheet.dataset.employeeId||"")));
+
+  reportPrintSheets().forEach(sheet=>{
+    sheet.classList.toggle("print-center-excluded",!selected.has(sheet));
+  });
+
+  document.querySelectorAll("#report-output .report-group-title").forEach(title=>{
+    title.classList.toggle("print-center-excluded",!employeeIds.has(String(title.dataset.employeeId||"")));
+  });
+
+  document.body.classList.add("print-center-active");
+}
+
+$("report-print").onclick=openPrintCenter;
+
+document.querySelectorAll("[data-close-print-center]").forEach(button=>{
+  button.onclick=closePrintCenter;
+});
+
+["print-center-type-thermal","print-center-type-blank","print-center-type-meal","print-center-employee"].forEach(id=>{
+  if($(id))$(id).onchange=updatePrintCenterSummary;
+});
+
+if($("print-center-select-all"))$("print-center-select-all").onclick=()=>{
+  $("print-center-type-thermal").checked=true;
+  $("print-center-type-blank").checked=true;
+  $("print-center-type-meal").checked=true;
+  $("print-center-employee").value="";
+  updatePrintCenterSummary();
+};
+
+if($("print-center-confirm"))$("print-center-confirm").onclick=event=>{
   if(event && event.isTrusted===false)return;
   if(reportPrintInProgress)return;
 
+  const matches=printCenterMatchingSheets();
+  if(!matches.length){
+    updatePrintCenterSummary();
+    return;
+  }
+
   reportPrintInProgress=true;
+  applyPrintCenterFiltering(matches);
+  closePrintCenter();
+
   try{
     window.print();
   }finally{
-    setTimeout(()=>{ reportPrintInProgress=false; },800);
+    setTimeout(()=>{
+      clearPrintFiltering();
+      reportPrintInProgress=false;
+    },900);
   }
 };
+
+window.addEventListener("afterprint",()=>{
+  clearPrintFiltering();
+  reportPrintInProgress=false;
+});
 
 $("report-clear").onclick=()=>{
   $("report-output").innerHTML="";

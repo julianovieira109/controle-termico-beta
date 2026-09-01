@@ -32,12 +32,12 @@
   <title>Controle Térmico</title>
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
-  <link rel="stylesheet" href="/css/base.css?v=1.0.28-beta.7">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.28-beta.7">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.28-beta.7">
-  <link rel="stylesheet" href="/css/print.css?v=1.0.28-beta.7">
-  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.28-beta.7">
-  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.28-beta.7">
+  <link rel="stylesheet" href="/css/base.css?v=1.0.30-beta.1">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.30-beta.1">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.30-beta.1">
+  <link rel="stylesheet" href="/css/print.css?v=1.0.30-beta.1">
+  <link rel="stylesheet" href="/css/help-manual.css?v=1.0.30-beta.1">
+  <link rel="stylesheet" href="/css/enhancements.css?v=1.0.30-beta.1">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -1091,7 +1091,7 @@
 
           <div class="full actions">
             <button type="button" id="report-generate" class="primary">Gerar ficha</button>
-            <button type="button" id="report-print" class="secondary">Imprimir</button>
+            <button type="button" id="report-print" class="secondary">Central de impressão</button>
             <button type="button" id="report-clear" class="secondary">Limpar</button>
             <button type="button" id="report-validation-toggle" class="secondary" hidden>Ver validação</button>
           </div>
@@ -1132,6 +1132,67 @@
       </div>
 
       <div id="report-output"></div>
+
+      <div id="report-print-center" class="app-modal report-print-center no-print" hidden>
+        <div class="app-modal-backdrop" data-close-print-center></div>
+        <div class="app-modal-dialog report-print-center-dialog" role="dialog" aria-modal="true" aria-labelledby="report-print-center-title">
+          <div class="app-modal-header">
+            <div>
+              <span class="eyebrow">Organização da impressão</span>
+              <h3 id="report-print-center-title">Central de impressão</h3>
+              <p class="hint">Escolha exatamente quais fichas e colaboradores serão enviados para impressão.</p>
+            </div>
+            <button type="button" class="modal-close" data-close-print-center aria-label="Fechar">×</button>
+          </div>
+
+          <div class="print-center-summary">
+            <article><span>Repouso térmico</span><strong id="print-center-thermal-count">0</strong></article>
+            <article><span>Cópias manuais</span><strong id="print-center-blank-count">0</strong></article>
+            <article><span>Refeição</span><strong id="print-center-meal-count">0</strong></article>
+            <article><span>Total selecionado</span><strong id="print-center-total-count">0</strong></article>
+          </div>
+
+          <div class="print-center-grid">
+            <section class="print-center-section">
+              <strong>Tipos de ficha</strong>
+              <label class="print-center-option">
+                <input type="checkbox" id="print-center-type-thermal" checked>
+                <span><b>Repouso térmico</b><small>Ficha principal gerada para o colaborador.</small></span>
+              </label>
+              <label class="print-center-option">
+                <input type="checkbox" id="print-center-type-blank" checked>
+                <span><b>Cópia para preenchimento manual</b><small>Disponível no modo Automático + cópia manual.</small></span>
+              </label>
+              <label class="print-center-option">
+                <input type="checkbox" id="print-center-type-meal" checked>
+                <span><b>Ficha de refeição</b><small>Folha manual de assinatura da refeição.</small></span>
+              </label>
+            </section>
+
+            <section class="print-center-section">
+              <strong>Colaborador</strong>
+              <label>Quem deseja imprimir?
+                <select id="print-center-employee">
+                  <option value="">Todos os colaboradores gerados</option>
+                </select>
+              </label>
+              <div class="print-center-order-note">
+                <span>Ordem mantida</span>
+                <strong>Repouso → Cópia manual → Refeição</strong>
+                <small>A Central apenas filtra a impressão; ela não altera os dados das fichas.</small>
+              </div>
+            </section>
+          </div>
+
+          <div id="print-center-feedback" class="feedback"></div>
+
+          <div class="actions print-center-actions">
+            <button type="button" class="primary" id="print-center-confirm">Imprimir selecionados</button>
+            <button type="button" class="secondary" id="print-center-select-all">Selecionar tudo</button>
+            <button type="button" class="secondary" data-close-print-center>Cancelar</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <button type="button" id="help-floating-launcher" class="help-floating-launcher" aria-label="Abrir Assistente Virtual" title="Abrir Assistente Virtual"><span>?</span><b>Ajuda</b></button>
@@ -2411,16 +2472,16 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.28-beta.7"></script>
-  <script src="/js/help-manual.js?v=1.0.28-beta.7"></script>
-  <script src="/js/admin-access.js?v=1.0.28-beta.7"></script>
-  <script src="/js/employees-imports.js?v=1.0.28-beta.7"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.28-beta.7"></script>
-  <script src="/js/report-validator.js?v=1.0.28-beta.7"></script>
-  <script src="/js/blank-copy-status.js?v=1.0.28-beta.7"></script>
-  <script src="/js/rest-audit.js?v=1.0.28-beta.7"></script>
-  <script src="/js/calendar-reports.js?v=1.0.28-beta.7"></script>
-  <script src="/js/employee-history-admin.js?v=1.0.28-beta.7"></script>
-  <script src="/js/settings-system.js?v=1.0.28-beta.7"></script>
+  <script src="/js/core.js?v=1.0.30-beta.1"></script>
+  <script src="/js/help-manual.js?v=1.0.30-beta.1"></script>
+  <script src="/js/admin-access.js?v=1.0.30-beta.1"></script>
+  <script src="/js/employees-imports.js?v=1.0.30-beta.1"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.30-beta.1"></script>
+  <script src="/js/report-validator.js?v=1.0.30-beta.1"></script>
+  <script src="/js/blank-copy-status.js?v=1.0.30-beta.1"></script>
+  <script src="/js/rest-audit.js?v=1.0.30-beta.1"></script>
+  <script src="/js/calendar-reports.js?v=1.0.30-beta.1"></script>
+  <script src="/js/employee-history-admin.js?v=1.0.30-beta.1"></script>
+  <script src="/js/settings-system.js?v=1.0.30-beta.1"></script>
 </body>
 </html>
