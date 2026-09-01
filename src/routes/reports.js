@@ -79,7 +79,10 @@ router.get("/point-competence",async(req,res,next)=>{
              i.details->'period'->>'end' period_end
       FROM employee_imports i
       WHERE i.import_type='PONTO_SENIOR'
-        AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
+        AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND (i.details->'period'->>'start')::date < (($1||'-01')::date + INTERVAL '1 month')
+        AND (i.details->'period'->>'end')::date >= ($1||'-01')::date
         ${scope}
       ORDER BY i.created_at DESC
     `,params);

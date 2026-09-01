@@ -623,44 +623,75 @@ if($("point-import-form"))$("point-import-form").onsubmit=async event=>{
 };
 
 
+function reportMonthWithinImportedPeriod(month,period){
+  if(!/^\d{4}-\d{2}$/.test(String(month||""))||!period?.start||!period?.end)return false;
+  const monthStart=`${month}-01`;
+  const monthDate=new Date(`${monthStart}T00:00:00Z`);
+  const nextMonthDate=new Date(monthDate);
+  nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth()+1);
+  const nextMonth=nextMonthDate.toISOString().slice(0,10);
+  const start=String(period.start).slice(0,10);
+  const end=String(period.end).slice(0,10);
+  return start<nextMonth&&end>=monthStart;
+}
+
 async function refreshReportsAfterPointImport(importResult){
-  const importedMonth=String(importResult?.period?.end||importResult?.period?.start||"").slice(0,7);
-  if(!/^\d{4}-\d{2}$/.test(importedMonth))return {importedMonth:null,regenerated:false};
-
-  // Sempre descarta a validação anterior e recarrega as marcações diretamente do banco.
-  invalidateReportValidation();
-  await applyPointDataToEmployees(importedMonth);
-
+  const period=importResult?.period||null;
   const currentMonth=$("report-month")?.value||"";
-  if(currentMonth!==importedMonth){
-    return {importedMonth,regenerated:false,differentMonth:true};
+  const coveredMonths=[];
+
+  if(period?.start&&period?.end){
+    const cursor=new Date(`${String(period.start).slice(0,7)}-01T00:00:00Z`);
+    const endMonth=String(period.end).slice(0,7);
+    while(cursor.toISOString().slice(0,7)<=endMonth){
+      coveredMonths.push(cursor.toISOString().slice(0,7));
+      cursor.setUTCMonth(cursor.getUTCMonth()+1);
+      if(coveredMonths.length>24)break;
+    }
+  }
+
+  invalidateReportValidation();
+
+  // Prioriza a competência que está aberta na tela, desde que ela esteja coberta pelo PDF.
+  // Ex.: PDF 19/08 a 02/09 atualiza tanto agosto quanto setembro.
+  const targetMonth=reportMonthWithinImportedPeriod(currentMonth,period)
+    ?currentMonth
+    :(coveredMonths[0]||String(period?.end||period?.start||"").slice(0,7));
+
+  if(!/^\d{4}-\d{2}$/.test(targetMonth)){
+    return {importedMonth:null,coveredMonths,regenerated:false};
+  }
+
+  await applyPointDataToEmployees(targetMonth);
+
+  if(!reportMonthWithinImportedPeriod(currentMonth,period)){
+    return {importedMonth:targetMonth,coveredMonths,regenerated:false,differentMonth:true};
   }
 
   const output=$("report-output");
   const hadGeneratedSheets=Boolean(output?.querySelector(".report-sheet"));
 
   if(hadGeneratedSheets){
-    // Não deixa a tela continuar exibindo uma ficha antiga após confirmação de um novo ponto.
     output.innerHTML="";
     const summary=$("report-generation-summary");
     if(summary){
       summary.className="full feedback";
-      summary.textContent="Cartão de Ponto atualizado. Recalculando as fichas com as marcações mais recentes...";
+      summary.textContent=`Cartão de Ponto atualizado (${formatApiDate(period.start)} a ${formatApiDate(period.end)}). Recalculando as fichas de ${reportMonthLabel(currentMonth)}...`;
     }
 
-    // Reutiliza exatamente os filtros já escolhidos pelo usuário.
     await new Promise(resolve=>setTimeout(resolve,0));
     $("report-generate")?.click();
-    return {importedMonth,regenerated:true};
+    return {importedMonth:targetMonth,coveredMonths,regenerated:true};
   }
 
   const summary=$("report-generation-summary");
   if(summary){
     summary.className="full feedback success";
-    summary.textContent=`Cartão de Ponto de ${reportMonthLabel(importedMonth)} atualizado. As próximas fichas serão geradas com os dados mais recentes.`;
+    summary.textContent=`Cartão de Ponto atualizado de ${formatApiDate(period.start)} a ${formatApiDate(period.end)}. As fichas de ${reportMonthLabel(currentMonth)} usarão os dados mais recentes.`;
   }
-  return {importedMonth,regenerated:false};
+  return {importedMonth:targetMonth,coveredMonths,regenerated:false};
 }
+
 
 if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
   if(!pointImportPreview)return toast("Leia o arquivo antes de confirmar.","warning");
@@ -679,7 +710,8 @@ if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
       if(refresh.regenerated){
         toast("As fichas exibidas foram atualizadas com o novo Cartão de Ponto.","success");
       }else if(refresh.differentMonth){
-        toast(`Ponto atualizado para ${reportMonthLabel(refresh.importedMonth)}. Selecione essa competência para gerar as fichas atualizadas.`,"success");
+        const periodText=data.period?`${formatApiDate(data.period.start)} a ${formatApiDate(data.period.end)}`:reportMonthLabel(refresh.importedMonth);
+        toast(`Ponto atualizado para o período ${periodText}. Selecione uma competência coberta pelo arquivo para gerar as fichas.`,"success");
       }
     }catch(refreshError){
       console.error("[POINT_REPORT_REFRESH]",refreshError);

@@ -81,7 +81,10 @@ router.get("/alerts",async(req,res,next)=>{
       SELECT DISTINCT i.company_id,i.branch_id
       FROM employee_imports i
       WHERE i.import_type='PONTO_SENIOR'
-        AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
+        AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND (i.details->'period'->>'start')::date < (($1||'-01')::date + INTERVAL '1 month')
+        AND (i.details->'period'->>'end')::date >= ($1||'-01')::date
         ${importScope}
     `,importParams);
 
@@ -138,7 +141,10 @@ router.get("/operations",async(req,res,next)=>{
       LEFT JOIN companies c ON c.id=i.company_id
       LEFT JOIN branches b ON b.id=i.branch_id
       WHERE i.import_type='PONTO_SENIOR'
-        AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
+        AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND (i.details->'period'->>'start')::date < (($1||'-01')::date + INTERVAL '1 month')
+        AND (i.details->'period'->>'end')::date >= ($1||'-01')::date
         ${scope}
       ORDER BY i.created_at DESC
     `,params);
@@ -347,7 +353,10 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
       LEFT JOIN companies c ON c.id=i.company_id
       LEFT JOIN branches b ON b.id=i.branch_id
       WHERE i.import_type='PONTO_SENIOR'
-        AND LEFT(COALESCE(i.details->'period'->>'end',''),7)=$1
+        AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND (i.details->'period'->>'start')::date < (($1||'-01')::date + INTERVAL '1 month')
+        AND (i.details->'period'->>'end')::date >= ($1||'-01')::date
         ${importFilter}
       ORDER BY company_name,branch_name
     `,importParams);

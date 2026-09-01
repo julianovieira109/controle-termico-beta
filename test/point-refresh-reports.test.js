@@ -23,7 +23,7 @@ test("substituição fica dentro da mesma transação da importação",()=>{
 });
 test("após confirmar ponto a tela recarrega as marcações do banco",()=>{
   assert.match(ui,/refreshReportsAfterPointImport/);
-  assert.match(ui,/await applyPointDataToEmployees\(importedMonth\)/);
+  assert.match(ui,/await applyPointDataToEmployees\(targetMonth\)/);
   assert.match(ui,/invalidateReportValidation\(\)/);
 });
 test("fichas abertas são invalidadas e regeneradas",()=>{
