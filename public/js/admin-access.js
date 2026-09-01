@@ -269,9 +269,6 @@ async function loadDashboard(){
   }
 }
 
-if($("dashboard-alert-refresh")){
-  $("dashboard-alert-refresh").onclick=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
-}
 if($("dashboard-alert-month")){
   $("dashboard-alert-month").onchange=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
 }
