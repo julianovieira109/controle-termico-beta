@@ -6,7 +6,9 @@ const path=require("node:path");
 const route=fs.readFileSync(path.join(__dirname,"../src/routes/dashboard.js"),"utf8");
 const html=fs.readFileSync(path.join(__dirname,"../public/index.html"),"utf8");
 const js=fs.readFileSync(path.join(__dirname,"../public/js/occurrences-control.js"),"utf8");
-const css=fs.readFileSync(path.join(__dirname,"../public/css/enhancements.css"),"utf8");
+const css=fs.readFileSync(path.join(__dirname,"../public/css/occurrences.css"),"utf8");
+const printTemplate=fs.readFileSync(path.join(__dirname,"../public/js/occurrences-print-template.js"),"utf8");
+const printCss=fs.readFileSync(path.join(__dirname,"../public/css/occurrences-print.css"),"utf8");
 
 test("Controle de Ocorrências filtra por empresa filial e competência",()=>{
   assert.match(html,/id="occurrences-company"/);
@@ -35,7 +37,7 @@ test("área possui indicadores gráficos",()=>{
 test("impressão inclui relatório de ocorrências",()=>{
   assert.match(html,/id="occurrences-print"/);
   assert.match(html,/Relatório de Controle de Ocorrências/);
-  assert.match(js,/window\.print\(\)/);
+  assert.match(printTemplate,/window\.print\(\)/);
   assert.match(js,/occurrences-print-active/);
   assert.match(css,/body\.occurrences-print-active/);
 });
@@ -47,7 +49,7 @@ test("cabeçalho impresso registra competência empresa filial e emissão",()=>{
   assert.match(js,/updatePrintHeader/);
 });
 test("gráficos são preparados para impressão em cores",()=>{
-  assert.match(css,/print-color-adjust:exact/);
+  assert.match(printCss,/print-color-adjust:exact/);
   assert.match(css,/occurrences-charts-grid/);
   assert.match(css,/occurrences-donut/);
 });
