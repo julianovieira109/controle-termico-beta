@@ -2,6 +2,18 @@ require("dotenv").config();
 const bcrypt = require("bcryptjs");
 const pool = require("./pool");
 
+const isProduction=String(process.env.NODE_ENV||"").toLowerCase()==="production";
+const seedConfirmed=String(process.env.ALLOW_SEED||"").toLowerCase()==="true";
+
+if(!seedConfirmed){
+  console.error("Seed bloqueado por segurança. Para executar manualmente, defina ALLOW_SEED=true.");
+  process.exit(1);
+}
+if(isProduction && String(process.env.ALLOW_PRODUCTION_SEED||"").toLowerCase()!=="true"){
+  console.error("Seed bloqueado em produção. Use ALLOW_PRODUCTION_SEED=true somente em uma execução manual e consciente.");
+  process.exit(1);
+}
+
 async function ensureCompany(client, data) {
   const existing = await client.query(
     "SELECT id FROM companies WHERE trade_name=$1 LIMIT 1",
@@ -126,7 +138,11 @@ async function ensureEmployee(client, data) {
       console.log("Administrador não atualizado: configure ADMIN_EMAIL e ADMIN_PASSWORD.");
     }
 
-    if(String(process.env.DEMO_DATA||"").toLowerCase()==="true"){
+    if(
+      String(process.env.DEMO_DATA||"").toLowerCase()==="true" &&
+      seedConfirmed &&
+      (!isProduction || String(process.env.ALLOW_PRODUCTION_DEMO_DATA||"").toLowerCase()==="true")
+    ){
       const empresa1 = await ensureCompany(client, {
         legalName: "Empresa Horizonte Logística Ltda.",
         tradeName: "Horizonte Logística",
@@ -259,7 +275,7 @@ async function ensureEmployee(client, data) {
 
       console.log("Cadastros de demonstração preparados: 2 empresas, 4 filiais, 1 RH e 5 colaboradores.");
     }else{
-      console.log("DEMO_DATA desativado: nenhum cadastro de demonstração foi criado.");
+      console.log("Dados de demonstração não criados. DEMO_DATA exige autorização explícita e, em produção, ALLOW_PRODUCTION_DEMO_DATA=true.");
     }
 
     await client.query("COMMIT");

@@ -3,7 +3,7 @@ services:
     name: controle-termico
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run migrate && npm run seed
+    buildCommand: npm ci && npm run migrate
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
@@ -29,5 +29,3 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-      - key: DEMO_DATA
-        value: "false"

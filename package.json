@@ -1,6 +1,6 @@
 {
   "name": "controle-termico-online",
-  "version": "1.0.31-beta.9",
+  "version": "1.0.31-beta.10",
   "private": true,
   "description": "Sistema web de controle administrativo de repouso térmico e refeição",
   "main": "src/server.js",
@@ -8,9 +8,11 @@
     "start": "node src/server.js",
     "migrate": "node src/db/migrate.js",
     "seed": "node src/db/seed.js",
-    "setup": "npm run migrate && npm run seed",
+    "setup": "npm run migrate",
     "test": "node --test test/*.test.js",
-    "check:sizes": "node tools/check-file-sizes.js"
+    "check:sizes": "node tools/check-file-sizes.js",
+    "seed:manual": "node src/db/seed.js",
+    "audit:startup": "node tools/audit-startup.js"
   },
   "engines": {
     "node": ">=20"
