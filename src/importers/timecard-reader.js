@@ -60,9 +60,25 @@ function parseDayLine(line,period){
     .filter(index=>index>=0)
     .sort((a,b)=>a-b)[0];
   const markingPart=firstEventIndex===undefined?payload:payload.slice(0,firstEventIndex);
-  const markings=markingPart.match(/(?:[01]\d|2[0-3]):[0-5]\d/g)||[];
-  const occurrence=payload.replace(markingPart,"").trim()||null;
-  const confirmedPartial=markings.length===2&&/(?:BH\s*\(-\)|SA[ÍI]DA\s+ANTECIPADA)/i.test(occurrence||"");
+  const rawMarkings=markingPart.match(/(?:[01]\d|2[0-3]):[0-5]\d/g)||[];
+  let occurrence=payload.replace(markingPart,"").trim()||null;
+  let markings=rawMarkings.slice(0,8);
+  let ignoredMarkings=[];
+
+  // Alguns cartões da Senior registram BH (-) / Saída Antecipada após uma
+  // quantidade ímpar de batidas. Nesse formato, a última batida fica sem par
+  // e os horários depois da ocorrência são totais/indicadores da Senior, não
+  // novas marcações. Para não inventar uma saída, usamos somente os pares
+  // completos já confirmados antes da ocorrência e preservamos a batida órfã
+  // na ocorrência para auditoria.
+  const earlyExit=/(?:BH\s*\(-\)|SA[ÍI]DA\s+ANTECIPADA)/i.test(occurrence||"");
+  if(earlyExit&&(markings.length===3||markings.length===5)){
+    ignoredMarkings=[markings[markings.length-1]];
+    markings=markings.slice(0,-1);
+    occurrence=`${occurrence||"BH (-) Saída Antecipada"} | Marcação sem par desconsiderada no cálculo automático: ${ignoredMarkings.join(", ")}`;
+  }
+
+  const confirmedPartial=markings.length===2&&earlyExit;
   let state="WORKED";
   if(statusMatch)state=statusMatch[0];
   else if(markings.length===0)state="NO_MARKINGS";
@@ -73,6 +89,7 @@ function parseDayLine(line,period){
     weekDay:head[2].toUpperCase(),
     scheduleCode,
     markings:markings.slice(0,8),
+    ignoredMarkings,
     state,
     occurrence,
     eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial)
