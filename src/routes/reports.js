@@ -76,13 +76,13 @@ router.get("/point-competence",async(req,res,next)=>{
     const {rows}=await pool.query(`
       SELECT DISTINCT i.company_id,i.branch_id,i.file_name,i.created_at,
              i.details->'period'->>'start' period_start,
-             i.details->'period'->>'end' period_end
+             i.details->'period'->>'end' period_end,
+             LEFT(i.details->'period'->>'end',7) competence
       FROM employee_imports i
       WHERE i.import_type='PONTO_SENIOR'
         AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
         AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
-        AND (i.details->'period'->>'start')::date < (($1||'-01')::date + INTERVAL '1 month')
-        AND (i.details->'period'->>'end')::date >= ($1||'-01')::date
+        AND LEFT(i.details->'period'->>'end',7)=$1
         ${scope}
       ORDER BY i.created_at DESC
     `,params);

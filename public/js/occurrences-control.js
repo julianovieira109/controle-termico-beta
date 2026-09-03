@@ -44,6 +44,16 @@
     const [year,m]=String(month||"").split("-").map(Number);
     return year&&m?new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric"}).format(new Date(year,m-1,1)):"-";
   }
+
+  function formatDate(value){
+    const match=String(value||"").slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match?`${match[3]}/${match[2]}/${match[1]}`:"-";
+  }
+  function importPeriod(imports=[]){
+    const starts=imports.map(item=>String(item.period_start||"").slice(0,10)).filter(Boolean).sort();
+    const ends=imports.map(item=>String(item.period_end||"").slice(0,10)).filter(Boolean).sort();
+    return starts.length&&ends.length?{start:starts[0],end:ends[ends.length-1]}:null;
+  }
   function selectedText(id,fallback){
     const select=$(id);
     if(!select||!select.value)return fallback;
@@ -179,7 +189,8 @@
     if(!status)return;
     if(imports.length){
       const branchNames=[...new Set(imports.map(item=>item.branch_name).filter(Boolean))];
-      status.textContent=`Confirmado · ${imports.length} filial${imports.length===1?"":"is"}${branchNames.length&&branchNames.length<=4?` · ${branchNames.join(", ")}`:""}`;
+      const period=importPeriod(imports);
+      status.textContent=`Confirmado · Competência ${monthLabel(currentFilters().month)}${period?` · Período Senior ${formatDate(period.start)} a ${formatDate(period.end)}`:""} · ${imports.length} filial${imports.length===1?"":"is"}${branchNames.length&&branchNames.length<=4?` · ${branchNames.join(", ")}`:""}`;
       status.closest(".occurrences-source-status")?.classList.remove("is-missing");
     }else{
       status.textContent="Nenhum Cartão de Ponto confirmado neste filtro";
@@ -189,7 +200,8 @@
 
   function updatePrintHeader(){
     const f=currentFilters();
-    if($("occurrences-print-reference"))$("occurrences-print-reference").textContent=`Competência: ${monthLabel(f.month)}`;
+    const period=importPeriod(Array.isArray(lastData.imports)?lastData.imports:[]);
+    if($("occurrences-print-reference"))$("occurrences-print-reference").textContent=`Competência: ${monthLabel(f.month)}${period?` · Período do Cartão de Ponto Senior: ${formatDate(period.start)} a ${formatDate(period.end)}`:""}`;
     if($("occurrences-print-company"))$("occurrences-print-company").textContent=selectedText("occurrences-company","Todas as empresas");
     if($("occurrences-print-branch"))$("occurrences-print-branch").textContent=selectedText("occurrences-branch","Todas as filiais");
     if($("occurrences-print-generated"))$("occurrences-print-generated").textContent=`Emitido em ${new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date())}`;

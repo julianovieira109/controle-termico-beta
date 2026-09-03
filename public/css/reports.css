@@ -1096,3 +1096,7 @@
 .report-validation-details{display:grid;gap:8px}.report-validation-group{display:grid;gap:6px}.report-validation-group h4{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.report-validation-group ul{margin:0;padding-left:20px}.report-validation-group li{margin:3px 0;line-height:1.4}
 @media(max-width:720px){.report-validation-counts{grid-template-columns:repeat(2,minmax(0,1fr))}.report-validation-head{align-items:flex-start}}
 @media print{.report-validation-panel{display:none!important}}
+
+/* V1.0.31 Beta.11 — competência Senior e período do ponto */
+.report-point-period-field{min-width:220px;flex:1.35 1 260px}
+.report-point-period-field .report-field-value{white-space:nowrap}

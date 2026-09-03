@@ -83,8 +83,7 @@ router.get("/alerts",async(req,res,next)=>{
       WHERE i.import_type='PONTO_SENIOR'
         AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
         AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
-        AND (i.details->'period'->>'start')::date < (($1||'-01')::date + INTERVAL '1 month')
-        AND (i.details->'period'->>'end')::date >= ($1||'-01')::date
+        AND LEFT(i.details->'period'->>'end',7)=$1
         ${importScope}
     `,importParams);
 
@@ -143,8 +142,7 @@ router.get("/operations",async(req,res,next)=>{
       WHERE i.import_type='PONTO_SENIOR'
         AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
         AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
-        AND (i.details->'period'->>'start')::date < (($1||'-01')::date + INTERVAL '1 month')
-        AND (i.details->'period'->>'end')::date >= ($1||'-01')::date
+        AND LEFT(i.details->'period'->>'end',7)=$1
         ${scope}
       ORDER BY i.created_at DESC
     `,params);
@@ -348,15 +346,17 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
     const importFilter=importFilters.length?` AND ${importFilters.join(" AND ")}`:"";
 
     const {rows:imports}=await pool.query(`
-      SELECT DISTINCT i.company_id,i.branch_id,c.trade_name company_name,b.name branch_name
+      SELECT DISTINCT i.company_id,i.branch_id,c.trade_name company_name,b.name branch_name,
+             i.details->'period'->>'start' period_start,
+             i.details->'period'->>'end' period_end,
+             LEFT(i.details->'period'->>'end',7) competence
       FROM employee_imports i
       LEFT JOIN companies c ON c.id=i.company_id
       LEFT JOIN branches b ON b.id=i.branch_id
       WHERE i.import_type='PONTO_SENIOR'
         AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
         AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
-        AND (i.details->'period'->>'start')::date < (($1||'-01')::date + INTERVAL '1 month')
-        AND (i.details->'period'->>'end')::date >= ($1||'-01')::date
+        AND LEFT(i.details->'period'->>'end',7)=$1
         ${importFilter}
       ORDER BY company_name,branch_name
     `,importParams);
