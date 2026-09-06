@@ -26,6 +26,7 @@
   function validate({month,employees=[],thermalConfig={},pointCompetenceBranches=[]}={}){
     const blockers=[]; const warnings=[]; const ok=[];
     const branchSet=new Set([...pointCompetenceBranches].map(String));
+    const missingPointByBranch=new Map();
     if(!/^\d{4}-\d{2}$/.test(text(month))){
       blockers.push(issue('blocker','MONTH_REQUIRED','Selecione uma competência válida antes de gerar as fichas.'));
     }
@@ -54,7 +55,14 @@
       const auto=policyAllows(employee.report_policy,'thermal')&&automaticAllowed(employee,thermalConfig);
       if(auto){
         if(!branchSet.has(String(employee.branch_id||''))){
-          blockers.push(issue('blocker','POINT_COMPETENCE_MISSING',`${name}: não há Cartão de Ponto confirmado para a filial nesta competência.`,employee));
+          const branchId=String(employee.branch_id||'');
+          const current=missingPointByBranch.get(branchId)||{
+            branchId,
+            branchName:text(employee.branch_name)||'Filial não identificada',
+            employees:0
+          };
+          current.employees+=1;
+          missingPointByBranch.set(branchId,current);
           continue;
         }
         const schedules=employee.point_schedules&&typeof employee.point_schedules==='object'?employee.point_schedules:{};
@@ -64,6 +72,15 @@
         }
       }
       ok.push({employeeId:employee.id??null,employeeName:name});
+    }
+    for(const missing of missingPointByBranch.values()){
+      const total=missing.employees;
+      const suffix=total===1?'1 colaborador afetado':`${total} colaboradores afetados`;
+      blockers.push(issue(
+        'blocker',
+        'POINT_COMPETENCE_MISSING',
+        `Cartão de Ponto não encontrado — ${missing.branchName}: não há Cartão de Ponto Senior confirmado para esta filial nesta competência (${suffix}). Importe o cartão correspondente antes de gerar as fichas automáticas.`
+      ));
     }
     return {
       valid:blockers.length===0,
