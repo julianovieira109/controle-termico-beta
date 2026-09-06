@@ -146,12 +146,12 @@
   }
 
   function pointReportDate(value,employee={}){
-    const source=String(value||"").slice(0,10);
-    if(!isThirdShift(employee))return source;
-    const date=new Date(`${source}T00:00:00Z`);
-    if(Number.isNaN(date.getTime()))return source;
-    date.setUTCDate(date.getUTCDate()+1);
-    return date.toISOString().slice(0,10);
+    // A data oficial já é definida pelo Cartão de Ponto Senior.
+    // Inclusive no 3º turno, a jornada pode atravessar a meia-noite,
+    // mas continua pertencendo à data informada pelo Senior.
+    // O tratamento da virada do dia permanece somente nos cálculos de horário.
+    void employee;
+    return String(value||"").slice(0,10);
   }
 
   function scheduleKey(rests){
