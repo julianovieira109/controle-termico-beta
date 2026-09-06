@@ -262,6 +262,27 @@ function reportMonthLabel(monthValue){
     .format(new Date(Date.UTC(year,month-1,1)));
 }
 
+function reportDateRangeDays(start,end){
+  const startIso=String(start||"").slice(0,10);
+  const endIso=String(end||"").slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(startIso)||!/^\d{4}-\d{2}-\d{2}$/.test(endIso)||startIso>endIso)return [];
+  const days=[];
+  const cursor=new Date(`${startIso}T00:00:00Z`);
+  const finish=new Date(`${endIso}T00:00:00Z`);
+  while(cursor<=finish){
+    const iso=cursor.toISOString().slice(0,10);
+    days.push({
+      day:cursor.getUTCDate(),
+      iso,
+      br:`${String(cursor.getUTCDate()).padStart(2,"0")}/${String(cursor.getUTCMonth()+1).padStart(2,"0")}/${cursor.getUTCFullYear()}`,
+      weekDay:cursor.getUTCDay(),
+      weekName:new Intl.DateTimeFormat("pt-BR",{weekday:"short",timeZone:"UTC"}).format(cursor).replace(".","")
+    });
+    cursor.setUTCDate(cursor.getUTCDate()+1);
+  }
+  return days;
+}
+
 function seniorCompetenceFromPeriod(period){
   const end=String(period?.end||period?.period_end||"").slice(0,10);
   return /^\d{4}-\d{2}-\d{2}$/.test(end)?end.slice(0,7):null;
@@ -285,6 +306,20 @@ function reportCompetencePeriod(employee,month){
     period,
     periodLabel:period?`${formatApiDate(period.start)} a ${formatApiDate(period.end)}`:"Não identificado"
   };
+}
+
+function reportThermalDays(employee,month){
+  const automatic=thermalAutomaticAllowed(employee,thermalRestSettings);
+  const period=automatic?pointPeriodForEmployee(employee,month):null;
+  return period?reportDateRangeDays(period.start,period.end):reportMonthDays(month);
+}
+
+function reportPlanningDays(employees,month){
+  const periods=(employees||[]).map(employee=>pointPeriodForEmployee(employee,month)).filter(Boolean);
+  if(!periods.length)return reportMonthDays(month);
+  const start=periods.map(period=>period.start).sort()[0];
+  const end=periods.map(period=>period.end).sort().slice(-1)[0];
+  return reportDateRangeDays(start,end);
 }
 
 function reportEmployeeSelected(){
@@ -426,7 +461,7 @@ function dayStatus(employee,d){
 }
 
 function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
-  const days=reportMonthDays(month);
+  const days=reportThermalDays(employee,month);
   const maximumRests=Math.min(4,Math.max(0,...days.map(day=>(thermalPlan?.get(`${employee.id}|${day.iso}`)||[]).length)));
   const restsPerPage=4;
   const pageCount=1;
@@ -814,19 +849,18 @@ async function applyPointDataToEmployees(month){
   pointCompetenceInfo={month:competence.month||month,imports:Array.isArray(competence.imports)?competence.imports:[]};
   pointCompetenceBranches=new Set(pointCompetenceInfo.imports.map(item=>String(item.branch_id)));
   pointDataActive=pointCompetenceBranches.size>0&&rows.length>0;
-  const monthStart=`${month}-01`;
-  const nextMonthDate=new Date(`${monthStart}T00:00:00Z`);
-  nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth()+1);
-  const nextMonth=nextMonthDate.toISOString().slice(0,10);
   const employeesById=new Map(reportEmployees.map(employee=>[String(employee.id),employee]));
   const byEmployee=new Map();
   rows.forEach(row=>{
     const id=String(row.employee_id);
+    const employee=employeesById.get(id);
+    if(!employee)return;
     if(!byEmployee.has(id))byEmployee.set(id,{schedules:{},states:{}});
     const target=byEmployee.get(id);
     const sourceDate=String(row.work_date).slice(0,10);
-    const date=ThermalSchedule.pointReportDate(sourceDate,employeesById.get(id));
-    if(date<monthStart||date>=nextMonth)return;
+    const date=ThermalSchedule.pointReportDate(sourceDate,employee);
+    const period=pointPeriodForEmployee(employee,month);
+    if(period&&(date<period.start||date>period.end))return;
     target.states[date]=row.point_state;
     if(row.eligible_for_automatic_rest&&Array.isArray(row.markings)&&[2,4].includes(row.markings.length))target.schedules[date]=row.markings.join("-");
   });
@@ -1219,7 +1253,7 @@ async function openReportSimulator(){
     return toast(`Não foi possível consultar o ponto: ${error.message}`,"error");
   }
 
-  const monthDays=reportMonthDays(month);
+  const monthDays=reportThermalDays(employee,month);
   const plan=ThermalSchedule.buildMonthPlan([employee],monthDays,{
     ...thermalRestSettings,
     usePointData:pointDataActive
@@ -1380,10 +1414,10 @@ $("report-generate").onclick=async()=>{
     }
   }
 
-  const monthDays=reportMonthDays(month);
   const automaticEmployees=reportEmployees.filter(employee=>
     thermalAutomaticAllowed(employee,thermalRestSettings)&&pointCompetenceBranches.has(String(employee.branch_id))
   );
+  const monthDays=reportPlanningDays(automaticEmployees,month);
   const thermalPlan=automaticEmployees.length
     ?ThermalSchedule.buildMonthPlan(automaticEmployees,monthDays,{...thermalRestSettings,usePointData:pointDataActive})
     :new Map();

@@ -43,8 +43,7 @@ router.get("/point-days",async(req,res,next)=>{
     res.set("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
     const month=String(req.query.month||"");
     if(!/^\d{4}-\d{2}$/.test(month))return res.status(400).json({error:"Informe o mês no formato AAAA-MM."});
-    const start=`${month}-01`;
-    const params=[start];
+    const params=[month];
     let scope="";
     if(!req.scope.isAdmin){
       params.push(req.scope.companyId,req.scope.branchIds);
@@ -53,8 +52,17 @@ router.get("/point-days",async(req,res,next)=>{
     const {rows}=await pool.query(`
       SELECT p.employee_id,p.work_date,p.schedule_code,p.markings,p.point_state,p.occurrence,p.eligible_for_automatic_rest,p.imported_at
       FROM employee_point_days p
-      WHERE p.work_date>= ($1::date - INTERVAL '1 day')
-        AND p.work_date< ($1::date + INTERVAL '1 month')
+      WHERE EXISTS (
+        SELECT 1
+        FROM employee_imports i
+        WHERE i.import_type='PONTO_SENIOR'
+          AND i.company_id=p.company_id
+          AND i.branch_id=p.branch_id
+          AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+          AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+          AND LEFT(i.details->'period'->>'end',7)=$1
+          AND p.work_date BETWEEN (i.details->'period'->>'start')::date AND (i.details->'period'->>'end')::date
+      )
         ${scope}
       ORDER BY p.employee_id,p.work_date
     `,params);
