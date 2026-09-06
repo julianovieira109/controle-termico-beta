@@ -2060,6 +2060,14 @@
             <div class="actions"><button type="button" id="point-import-confirm" class="primary">Confirmar importação do ponto</button></div>
           </div>
           <details class="import-history-details"><summary>Histórico de cartões de ponto importados</summary><div class="table-wrap"><table><thead><tr><th>Data</th><th>Arquivo</th><th>Período</th><th>Filial</th><th>Localizados</th><th>Usuário</th></tr></thead><tbody id="point-import-history"></tbody></table></div></details>
+          <details class="import-history-details master-only" id="point-cleanup-details">
+            <summary>Limpeza controlada dos pontos do ambiente Beta</summary>
+            <div class="point-cleanup-box">
+              <p class="hint"><strong>Uso exclusivo para testes.</strong> Remove as marcações importadas e o histórico de Cartão de Ponto Senior da empresa/filial selecionada acima. A função é bloqueada automaticamente no ambiente Oficial.</p>
+              <div class="actions"><button type="button" class="danger" id="point-data-cleanup">Limpar pontos de teste</button></div>
+              <p id="point-cleanup-feedback" class="feedback" aria-live="polite"></p>
+            </div>
+          </details>
         </div>
         <details class="panel thermal-reference-details">
           <summary><span><strong>Consultar turnos cadastrados</strong><small>Visualizar códigos, horários e repousos-base</small></span></summary>

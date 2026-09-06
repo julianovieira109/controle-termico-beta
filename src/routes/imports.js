@@ -5,7 +5,7 @@ const PDFParser=require("pdf2json");
 const zlib=require("zlib");
 const pool=require("../db/pool");
 const audit=require("../db/audit");
-const {authenticate,applyScope,requirePermission}=require("../middleware/auth");
+const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
 const {parseSeniorTimecard}=require("../importers/timecard-reader");
 
@@ -3873,6 +3873,88 @@ async function readAndMatchTimecard(req){
   });
   return {companyId,branchId,extraction,parsed,rows};
 }
+
+function pointCleanupAllowed(){
+  if(String(process.env.ALLOW_POINT_DATA_CLEANUP||"").toLowerCase()==="true")return true;
+  if(process.env.NODE_ENV==="test")return true;
+  const environmentName=String(
+    process.env.RENDER_SERVICE_NAME ||
+    process.env.SERVICE_NAME ||
+    process.env.APP_ENV ||
+    ""
+  );
+  return /(beta|test|staging|homolog)/i.test(environmentName);
+}
+
+router.post("/timecard-cleanup",requireMasterAdmin,async(req,res,next)=>{
+  const client=await pool.connect();
+  try{
+    if(!pointCleanupAllowed()){
+      return res.status(403).json({
+        error:"A limpeza de pontos está bloqueada neste ambiente. Esta função é destinada somente ao Beta/testes."
+      });
+    }
+
+    const companyId=String(req.body?.companyId||"").trim();
+    const branchId=String(req.body?.branchId||"").trim();
+    const confirmation=String(req.body?.confirmation||"").trim().toUpperCase();
+    if(!companyId||!branchId)return res.status(400).json({error:"Selecione a empresa e a filial antes da limpeza."});
+    if(confirmation!=="LIMPAR PONTOS BETA"){
+      return res.status(400).json({error:'Confirmação inválida. Digite exatamente "LIMPAR PONTOS BETA".'});
+    }
+
+    const scope=await client.query(`
+      SELECT c.trade_name company_name,b.name branch_name
+      FROM branches b
+      JOIN companies c ON c.id=b.company_id
+      WHERE b.id=$1 AND c.id=$2
+      LIMIT 1
+    `,[branchId,companyId]);
+    if(!scope.rows.length)return res.status(404).json({error:"Empresa ou filial não localizada."});
+
+    await client.query("BEGIN");
+    const daysResult=await client.query(`
+      DELETE FROM employee_point_days
+      WHERE company_id=$1 AND branch_id=$2
+      RETURNING id
+    `,[companyId,branchId]);
+    const importsResult=await client.query(`
+      DELETE FROM employee_imports
+      WHERE import_type='PONTO_SENIOR'
+        AND company_id=$1
+        AND branch_id=$2
+      RETURNING id
+    `,[companyId,branchId]);
+    await client.query("COMMIT");
+
+    const pointDaysDeleted=daysResult.rowCount||0;
+    const importsDeleted=importsResult.rowCount||0;
+    await audit(req,"CLEAR_BETA_TIMECARD_DATA","employee_point_days",branchId,{
+      companyId,
+      branchId,
+      companyName:scope.rows[0].company_name,
+      branchName:scope.rows[0].branch_name,
+      pointDaysDeleted,
+      importsDeleted,
+      protectedEnvironment:true
+    });
+
+    res.json({
+      success:true,
+      companyId,
+      branchId,
+      companyName:scope.rows[0].company_name,
+      branchName:scope.rows[0].branch_name,
+      pointDaysDeleted,
+      importsDeleted
+    });
+  }catch(error){
+    try{await client.query("ROLLBACK");}catch{}
+    next(error);
+  }finally{
+    client.release();
+  }
+});
 
 router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
   try{

@@ -748,6 +748,55 @@ if($("point-import-clear"))$("point-import-clear").onclick=()=>{
   $("point-import-form").reset();pointImportPreview=null;$("point-import-preview").hidden=true;$("point-import-feedback").textContent="";preparePointImportSelectors();
 };
 
+if($("point-data-cleanup"))$("point-data-cleanup").onclick=async()=>{
+  const companyId=$("point-import-company")?.value;
+  const branchId=$("point-import-branch")?.value;
+  const feedback=$("point-cleanup-feedback");
+  if(!companyId||!branchId)return toast("Selecione a empresa e a filial antes da limpeza.","warning");
+
+  const companyName=$("point-import-company")?.selectedOptions?.[0]?.textContent?.trim()||"empresa selecionada";
+  const branchName=$("point-import-branch")?.selectedOptions?.[0]?.textContent?.trim()||"filial selecionada";
+  const confirmation=prompt(`Esta ação apaga somente os dados importados do Cartão de Ponto Senior de ${companyName} / ${branchName} no ambiente Beta.\n\nPara confirmar, digite exatamente:\nLIMPAR PONTOS BETA`);
+  if(confirmation===null)return;
+  if(confirmation.trim().toUpperCase()!=="LIMPAR PONTOS BETA"){
+    toast("Limpeza cancelada: frase de confirmação incorreta.","warning");
+    return;
+  }
+
+  const button=$("point-data-cleanup");
+  try{
+    setButtonLoading(button,true,"Limpando pontos");
+    const result=await api("/api/imports/timecard-cleanup",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({companyId,branchId,confirmation:"LIMPAR PONTOS BETA"})
+    });
+    pointImportPreview=null;
+    $("point-import-preview").hidden=true;
+    if(feedback){
+      feedback.className="feedback success";
+      feedback.textContent=`Limpeza concluída: ${result.pointDaysDeleted} dia(s) de ponto e ${result.importsDeleted} importação(ões) removidos de ${result.branchName}.`;
+    }
+    await loadPointImportHistory();
+    pointCompetenceInfo={month:null,imports:[]};
+    pointCompetenceBranches=new Set();
+    pointDataActive=false;
+    const output=$("report-output");
+    if(output?.querySelector(".report-sheet"))output.innerHTML="";
+    const summary=$("report-generation-summary");
+    if(summary){
+      summary.className="full feedback warning";
+      summary.textContent="Os pontos de teste foram limpos. Importe um novo Cartão de Ponto Senior antes de gerar as fichas automáticas.";
+    }
+    toast("Pontos de teste limpos com segurança.","success");
+  }catch(error){
+    if(feedback){feedback.className="feedback error";feedback.textContent=error.message;}
+    toast(error.message,"error");
+  }finally{
+    setButtonLoading(button,false);
+  }
+};
+
 async function loadPointImportHistory(){
   const body=$("point-import-history");
   if(!body)return;
