@@ -262,64 +262,40 @@ function reportMonthLabel(monthValue){
     .format(new Date(Date.UTC(year,month-1,1)));
 }
 
-function reportDateRangeDays(start,end){
-  const startIso=String(start||"").slice(0,10);
-  const endIso=String(end||"").slice(0,10);
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(startIso)||!/^\d{4}-\d{2}-\d{2}$/.test(endIso)||startIso>endIso)return [];
-  const days=[];
-  const cursor=new Date(`${startIso}T00:00:00Z`);
-  const finish=new Date(`${endIso}T00:00:00Z`);
-  while(cursor<=finish){
-    const iso=cursor.toISOString().slice(0,10);
-    days.push({
-      day:cursor.getUTCDate(),
-      iso,
-      br:`${String(cursor.getUTCDate()).padStart(2,"0")}/${String(cursor.getUTCMonth()+1).padStart(2,"0")}/${cursor.getUTCFullYear()}`,
-      weekDay:cursor.getUTCDay(),
-      weekName:new Intl.DateTimeFormat("pt-BR",{weekday:"short",timeZone:"UTC"}).format(cursor).replace(".","")
-    });
-    cursor.setUTCDate(cursor.getUTCDate()+1);
-  }
-  return days;
-}
-
-function seniorCompetenceFromPeriod(period){
-  const end=String(period?.end||period?.period_end||"").slice(0,10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(end)?end.slice(0,7):null;
-}
-
-function pointPeriodForEmployee(employee,month){
-  const candidates=(pointCompetenceInfo.imports||[]).filter(item=>
-    String(item.branch_id)===String(employee?.branch_id) &&
-    String(item.competence||seniorCompetenceFromPeriod({period_end:item.period_end})||"")===String(month)
-  );
-  if(!candidates.length)return null;
-  const starts=candidates.map(item=>String(item.period_start||"").slice(0,10)).filter(value=>/^\d{4}-\d{2}-\d{2}$/.test(value)).sort();
-  const ends=candidates.map(item=>String(item.period_end||"").slice(0,10)).filter(value=>/^\d{4}-\d{2}-\d{2}$/.test(value)).sort();
-  return starts.length&&ends.length?{start:starts[0],end:ends[ends.length-1]}:null;
-}
-
 function reportCompetencePeriod(employee,month){
-  const period=pointPeriodForEmployee(employee,month);
+  const days=reportMonthDays(month);
+  const start=days[0]?.iso||`${month}-01`;
+  const end=days[days.length-1]?.iso||start;
   return {
     competence:reportMonthLabel(month),
-    period,
-    periodLabel:period?`${formatApiDate(period.start)} a ${formatApiDate(period.end)}`:"Não identificado"
+    period:{start,end},
+    periodLabel:`${formatApiDate(start)} a ${formatApiDate(end)}`
   };
 }
 
 function reportThermalDays(employee,month){
-  const automatic=thermalAutomaticAllowed(employee,thermalRestSettings);
-  const period=automatic?pointPeriodForEmployee(employee,month):null;
-  return period?reportDateRangeDays(period.start,period.end):reportMonthDays(month);
+  return reportMonthDays(month);
 }
 
 function reportPlanningDays(employees,month){
-  const periods=(employees||[]).map(employee=>pointPeriodForEmployee(employee,month)).filter(Boolean);
-  if(!periods.length)return reportMonthDays(month);
-  const start=periods.map(period=>period.start).sort()[0];
-  const end=periods.map(period=>period.end).sort().slice(-1)[0];
-  return reportDateRangeDays(start,end);
+  return reportMonthDays(month);
+}
+
+function monthsCoveredByPeriod(period){
+  const start=String(period?.start||"").slice(0,10);
+  const end=String(period?.end||"").slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||start>end)return [];
+  const cursor=new Date(`${start.slice(0,7)}-01T00:00:00Z`);
+  const finish=end.slice(0,7);
+  const months=[];
+  while(true){
+    const month=cursor.toISOString().slice(0,7);
+    months.push(month);
+    if(month===finish)break;
+    cursor.setUTCMonth(cursor.getUTCMonth()+1);
+    if(months.length>24)break;
+  }
+  return months;
 }
 
 function reportEmployeeSelected(){
@@ -419,7 +395,7 @@ function reportHeader(employee,title,month){
         <span class="report-field-value">${reportMonthLabel(month)}</span>
       </div>
       <div class="report-field report-point-period-field">
-        <span class="report-field-label">Período do Cartão de Ponto Senior</span>
+        <span class="report-field-label">Dados de ponto considerados</span>
         <span class="report-field-value">${escapeHtml(reportCompetencePeriod(employee,month).periodLabel)}</span>
       </div>
 
@@ -667,9 +643,8 @@ function renderPointImportPreview(data){
   pointImportPreview=data;
   $("point-import-preview").hidden=false;
   const period=data.period?`${formatApiDate(data.period.start)} a ${formatApiDate(data.period.end)}`:"não identificado";
-  const seniorCompetence=seniorCompetenceFromPeriod(data.period);
-  const competenceLabel=seniorCompetence?reportMonthLabel(seniorCompetence):"não identificada";
-  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias com 4 marcações</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Competência:</strong> ${escapeHtml(competenceLabel)} · <strong>Período do Cartão de Ponto Senior:</strong> ${period}</p>`;
+  const coveredMonths=monthsCoveredByPeriod(data.period).map(reportMonthLabel).join(" e ")||"não identificadas";
+  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias com 4 marcações</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Período do Cartão de Ponto Senior:</strong> ${period} · <strong>Competências alcançadas:</strong> ${escapeHtml(coveredMonths)}</p>`;
   $("point-import-body").innerHTML=data.rows.map(row=>`<tr><td>${escapeHtml(row.registration)}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.systemName||"-")}</td><td>${row.eligibleDays}</td><td>${row.reviewDays}</td><td>${row.nonWorkDays}</td><td><span class="import-result ${row.result}">${escapeHtml(row.result.replaceAll("_"," "))}</span></td></tr>`).join("");
 }
 
@@ -704,22 +679,21 @@ function reportMonthWithinImportedPeriod(month,period){
 
 async function refreshReportsAfterPointImport(importResult){
   const period=importResult?.period||null;
-  const importedMonth=seniorCompetenceFromPeriod(period);
+  const coveredMonths=monthsCoveredByPeriod(period);
   const currentMonth=$("report-month")?.value||"";
 
   invalidateReportValidation();
 
-  if(!/^\d{4}-\d{2}$/.test(importedMonth||"")){
+  if(!coveredMonths.length){
     return {importedMonth:null,coveredMonths:[],regenerated:false};
   }
 
-  // Regra Senior: a competência é sempre o mês da data final do período.
-  // Ex.: 19/08 a 02/09 = setembro; 19/07 a 06/08 = agosto.
-  await applyPointDataToEmployees(importedMonth);
-
-  if(currentMonth!==importedMonth){
-    return {importedMonth,coveredMonths:[importedMonth],regenerated:false,differentMonth:true};
+  const importedMonth=coveredMonths[coveredMonths.length-1];
+  if(!coveredMonths.includes(currentMonth)){
+    return {importedMonth,coveredMonths,regenerated:false,differentMonth:true};
   }
+
+  await applyPointDataToEmployees(currentMonth);
 
   const output=$("report-output");
   const hadGeneratedSheets=Boolean(output?.querySelector(".report-sheet"));
@@ -729,19 +703,19 @@ async function refreshReportsAfterPointImport(importResult){
     const summary=$("report-generation-summary");
     if(summary){
       summary.className="full feedback";
-      summary.textContent=`Cartão de Ponto atualizado (${formatApiDate(period.start)} a ${formatApiDate(period.end)}), competência ${reportMonthLabel(importedMonth)}. Recalculando as fichas...`;
+      summary.textContent=`Cartão de Ponto atualizado (${formatApiDate(period.start)} a ${formatApiDate(period.end)}). Recalculando a competência ${reportMonthLabel(currentMonth)}...`;
     }
     await new Promise(resolve=>setTimeout(resolve,0));
     $("report-generate")?.click();
-    return {importedMonth,coveredMonths:[importedMonth],regenerated:true};
+    return {importedMonth,coveredMonths,regenerated:true};
   }
 
   const summary=$("report-generation-summary");
   if(summary){
     summary.className="full feedback success";
-    summary.textContent=`Cartão de Ponto atualizado: competência ${reportMonthLabel(importedMonth)} · período ${formatApiDate(period.start)} a ${formatApiDate(period.end)}.`;
+    summary.textContent=`Cartão de Ponto atualizado: período ${formatApiDate(period.start)} a ${formatApiDate(period.end)} · competência atual ${reportMonthLabel(currentMonth)}.`;
   }
-  return {importedMonth,coveredMonths:[importedMonth],regenerated:false};
+  return {importedMonth,coveredMonths,regenerated:false};
 }
 
 if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
@@ -859,8 +833,9 @@ async function applyPointDataToEmployees(month){
     const target=byEmployee.get(id);
     const sourceDate=String(row.work_date).slice(0,10);
     const date=ThermalSchedule.pointReportDate(sourceDate,employee);
-    const period=pointPeriodForEmployee(employee,month);
-    if(period&&(date<period.start||date>period.end))return;
+    const monthStart=`${month}-01`;
+    const monthEnd=reportMonthDays(month).slice(-1)[0]?.iso||monthStart;
+    if(date<monthStart||date>monthEnd)return;
     target.states[date]=row.point_state;
     if(row.eligible_for_automatic_rest&&Array.isArray(row.markings)&&[2,4].includes(row.markings.length))target.schedules[date]=row.markings.join("-");
   });
