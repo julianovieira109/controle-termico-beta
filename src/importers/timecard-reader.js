@@ -47,7 +47,35 @@ function parseEmployee(block){
   };
 }
 
-function parseDayLine(line,period){
+function parseScheduleDefinitions(block){
+  const definitions=new Map();
+  const header=String(block||"").split(/Data\s+Sem\s+Hor\s+Marcações/i)[0]||"";
+  for(const line of header.split(/\r?\n/)){
+    const match=line.match(/(?:Horários:\s*)?(\d{4})\s+((?:(?:[01]\d|2[0-3]):[0-5]\d\s*){2,6})/i);
+    if(!match)continue;
+    const times=match[2].match(/(?:[01]\d|2[0-3]):[0-5]\d/g)||[];
+    if(times.length>=2)definitions.set(match[1],times);
+  }
+  return definitions;
+}
+
+function minutesBetweenPairs(markings){
+  let total=0;
+  for(let i=0;i+1<markings.length;i+=2){
+    const [ah,am]=markings[i].split(":").map(Number);
+    const [bh,bm]=markings[i+1].split(":").map(Number);
+    let start=ah*60+am,end=bh*60+bm;
+    if(end<start)end+=1440;
+    total+=end-start;
+  }
+  return total;
+}
+
+function hhmmDuration(minutes){
+  return `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
+}
+
+function parseDayLine(line,period,scheduleDefinitions=new Map()){
   const head=String(line).match(/^\s*(\d{2}\/\d{2})\s*([A-Z]{3})\s*(.*)$/i);
   if(!head)return null;
   const tail=head[3];
@@ -65,6 +93,19 @@ function parseDayLine(line,period){
   let markings=rawMarkings.slice(0,8);
   let ignoredMarkings=[];
 
+  // Em algumas extrações do PDF, quando não há texto de ocorrência entre as
+  // marcações e a coluna "Trabalho", o total trabalhado pode aparecer como
+  // uma quinta hora. Se ele for exatamente a soma dos dois pares anteriores,
+  // trata-se do total da Senior e não de uma quinta batida.
+  if(!occurrence&&markings.length===5){
+    const expectedTotal=hhmmDuration(minutesBetweenPairs(markings.slice(0,4)));
+    if(markings[4]===expectedTotal){
+      ignoredMarkings=[markings[4]];
+      markings=markings.slice(0,4);
+      occurrence=`Total de trabalho da Senior desconsiderado como marcação: ${ignoredMarkings[0]}`;
+    }
+  }
+
   // Alguns cartões da Senior registram BH (-) / Saída Antecipada após uma
   // quantidade ímpar de batidas. Nesse formato, a última batida fica sem par
   // e os horários depois da ocorrência são totais/indicadores da Senior, não
@@ -78,11 +119,13 @@ function parseDayLine(line,period){
     occurrence=`${occurrence||"BH (-) Saída Antecipada"} | Marcação sem par desconsiderada no cálculo automático: ${ignoredMarkings.join(", ")}`;
   }
 
+  const plannedMarkings=scheduleDefinitions.get(scheduleCode)||[];
+  const confirmedTwoMarkSchedule=markings.length===2&&plannedMarkings.length===2;
   const confirmedPartial=markings.length===2&&earlyExit;
   let state="WORKED";
   if(statusMatch)state=statusMatch[0];
   else if(markings.length===0)state="NO_MARKINGS";
-  else if(markings.length!==4&&!confirmedPartial)state="REVIEW";
+  else if(markings.length!==4&&!confirmedPartial&&!confirmedTwoMarkSchedule)state="REVIEW";
 
   return {
     date:isoDate(head[1],period.start,period.end),
@@ -92,7 +135,7 @@ function parseDayLine(line,period){
     ignoredMarkings,
     state,
     occurrence,
-    eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial)
+    eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule)
   };
 }
 
@@ -115,7 +158,8 @@ function parseSeniorTimecard(text){
       warnings.push({page:pageIndex+1,message:"Cabeçalho do colaborador ou período não reconhecido."});
       continue;
     }
-    const days=block.split(/\r?\n/).map(line=>parseDayLine(line,period)).filter(Boolean);
+    const scheduleDefinitions=parseScheduleDefinitions(block);
+    const days=block.split(/\r?\n/).map(line=>parseDayLine(line,period,scheduleDefinitions)).filter(Boolean);
     employees.push({...employee,period,days,page:pageIndex+1});
   }
   return {
@@ -132,4 +176,4 @@ function parseSeniorTimecard(text){
   };
 }
 
-module.exports={parseSeniorTimecard,parseDayLine};
+module.exports={parseSeniorTimecard,parseDayLine,parseScheduleDefinitions};
