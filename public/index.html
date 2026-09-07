@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.25">
+  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.26">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -1426,7 +1426,7 @@
         <button type="button" class="occ-kpi yellow" data-status="YELLOW"><span>🟡 Em atenção</span><strong id="occ-status-yellow">—</strong><small id="occ-status-yellow-pct">Requer acompanhamento</small></button>
         <button type="button" class="occ-kpi red" data-status="RED"><span>🔴 Críticos</span><strong id="occ-status-red">—</strong><small id="occ-status-red-pct">Ação prioritária</small></button>
         <article class="occ-kpi"><span>Faltas</span><strong id="occ-kpi-absences">—</strong><small>registros</small></article>
-        <article class="occ-kpi"><span>BH</span><strong id="occ-kpi-bank-hours">—</strong><small>ocorrências</small></article>
+        <article class="occ-kpi"><span>BH líquido</span><strong id="occ-kpi-bank-hours">—</strong><small>saldo calculado</small></article>
         <article class="occ-kpi"><span>Saídas antecipadas</span><strong id="occ-kpi-early-exits">—</strong><small>ocorrências</small></article>
         <article class="occ-kpi"><span>Para revisão</span><strong id="occ-kpi-review">—</strong><small>dias</small></article>
       </div>
@@ -1457,7 +1457,7 @@
           </div>
           <div id="occurrences-active-filter" class="occurrences-active-filter" hidden></div>
           <div class="table-wrap occurrences-table-wrap">
-            <table class="occurrences-table"><thead><tr><th>Colaborador</th><th>Turno / Coordenador</th><th>Indicador</th><th>Faltas</th><th>BH</th><th>Revisão</th><th>Jornada</th></tr></thead><tbody id="occurrences-table-body"><tr><td colspan="7" class="muted">Selecione uma competência.</td></tr></tbody></table>
+            <table class="occurrences-table"><thead><tr><th>Colaborador</th><th>Turno / Coordenador</th><th>Indicador</th><th>Faltas</th><th>BH (+ / -)</th><th>Revisão</th><th>Jornada</th></tr></thead><tbody id="occurrences-table-body"><tr><td colspan="7" class="muted">Selecione uma competência.</td></tr></tbody></table>
           </div>
           <div class="occurrences-footer"><span id="occurrences-visible-count">0 colaboradores exibidos</span><small>Fonte: Cartão de Ponto Senior confirmado.</small></div>
         </article>
@@ -2626,6 +2626,6 @@
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.17"></script>
-  <script src="/js/occurrences-control.js?v=1.0.31-beta.25"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.26"></script>
 </body>
 </html>

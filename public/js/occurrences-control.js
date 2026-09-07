@@ -30,6 +30,12 @@
     return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
   }
   function number(row,key){return Number(row?.[key]||0);}
+  function formatDuration(minutes,{signed=true}={}){
+    const value=Math.round(Number(minutes)||0);
+    const sign=signed?(value>0?"+":value<0?"-":""):"";
+    const abs=Math.abs(value);
+    return `${sign}${String(Math.floor(abs/60)).padStart(2,"0")}:${String(abs%60).padStart(2,"0")}`;
+  }
   function currentFilters(){
     return {
       month:$("occurrences-month")?.value||new Date().toISOString().slice(0,7),
@@ -103,7 +109,9 @@
   function renderSummary(summary={}){
     for(const [key,,id] of config)if($(id))$(id).textContent=Number(summary[key]||0);
     if($("occ-kpi-absences"))$("occ-kpi-absences").textContent=Number(summary.absences||0);
-    if($("occ-kpi-bank-hours"))$("occ-kpi-bank-hours").textContent=Number(summary.bank_hours||0);
+    if($("occ-kpi-bank-hours"))$("occ-kpi-bank-hours").textContent=summary.bh_net||formatDuration(summary.bh_net_minutes||0);
+    if($("occ-kpi-bank-hours-positive"))$("occ-kpi-bank-hours-positive").textContent=summary.bh_positive||formatDuration(summary.bh_positive_minutes||0);
+    if($("occ-kpi-bank-hours-negative"))$("occ-kpi-bank-hours-negative").textContent=summary.bh_negative||`-${formatDuration(summary.bh_negative_minutes||0,{signed:false})}`;
     if($("occ-kpi-review"))$("occ-kpi-review").textContent=Number(summary.review_days||0);
     const early=rows.reduce((sum,row)=>sum+number(row,"early_exits"),0);
     if($("occ-kpi-early-exits"))$("occ-kpi-early-exits").textContent=early;
@@ -250,7 +258,7 @@
         <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.registration||"Sem matrícula")} · ${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
         <td><strong>${esc(row.shift_name||"Sem turno")}</strong><small class="occurrence-subline">${esc(row.coordinator?.name||"Sem coordenador")}</small></td>
         <td><span class="occ-status ${row.indicator_status==="RED"?"is-red":row.indicator_status==="YELLOW"?"is-yellow":"is-green"}" title="${esc((row.indicator_reasons||[]).join(" · ")||"Dentro do padrão")}">${row.indicator_status==="RED"?"🔴 Vermelho":row.indicator_status==="YELLOW"?"🟡 Amarelo":"🟢 Verde"}</span><small class="occurrence-subline occ-status-reason">${esc((row.indicator_reasons||[]).join(" · ")||"Dentro do padrão")}</small></td>
-        <td>${number(row,"absences")}</td><td>${number(row,"bank_hours")}</td>
+        <td>${number(row,"absences")}</td><td><strong class="${number(row,'bh_net_minutes')<0?'occ-bh-negative':number(row,'bh_net_minutes')>0?'occ-bh-positive':''}">${esc(row.bh_net||formatDuration(row.bh_net_minutes||0))}</strong><small class="occurrence-subline">+${formatDuration(row.bh_positive_minutes||0,{signed:false})} / -${formatDuration(row.bh_negative_minutes||0,{signed:false})}</small></td>
         <td class="${number(row,"review_days")>0?"occurrence-review":""}">${number(row,"review_days")}</td>
         <td><button type="button" class="secondary occ-journey-button" data-employee-id="${esc(row.employee_id)}">Ver jornada</button></td>
       </tr>`).join("");
@@ -329,13 +337,14 @@
 
     const impacts=[
       {key:'absences',label:'Faltas',value:base.reduce((a,r)=>a+number(r,'absences'),0),tone:'red'},
-      {key:'bank_hours',label:'BH / Banco de Horas',value:base.reduce((a,r)=>a+number(r,'bank_hours'),0),tone:'blue'},
+      {key:'bh_positive_minutes',label:'BH positivo',value:base.reduce((a,r)=>a+number(r,'bh_positive_minutes'),0),tone:'blue',isMinutes:true},
+      {key:'bh_negative_minutes',label:'BH negativo',value:base.reduce((a,r)=>a+number(r,'bh_negative_minutes'),0),tone:'red',isMinutes:true},
       {key:'early_exits',label:'Saídas antecipadas',value:base.reduce((a,r)=>a+number(r,'early_exits'),0),tone:'yellow'},
       {key:'incomplete_days',label:'Jornadas incompletas',value:base.reduce((a,r)=>a+number(r,'incomplete_days'),0),tone:'gray'},
       {key:'review_days',label:'Dias para revisão',value:base.reduce((a,r)=>a+number(r,'review_days'),0),tone:'gray'}
     ].sort((a,b)=>b.value-a.value);
     const max=Math.max(1,...impacts.map(i=>i.value));
-    if($('occ-impact-bars'))$('occ-impact-bars').innerHTML=impacts.map(item=>`<div class="occ-impact-row"><span>${esc(item.label)}</span><div class="occ-impact-track"><i class="${item.tone}" style="width:${item.value?Math.max(7,Math.round(item.value/max*100)):0}%"></i></div><b>${item.value}</b></div>`).join('');
+    if($('occ-impact-bars'))$('occ-impact-bars').innerHTML=impacts.map(item=>`<div class="occ-impact-row"><span>${esc(item.label)}</span><div class="occ-impact-track"><i class="${item.tone}" style="width:${item.value?Math.max(7,Math.round(item.value/max*100)):0}%"></i></div><b>${item.isMinutes?formatDuration(item.value,{signed:false}):item.value}</b></div>`).join('');
 
     const groups=new Map();
     base.forEach(row=>{const name=row.shift_name||'Sem turno';if(!groups.has(name))groups.set(name,{GREEN:0,YELLOW:0,RED:0,total:0});const g=groups.get(name);g.total++;if(row.indicator_status in g)g[row.indicator_status]++;});
@@ -343,7 +352,7 @@
     if($('occ-shift-grid'))$('occ-shift-grid').innerHTML=shifts.length?shifts.map(([name,g])=>`<div class="occ-shift-card"><strong>${esc(name)}</strong><div><span class="green">${g.GREEN} (${Math.round(g.GREEN/g.total*100)}%)</span><span class="yellow">${g.YELLOW} (${Math.round(g.YELLOW/g.total*100)}%)</span><span class="red">${g.RED} (${Math.round(g.RED/g.total*100)}%)</span></div></div>`).join(''):'<span class="muted">Sem turnos neste filtro.</span>';
 
     const affectedCount=key=>base.filter(r=>number(r,key)>0).length;
-    if($('occ-attention-list'))$('occ-attention-list').innerHTML=impacts.filter(i=>i.value>0).slice(0,5).map((item,index)=>`<div class="occ-insight-item"><b>${index+1}</b><span><strong>${esc(item.label)}</strong><small>${item.value} ocorrência${item.value===1?'':'s'} · afeta ${affectedCount(item.key)} colaborador${affectedCount(item.key)===1?'':'es'}</small></span></div>`).join('')||'<div class="occ-empty-good">Nenhum ponto crítico encontrado.</div>';
+    if($('occ-attention-list'))$('occ-attention-list').innerHTML=impacts.filter(i=>i.value>0).slice(0,5).map((item,index)=>`<div class="occ-insight-item"><b>${index+1}</b><span><strong>${esc(item.label)}</strong><small>${item.isMinutes?formatDuration(item.value,{signed:false}):`${item.value} ocorrência${item.value===1?'':'s'}`} · afeta ${affectedCount(item.key)} colaborador${affectedCount(item.key)===1?'':'es'}</small></span></div>`).join('')||'<div class="occ-empty-good">Nenhum ponto crítico encontrado.</div>';
 
     const positives=[];
     const regularPct=total?Math.round(counts.GREEN/total*100):0;
@@ -356,7 +365,7 @@
     const top=impacts[0];
     let suggestion='Manter o acompanhamento da jornada e das ocorrências da equipe.';
     if(top?.value){
-      suggestion={absences:'Priorizar os colaboradores com faltas e verificar reincidências, justificativas e necessidade de orientação individual.',bank_hours:'Revisar com os coordenadores onde o BH está sendo gerado e confirmar necessidade e autorização das horas adicionais.',early_exits:'Conferir as saídas antecipadas, separar os casos justificados e acompanhar os colaboradores com repetição.',incomplete_days:'Regularizar as marcações incompletas antes de tomar decisões sobre jornada e reforçar o registro correto do ponto.',review_days:'Priorizar a conferência dos dias para revisão para que o painel reflita somente dados de ponto confirmados.'}[top.key]||suggestion;
+      suggestion={absences:'Priorizar os colaboradores com faltas e verificar reincidências, justificativas e necessidade de orientação individual.',bh_positive_minutes:'Revisar onde o BH positivo está sendo gerado e confirmar necessidade e autorização das horas adicionais.',bh_negative_minutes:'Identificar a origem do BH negativo e acompanhar a regularização do saldo com a liderança.',early_exits:'Conferir as saídas antecipadas, separar os casos justificados e acompanhar os colaboradores com repetição.',incomplete_days:'Regularizar as marcações incompletas antes de tomar decisões sobre jornada e reforçar o registro correto do ponto.',review_days:'Priorizar a conferência dos dias para revisão para que o painel reflita somente dados de ponto confirmados.'}[top.key]||suggestion;
     }
     if($('occ-general-suggestion'))$('occ-general-suggestion').textContent=suggestion;
   }
