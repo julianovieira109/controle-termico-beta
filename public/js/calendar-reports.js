@@ -728,7 +728,10 @@ if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
     $("point-import-feedback").className="feedback full success";
     $("point-import-feedback").textContent=`Importação concluída: ${data.employees} colaborador(es) e ${data.savedDays} dia(s) salvos.`;
     toast("Cartão de ponto importado com sucesso.","success");
-    await loadPointImportHistory();
+    await Promise.all([
+      loadPointImportHistory(),
+      typeof loadDashboard==="function" ? loadDashboard() : Promise.resolve()
+    ]);
 
     try{
       const refresh=await refreshReportsAfterPointImport(data);
