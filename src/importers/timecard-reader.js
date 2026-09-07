@@ -119,9 +119,24 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     occurrence=`${occurrence||"BH (-) Saída Antecipada"} | Marcação sem par desconsiderada no cálculo automático: ${ignoredMarkings.join(", ")}`;
   }
 
+  // Quando a Senior traz 3 ou 5 batidas sem uma ocorrência que explique a
+  // marcação órfã, ainda podemos calcular com segurança os períodos que estão
+  // fechados por pares. A última batida permanece preservada para auditoria,
+  // mas nunca é usada para inventar uma saída. Ex.: 19:30 23:08 23:47 usa
+  // somente 19:30–23:08 no cálculo dos repousos.
+  let partialFromOdd=false;
+  if(!earlyExit&&(markings.length===3||markings.length===5)){
+    partialFromOdd=true;
+    const orphan=markings[markings.length-1];
+    ignoredMarkings=[...ignoredMarkings,orphan];
+    markings=markings.slice(0,-1);
+    const note=`Jornada parcialmente calculada | Marcação sem par desconsiderada no cálculo automático: ${orphan}`;
+    occurrence=occurrence?`${occurrence} | ${note}`:note;
+  }
+
   const plannedMarkings=scheduleDefinitions.get(scheduleCode)||[];
   const confirmedTwoMarkSchedule=markings.length===2&&plannedMarkings.length===2;
-  const confirmedPartial=markings.length===2&&earlyExit;
+  const confirmedPartial=markings.length===2&&(earlyExit||partialFromOdd);
   let state="WORKED";
   if(statusMatch)state=statusMatch[0];
   else if(markings.length===0)state="NO_MARKINGS";
