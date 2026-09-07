@@ -259,3 +259,44 @@
     display:flex!important;justify-content:space-between!important;padding:2mm 3mm!important;color:#65717d!important;font-size:6pt!important
   }
 }
+
+/* V1.0.31 Beta.23 — gestão por turno, coordenador e jornada */
+.occurrences-management{margin:14px 0;padding:0;overflow:hidden}
+.occurrences-management summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;cursor:pointer;background:var(--surface-2,#f6f8fa)}
+.occurrences-management summary span{font-size:.8rem;color:var(--muted,#667085)}
+.occurrences-management-body{padding:16px}
+.occurrences-management-grid{display:grid;grid-template-columns:minmax(180px,1fr) minmax(220px,1.4fr) auto;gap:12px;align-items:end;margin-top:12px}
+.occurrences-management-grid label{display:grid;gap:6px}
+.occurrences-toolbar{flex-wrap:wrap}
+.occurrences-toolbar label{min-width:150px}
+.occurrence-subline{display:block;margin-top:4px;font-size:.72rem;color:var(--muted,#667085);font-weight:400}
+.occ-status{display:inline-flex;align-items:center;justify-content:center;min-width:94px;padding:5px 8px;border-radius:999px;font-size:.76rem;font-weight:700;white-space:nowrap}
+.occ-status.is-green{background:rgba(26,127,55,.12);color:#1a7f37;border:1px solid rgba(26,127,55,.25)}
+.occ-status.is-pending{background:rgba(102,112,133,.10);color:var(--muted,#667085);border:1px solid rgba(102,112,133,.22)}
+.occ-journey-button{padding:6px 9px;white-space:nowrap}
+.occurrences-journey-panel{margin-top:16px}
+.occurrences-journey-table{min-width:980px}
+.occurrences-journey-table th:first-child,.occurrences-journey-table td:first-child{width:auto}
+@media(max-width:900px){.occurrences-management-grid{grid-template-columns:1fr}.occurrences-management-grid button{width:100%}.occurrences-toolbar label{min-width:calc(50% - 8px)}}
+@media(max-width:560px){.occurrences-toolbar label{min-width:100%}.occurrences-management summary{align-items:flex-start;flex-direction:column}}
+
+/* Beta.23 - semáforo gerencial */
+.occurrences-status-summary{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:12px;margin:14px 0}
+.occurrences-status-summary button{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:inherit;cursor:pointer}
+.occurrences-status-summary button span{font-weight:800}.occurrences-status-summary button strong{font-size:1.45rem}.occurrences-status-summary button small{grid-column:1/-1;color:var(--muted)}
+.occurrences-status-summary button.active-filter{outline:2px solid currentColor;outline-offset:1px}
+.occ-status.is-yellow{background:rgba(245,158,11,.14);color:#9a6700;border:1px solid rgba(245,158,11,.35)}
+.occ-status.is-red{background:rgba(220,38,38,.12);color:#b42318;border:1px solid rgba(220,38,38,.28)}
+.occ-status-reason{max-width:190px;line-height:1.25;margin-top:4px}
+@media(max-width:700px){.occurrences-status-summary{grid-template-columns:1fr}}
+
+/* V1.0.31 Beta.24 — painel gerencial enxuto */
+.occurrences-primary-kpis{display:grid;grid-template-columns:repeat(7,minmax(125px,1fr));gap:10px;margin:14px 0}
+.occurrences-primary-kpis article,.occurrences-primary-kpis button{display:grid;gap:4px;align-content:center;min-height:92px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:inherit;text-align:left}
+.occurrences-primary-kpis button{cursor:pointer}.occurrences-primary-kpis strong{font-size:1.45rem}.occurrences-primary-kpis span{font-weight:800}.occurrences-primary-kpis small{color:var(--muted)}
+.occurrences-primary-kpis button.active-filter{outline:2px solid currentColor;outline-offset:1px}
+.occurrences-analysis-more{margin:0 0 14px;overflow:hidden}.occurrences-analysis-more>summary{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;cursor:pointer;background:var(--surface-2,#f6f8fa)}.occurrences-analysis-more>summary span{font-size:.8rem;color:var(--muted)}.occurrences-analysis-more-body{padding:0 14px 14px}
+.occurrences-journey-insights{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin:0 0 12px}.occurrences-journey-summary,.occurrences-journey-suggestion{display:grid;gap:6px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2,#f6f8fa)}.occurrences-journey-suggestion{background:rgba(245,158,11,.08)}
+.occ-journey-red td:last-child{color:#b42318}.occ-journey-yellow td:last-child{color:#9a6700}.occ-journey-green td:last-child{color:#1a7f37}
+@media(max-width:1200px){.occurrences-primary-kpis{grid-template-columns:repeat(4,minmax(140px,1fr))}}
+@media(max-width:800px){.occurrences-primary-kpis{grid-template-columns:repeat(2,minmax(140px,1fr))}.occurrences-journey-insights{grid-template-columns:1fr}}

@@ -21,6 +21,7 @@
   let companies=[];
   let branches=[];
   let lastData={summary:{},imports:[]};
+  let management={shiftCoordinators:{},employeeCoordinators:{}};
 
   function esc(value){
     return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -33,7 +34,11 @@
     return {
       month:$("occurrences-month")?.value||new Date().toISOString().slice(0,7),
       companyId:$("occurrences-company")?.value||"",
-      branchId:$("occurrences-branch")?.value||""
+      branchId:$("occurrences-branch")?.value||"",
+      shiftId:$("occurrences-shift")?.value||"",
+      coordinator:$("occurrences-coordinator")?.value||"",
+      employeeId:$("occurrences-employee")?.value||"",
+      status:$("occurrences-status")?.value||""
     };
   }
   function requestKey(){
@@ -92,38 +97,148 @@
   function setLoading(){
     for(const [, ,id] of config)if($(id))$(id).textContent="—";
     if($("occurrences-import-status"))$("occurrences-import-status").textContent="Consultando competência...";
-    if($("occurrences-table-body"))$("occurrences-table-body").innerHTML='<tr><td colspan="13" class="muted">Carregando ocorrências...</td></tr>';
+    if($("occurrences-table-body"))$("occurrences-table-body").innerHTML='<tr><td colspan="7" class="muted">Carregando ocorrências...</td></tr>';
     if($("occurrences-bar-chart"))$("occurrences-bar-chart").innerHTML='<div class="occurrences-chart-loading">Carregando indicadores...</div>';
   }
   function renderSummary(summary={}){
     for(const [key,,id] of config)if($(id))$(id).textContent=Number(summary[key]||0);
+    if($("occ-kpi-absences"))$("occ-kpi-absences").textContent=Number(summary.absences||0);
+    if($("occ-kpi-bank-hours"))$("occ-kpi-bank-hours").textContent=Number(summary.bank_hours||0);
+    if($("occ-kpi-review"))$("occ-kpi-review").textContent=Number(summary.review_days||0);
+  }
+  function renderStatusSummary(){
+    const counts={GREEN:0,YELLOW:0,RED:0};
+    rows.forEach(row=>{const key=String(row.indicator_status||"");if(key in counts)counts[key]++;});
+    if($("occ-status-green"))$("occ-status-green").textContent=counts.GREEN;
+    if($("occ-status-yellow"))$("occ-status-yellow").textContent=counts.YELLOW;
+    if($("occ-status-red"))$("occ-status-red").textContent=counts.RED;
+    if($("occ-kpi-total-employees"))$("occ-kpi-total-employees").textContent=rows.length;
+    document.querySelectorAll("#occurrences-status-summary [data-status],#occurrences-primary-kpis [data-status]").forEach(button=>button.classList.toggle("active-filter",button.dataset.status===$("occurrences-status")?.value));
   }
   function visibleRows(){
     const query=normalize($("occurrences-search")?.value);
     return rows.filter(row=>{
+      const f=currentFilters();
       if(activeKey && number(row,activeKey)<=0)return false;
+      if(f.shiftId && String(row.shift_id||"")!==String(f.shiftId))return false;
+      if(f.coordinator && normalize(row.coordinator?.name||"")!==normalize(f.coordinator))return false;
+      if(f.employeeId && String(row.employee_id)!==String(f.employeeId))return false;
+      if(f.status && String(row.indicator_status||"")!==String(f.status))return false;
       if(!query)return true;
-      return normalize(`${row.full_name} ${row.registration||""} ${row.company_name||""} ${row.branch_name||""}`).includes(query);
+      return normalize(`${row.full_name} ${row.registration||""} ${row.company_name||""} ${row.branch_name||""} ${row.shift_name||""} ${row.coordinator?.name||""}`).includes(query);
     });
   }
+  function fillOperationalFilters(){
+    const keep={shift:$("occurrences-shift")?.value||"",coord:$("occurrences-coordinator")?.value||"",employee:$("occurrences-employee")?.value||""};
+    const shifts=[...new Map(rows.filter(r=>r.shift_id).map(r=>[String(r.shift_id),r.shift_name||"Turno"])).entries()].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));
+    const coordinators=[...new Set(rows.map(r=>r.coordinator?.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+    const employees=[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR"));
+    if($("occurrences-shift")){$("occurrences-shift").innerHTML='<option value="">Todos os turnos</option>'+shifts.map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join("");$("occurrences-shift").value=shifts.some(([id])=>id===keep.shift)?keep.shift:"";}
+    if($("occurrences-coordinator")){$("occurrences-coordinator").innerHTML='<option value="">Todos os coordenadores</option>'+coordinators.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");$("occurrences-coordinator").value=coordinators.includes(keep.coord)?keep.coord:"";}
+    if($("occurrences-employee")){$("occurrences-employee").innerHTML='<option value="">Todos os colaboradores</option>'+employees.map(r=>`<option value="${esc(r.employee_id)}">${esc(r.full_name)}</option>`).join("");$("occurrences-employee").value=employees.some(r=>String(r.employee_id)===keep.employee)?keep.employee:"";}
+    fillManagementSelectors();
+  }
+
+  function coordinatorOptions(emptyLabel){
+    return `<option value="">${esc(emptyLabel)}</option>`+[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}" data-name="${esc(r.full_name)}">${esc(r.full_name)}</option>`).join("");
+  }
+  function fillManagementSelectors(){
+    const shifts=[...new Map(rows.filter(r=>r.shift_id).map(r=>[String(r.shift_id),r.shift_name||"Turno"])).entries()].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));
+    if($("occurrences-manage-shift"))$("occurrences-manage-shift").innerHTML='<option value="">Selecione o turno</option>'+shifts.map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join("");
+    if($("occurrences-manage-employee"))$("occurrences-manage-employee").innerHTML='<option value="">Selecione o colaborador</option>'+[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}">${esc(r.full_name)}</option>`).join("");
+    if($("occurrences-manage-shift-coordinator"))$("occurrences-manage-shift-coordinator").innerHTML=coordinatorOptions("Sem coordenador");
+    if($("occurrences-manage-employee-coordinator"))$("occurrences-manage-employee-coordinator").innerHTML=coordinatorOptions("Usar coordenador do turno");
+    const f=currentFilters();
+    if($("occurrences-management-status"))$("occurrences-management-status").textContent=f.companyId&&f.branchId?"Filial pronta para configurar coordenadores.":"Selecione uma empresa e uma filial para configurar coordenadores.";
+  }
+
+  async function loadManagement(){
+    const f=currentFilters(); management={shiftCoordinators:{},employeeCoordinators:{}};
+    if(!f.companyId||!f.branchId)return;
+    try{management=await api(`/api/dashboard/occurrences/management?companyId=${encodeURIComponent(f.companyId)}&branchId=${encodeURIComponent(f.branchId)}`)||management;}catch(_error){}
+  }
+  function selectedCoordinator(selectId){
+    const el=$(selectId); if(!el||!el.value)return null;
+    return {id:String(el.value),name:el.options[el.selectedIndex]?.textContent||""};
+  }
+  async function saveManagement(kind){
+    const f=currentFilters(); if(!f.companyId||!f.branchId){toast?.("Selecione empresa e filial.","error");return;}
+    if(kind==="shift"){
+      const id=$("occurrences-manage-shift")?.value; if(!id){toast?.("Selecione o turno.","error");return;}
+      const coord=selectedCoordinator("occurrences-manage-shift-coordinator"); if(coord)management.shiftCoordinators[id]=coord; else delete management.shiftCoordinators[id];
+    }else{
+      const id=$("occurrences-manage-employee")?.value; if(!id){toast?.("Selecione o colaborador.","error");return;}
+      const coord=selectedCoordinator("occurrences-manage-employee-coordinator"); if(coord)management.employeeCoordinators[id]=coord; else delete management.employeeCoordinators[id];
+    }
+    await api("/api/dashboard/occurrences/management",{method:"PUT",body:JSON.stringify({companyId:f.companyId,branchId:f.branchId,...management})});
+    if($("occurrences-management-status"))$("occurrences-management-status").textContent="Coordenadores salvos. Atualizando indicadores...";
+    loadedKey=""; await load(true); toast?.("Configuração de coordenadores salva.","success");
+  }
+
+  function timeToMinutes(value){const m=String(value||"").match(/^(\d{1,2}):(\d{2})$/);return m?Number(m[1])*60+Number(m[2]):null;}
+  function intervalMinutes(markings){if(!Array.isArray(markings)||markings.length<4)return null;let a=timeToMinutes(markings[1]),b=timeToMinutes(markings[2]);if(a==null||b==null)return null;if(b<a)b+=1440;return b-a;}
+  function plannedIntervalMinutes(description){
+    const schedule=global.ThermalSchedule?.parseShiftSchedule?.(description);
+    return schedule?Math.max(0,schedule.breakEnd-schedule.breakStart):null;
+  }
+  function journeyDayAnalysis(day){
+    const marks=Array.isArray(day.markings)?day.markings:[];
+    const actual=intervalMinutes(marks);
+    const planned=plannedIntervalMinutes(day.shift_description);
+    const worked=String(day.point_state||'').toUpperCase()==='WORKED';
+    if(!worked)return {level:'neutral',label:String(day.point_state||'-'),actual,planned};
+    if(marks.length<4)return {level:'red',label:'Jornada incompleta',actual,planned};
+    if(actual==null)return {level:'red',label:'Intervalo não confirmado',actual,planned};
+    if(planned!=null&&actual!==planned)return {level:'yellow',label:`Intervalo fora do padrão (${actual} min / previsto ${planned} min)`,actual,planned};
+    if(/SA[ÍI]DA\s+ANTECIPADA/i.test(day.occurrence||''))return {level:'red',label:'Saída antecipada',actual,planned};
+    if(/BH|HORA\s*EXTRA/i.test(day.occurrence||''))return {level:'yellow',label:'BH / hora adicional',actual,planned};
+    return {level:'green',label:'Dentro do padrão',actual,planned};
+  }
+  async function showJourney(employeeId){
+    const row=rows.find(r=>String(r.employee_id)===String(employeeId)); if(!row)return;
+    const panel=$("occurrences-journey-panel"),body=$("occurrences-journey-body"); if(panel)panel.hidden=false;
+    if($("occurrences-journey-title"))$("occurrences-journey-title").textContent=row.full_name;
+    if($("occurrences-journey-subtitle"))$("occurrences-journey-subtitle").textContent=`${row.shift_name||"Sem turno"} · Coordenador: ${row.coordinator?.name||"Não definido"}`;
+    if(body)body.innerHTML='<tr><td colspan="8" class="muted">Carregando jornada...</td></tr>';
+    try{
+      const data=await api(`/api/dashboard/occurrences/journey?month=${encodeURIComponent(currentFilters().month)}&employeeId=${encodeURIComponent(employeeId)}`); const days=Array.isArray(data.days)?data.days:[];
+      const analyses=days.map(day=>journeyDayAnalysis(day));
+      const irregular=analyses.filter(item=>item.level==='yellow'&&item.label.startsWith('Intervalo')).length;
+      const incomplete=analyses.filter(item=>item.level==='red'&&/Jornada|Intervalo/.test(item.label)).length;
+      const additional=analyses.filter((item,index)=>/BH|HORA\s*EXTRA/i.test(days[index]?.occurrence||'')).length;
+      const early=analyses.filter((item,index)=>/SA[ÍI]DA\s+ANTECIPADA/i.test(days[index]?.occurrence||'')).length;
+      if($("occurrences-journey-summary"))$("occurrences-journey-summary").innerHTML=`<strong>Resumo da competência</strong><span>${days.length} dias encontrados · ${irregular} intervalo${irregular===1?'':'s'} fora do padrão · ${additional} dia${additional===1?'':'s'} com BH/hora adicional · ${early} saída${early===1?'':'s'} antecipada${early===1?'':'s'} · ${incomplete} pendência${incomplete===1?'':'s'} de jornada</span>`;
+      const actions=[];
+      if(irregular)actions.push('Reforçar e acompanhar o cumprimento do intervalo previsto.');
+      if(additional)actions.push('Verificar necessidade e autorização das horas adicionais/BH.');
+      if(early)actions.push('Conferir as saídas antecipadas e suas justificativas.');
+      if(incomplete)actions.push('Regularizar as marcações incompletas antes da análise definitiva.');
+      if(!actions.length)actions.push('Manter o acompanhamento da jornada e do intervalo no padrão atual.');
+      if($("occurrences-journey-suggestion"))$("occurrences-journey-suggestion").innerHTML=`<strong>Sugestão de melhoria</strong><span>${esc(actions.join(' '))}</span>`;
+      if(body)body.innerHTML=days.length?days.map((day,index)=>{const marks=Array.isArray(day.markings)?day.markings:[];const a=analyses[index];return `<tr class="occ-journey-${a.level}"><td>${formatDate(day.work_date)}</td><td>${esc(day.shift_description||day.schedule_code||"-")}</td><td>${esc(marks[0]||"-")}</td><td>${esc(marks[1]||"-")}</td><td>${esc(marks[2]||"-")}</td><td>${esc(marks[3]||"-")}</td><td>${a.actual==null?"-":`${a.actual} min${a.planned!=null?` / ${a.planned} prev.`:''}`}</td><td><strong>${a.level==='red'?'🔴':a.level==='yellow'?'🟡':a.level==='green'?'🟢':'⚪'} ${esc(a.label)}</strong><small class="occurrence-subline">${esc(day.occurrence||"")}</small></td></tr>`;}).join(""):'<tr><td colspan="8" class="muted">Nenhuma jornada encontrada nesta competência.</td></tr>';
+      panel?.scrollIntoView({behavior:"smooth",block:"start"});
+    }catch(error){if(body)body.innerHTML=`<tr><td colspan="8" class="muted">${esc(error.message||"Não foi possível carregar a jornada.")}</td></tr>`;}
+  }
+
   function renderTable(){
     const visible=visibleRows();
     if($("occurrences-visible-count"))$("occurrences-visible-count").textContent=`${visible.length} colaborador${visible.length===1?"":"es"} exibido${visible.length===1?"":"s"}`;
     const tbody=$("occurrences-table-body");
     if(!tbody)return;
     if(!visible.length){
-      tbody.innerHTML='<tr><td colspan="13" class="muted">Nenhum colaborador encontrado para o filtro atual.</td></tr>';
+      tbody.innerHTML='<tr><td colspan="7" class="muted">Nenhum colaborador encontrado para o filtro atual.</td></tr>';
       return;
     }
     tbody.innerHTML=visible.map(row=>`
       <tr>
         <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.registration||"Sem matrícula")} · ${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
-        <td>${number(row,"days_off")}</td><td>${number(row,"absences")}</td><td>${number(row,"bank_hours")}</td>
-        <td>${number(row,"medical")}</td><td>${number(row,"vacations")}</td><td>${number(row,"dsr")}</td>
-        <td>${number(row,"licenses")}</td><td>${number(row,"leaves")}</td><td>${number(row,"compensated")}</td>
-        <td>${number(row,"courses")}</td><td>${number(row,"bereavement")}</td>
+        <td><strong>${esc(row.shift_name||"Sem turno")}</strong><small class="occurrence-subline">${esc(row.coordinator?.name||"Sem coordenador")}</small></td>
+        <td><span class="occ-status ${row.indicator_status==="RED"?"is-red":row.indicator_status==="YELLOW"?"is-yellow":"is-green"}" title="${esc((row.indicator_reasons||[]).join(" · ")||"Dentro do padrão")}">${row.indicator_status==="RED"?"🔴 Vermelho":row.indicator_status==="YELLOW"?"🟡 Amarelo":"🟢 Verde"}</span><small class="occurrence-subline occ-status-reason">${esc((row.indicator_reasons||[]).join(" · ")||"Dentro do padrão")}</small></td>
+        <td>${number(row,"absences")}</td><td>${number(row,"bank_hours")}</td>
         <td class="${number(row,"review_days")>0?"occurrence-review":""}">${number(row,"review_days")}</td>
+        <td><button type="button" class="secondary occ-journey-button" data-employee-id="${esc(row.employee_id)}">Ver jornada</button></td>
       </tr>`).join("");
+    tbody.querySelectorAll(".occ-journey-button").forEach(button=>button.addEventListener("click",()=>showJourney(button.dataset.employeeId)));
   }
   function renderFilter(){
     const box=$("occurrences-active-filter");
@@ -223,8 +338,11 @@
       loadedKey=key;
       lastData=data;
       rows=Array.isArray(data.employees)?data.employees:[];
+      await loadManagement();
+      fillOperationalFilters();
       activeKey="";
       renderSummary(data.summary||{});
+      renderStatusSummary();
       renderCharts(data.summary||{});
       renderFilter();
       renderTable();
@@ -234,6 +352,7 @@
       rows=[];
       lastData={summary:{},imports:[]};
       renderSummary({});
+      renderStatusSummary();
       renderCharts({});
       renderTable();
       if($("occurrences-import-status"))$("occurrences-import-status").textContent=error.message||"Não foi possível carregar as ocorrências.";
@@ -341,9 +460,19 @@
     $("occurrences-branch")?.addEventListener("change",()=>{loadedKey="";load(true);});
     month?.addEventListener("change",()=>{loadedKey="";load(true);});
     $("occurrences-search")?.addEventListener("input",renderTable);
+    ["occurrences-shift","occurrences-coordinator","occurrences-employee"].forEach(id=>$(id)?.addEventListener("change",renderTable));
+    $("occurrences-status")?.addEventListener("change",()=>{renderStatusSummary();renderTable();});
+    document.querySelectorAll("#occurrences-status-summary [data-status],#occurrences-primary-kpis [data-status]").forEach(button=>button.addEventListener("click",()=>{const select=$("occurrences-status");if(!select)return;select.value=select.value===button.dataset.status?"":button.dataset.status;renderStatusSummary();renderTable();}));
+    $("occurrences-save-shift-coordinator")?.addEventListener("click",()=>saveManagement("shift").catch(error=>toast?.(error.message||"Falha ao salvar.","error")));
+    $("occurrences-save-employee-coordinator")?.addEventListener("click",()=>saveManagement("employee").catch(error=>toast?.(error.message||"Falha ao salvar.","error")));
+    $("occurrences-manage-shift")?.addEventListener("change",()=>{const id=$("occurrences-manage-shift")?.value;$("occurrences-manage-shift-coordinator").value=management.shiftCoordinators?.[id]?.id||"";});
+    $("occurrences-manage-employee")?.addEventListener("change",()=>{const id=$("occurrences-manage-employee")?.value;$("occurrences-manage-employee-coordinator").value=management.employeeCoordinators?.[id]?.id||"";});
+    $("occurrences-journey-close")?.addEventListener("click",()=>{if($("occurrences-journey-panel"))$("occurrences-journey-panel").hidden=true;});
     $("occurrences-clear-filter")?.addEventListener("click",()=>{
       activeKey="";
       if($("occurrences-search"))$("occurrences-search").value="";
+      ["occurrences-shift","occurrences-coordinator","occurrences-employee","occurrences-status"].forEach(id=>{if($(id))$(id).value="";});
+      renderStatusSummary();
       document.querySelectorAll("#occurrences-summary article").forEach(card=>card.classList.remove("active-filter"));
       renderFilter();
       renderTable();
@@ -362,6 +491,7 @@
     rows=[];
     activeKey="";
     lastData={summary:{},imports:[]};
+    management={shiftCoordinators:{},employeeCoordinators:{}};
   }
 
   global.loadOccurrencesControl=(force=false)=>load(Boolean(force));
