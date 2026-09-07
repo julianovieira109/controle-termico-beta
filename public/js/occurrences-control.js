@@ -218,6 +218,7 @@
       const query=new URLSearchParams({month:f.month});
       if(f.companyId)query.set("companyId",f.companyId);
       if(f.branchId)query.set("branchId",f.branchId);
+      query.set("_",String(Date.now()));
       const data=await api(`/api/dashboard/occurrences?${query.toString()}`);
       loadedKey=key;
       lastData=data;
@@ -356,6 +357,14 @@
   }
 
   document.addEventListener("DOMContentLoaded",init);
-  global.loadOccurrencesControl=()=>load(false);
-  global.OccurrencesControl={normalize,number,currentFilters,buildPrintDocument,printWindowHtml};
+  function invalidate(){
+    loadedKey="";
+    rows=[];
+    activeKey="";
+    lastData={summary:{},imports:[]};
+  }
+
+  global.loadOccurrencesControl=(force=false)=>load(Boolean(force));
+  global.invalidateOccurrencesControl=()=>invalidate();
+  global.OccurrencesControl={normalize,number,currentFilters,buildPrintDocument,printWindowHtml,invalidate,refresh:()=>load(true)};
 })(window);

@@ -728,6 +728,7 @@ if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
     $("point-import-feedback").className="feedback full success";
     $("point-import-feedback").textContent=`Importação concluída: ${data.employees} colaborador(es) e ${data.savedDays} dia(s) salvos.`;
     toast("Cartão de ponto importado com sucesso.","success");
+    if(typeof invalidateOccurrencesControl==="function")invalidateOccurrencesControl();
     await Promise.all([
       loadPointImportHistory(),
       typeof loadDashboard==="function" ? loadDashboard() : Promise.resolve()
@@ -789,7 +790,11 @@ if($("point-data-cleanup"))$("point-data-cleanup").onclick=async()=>{
       feedback.className="feedback success";
       feedback.textContent=`Limpeza concluída: ${result.pointDaysDeleted} dia(s) de ponto e ${result.importsDeleted} importação(ões) removidos de ${result.branchName}.`;
     }
-    await loadPointImportHistory();
+    if(typeof invalidateOccurrencesControl==="function")invalidateOccurrencesControl();
+    await Promise.all([
+      loadPointImportHistory(),
+      typeof loadDashboard==="function" ? loadDashboard() : Promise.resolve()
+    ]);
     pointCompetenceInfo={month:null,imports:[]};
     pointCompetenceBranches=new Set();
     pointDataActive=false;
