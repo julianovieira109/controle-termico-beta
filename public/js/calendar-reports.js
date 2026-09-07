@@ -1540,7 +1540,36 @@ function applyPrintCenterFiltering(matches){
   document.body.classList.add("print-center-active");
 }
 
-$("report-print").onclick=openPrintCenter;
+function validateReportPrint(){
+  if(!$("report-output").innerHTML.trim()){
+    alert("Gere a ficha antes de imprimir.");
+    return false;
+  }
+  const currentMonth=$("report-month").value;
+  if(!lastReportValidation||!lastReportValidation.valid||!lastReportValidation.generated||lastReportValidation.month!==currentMonth){
+    alert("A impressão foi bloqueada porque a seleção atual não possui uma validação concluída. Gere novamente as fichas para validar antes de imprimir.");
+    return false;
+  }
+  return true;
+}
+
+function printAllReports(event){
+  if(event && event.isTrusted===false)return;
+  if(reportPrintInProgress||!validateReportPrint())return;
+  reportPrintInProgress=true;
+  clearPrintFiltering();
+  try{
+    window.print();
+  }finally{
+    setTimeout(()=>{
+      clearPrintFiltering();
+      reportPrintInProgress=false;
+    },900);
+  }
+}
+
+$("report-print").onclick=printAllReports;
+if($("report-print-custom"))$("report-print-custom").onclick=openPrintCenter;
 
 document.querySelectorAll("[data-close-print-center]").forEach(button=>{
   button.onclick=closePrintCenter;
