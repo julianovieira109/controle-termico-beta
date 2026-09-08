@@ -20,9 +20,10 @@ function parseBhBreakdown(occurrence){
   // Em BH 50%, quando existem quatro ou mais totais, o segundo é BH - e o
   // terceiro é BH +. Com dois/três totais, o segundo é o BH + (o terceiro,
   // quando "Noturnas", é adicional noturno). Quando a ocorrência traz apenas
-  // um total após "BH 50%", esse valor já é o próprio BH positivo. Isso ocorre
-  // em cartões onde o total de Trabalho não é repetido dentro do texto da ocorrência.
-  // Em BH (-), o segundo total é BH -; em Folga BH há somente o próprio saldo.
+  // um único total após "BH 50%" é somente a coluna Trabalho. Sem uma segunda
+  // duração não existe valor de BH+ a lançar. Essa trava evita transformar jornadas
+  // como 06:51/07:20/08:00 em banco positivo. Em BH (-), o segundo total é BH -;
+  // em Folga BH há somente o próprio saldo.
   if(/BH\s*\(-\)/i.test(text)){
     if(times.length===1)negative=toMinutes(times[0]);
     else if(times.length>=2)negative=toMinutes(times[1]);
@@ -33,7 +34,8 @@ function parseBhBreakdown(occurrence){
     }else if(times.length>=2){
       positive=toMinutes(times[1]);
     }else if(times.length===1){
-      positive=toMinutes(times[0]);
+      // Senior: único total = Trabalho; BH+ está vazio.
+      positive=0;
     }
   }
   return {positive,negative,net:positive-negative};
