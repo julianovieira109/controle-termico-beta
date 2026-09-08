@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.26">
+  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.32">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -1407,8 +1407,8 @@
           <label>Competência<input type="month" id="occurrences-month"></label>
           <label>Turno<select id="occurrences-shift"><option value="">Todos</option></select></label>
           <label>Coordenador<select id="occurrences-coordinator"><option value="">Todos</option></select></label>
-          <button type="button" class="secondary occ-team-management-button" id="occurrences-management-open">⚙ Gerenciar Equipes</button>
-          <button type="button" class="secondary occ-presentation-button" id="occurrences-presentation">▣ Modo Apresentação</button>
+          <button type="button" class="secondary occ-team-management-button" id="occurrences-management-open"><span aria-hidden="true">⚙</span><span>Gerenciar Equipes</span></button>
+          <button type="button" class="secondary occ-presentation-button" id="occurrences-presentation"><span aria-hidden="true">▣</span><span>Modo Apresentação</span></button>
         </div>
       </header>
 
@@ -1427,7 +1427,9 @@
         <button type="button" class="occ-kpi yellow" data-status="YELLOW"><span>🟡 Em atenção</span><strong id="occ-status-yellow">—</strong><small id="occ-status-yellow-pct">Requer acompanhamento</small></button>
         <button type="button" class="occ-kpi red" data-status="RED"><span>🔴 Críticos</span><strong id="occ-status-red">—</strong><small id="occ-status-red-pct">Ação prioritária</small></button>
         <article class="occ-kpi"><span>Faltas</span><strong id="occ-kpi-absences">—</strong><small>registros</small></article>
-        <article class="occ-kpi"><span>BH líquido</span><strong id="occ-kpi-bank-hours">—</strong><small>saldo calculado</small></article>
+        <article class="occ-kpi occ-kpi-bh-positive"><span>BH positivo</span><strong id="occ-kpi-bank-hours-positive">—</strong><small>horas acumuladas</small></article>
+        <article class="occ-kpi occ-kpi-bh-negative"><span>BH negativo</span><strong id="occ-kpi-bank-hours-negative">—</strong><small>horas acumuladas</small></article>
+        <article class="occ-kpi occ-kpi-bh-net"><span>Saldo BH</span><strong id="occ-kpi-bank-hours">—</strong><small>positivo − negativo</small></article>
         <article class="occ-kpi"><span>Saídas antecipadas</span><strong id="occ-kpi-early-exits">—</strong><small>ocorrências</small></article>
         <article class="occ-kpi"><span>Para revisão</span><strong id="occ-kpi-review">—</strong><small>dias</small></article>
       </div>
@@ -2641,6 +2643,6 @@
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.17"></script>
-  <script src="/js/occurrences-control.js?v=1.0.31-beta.28"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.32"></script>
 </body>
 </html>

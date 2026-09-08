@@ -11,7 +11,13 @@ function parseBhMinutes(occurrence){
   if(!/(^|[^A-Z])BH([^A-Z]|$)/i.test(text))return 0;
   const times=[...text.matchAll(/(?:^|\s)((?:[01]\d|2[0-3]):[0-5]\d)(?=\s|$)/g)].map(m=>m[1]);
   if(!times.length)return 0;
-  const [h,m]=times[times.length-1].split(":").map(Number);
+  // Nas linhas do Senior, quando há jornada trabalhada, o primeiro total após
+  // a ocorrência representa o total trabalhado. O saldo de BH vem na coluna
+  // seguinte. Totais posteriores podem ser adicionais/noturnos e não devem
+  // ser somados como Banco de Horas. Em "Folga BH" há somente o próprio
+  // saldo, portanto usamos o único horário disponível.
+  const bhTime=times.length===1?times[0]:times[1];
+  const [h,m]=bhTime.split(":").map(Number);
   const minutes=h*60+m;
   return /BH\s*\(-\)/i.test(text)?-minutes:minutes;
 }
