@@ -30,6 +30,12 @@
     return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
   }
   function number(row,key){return Number(row?.[key]||0);}
+  function formatDuration(minutes,{signed=true}={}){
+    const value=Math.round(Number(minutes)||0);
+    const sign=signed?(value>0?"+":value<0?"-":""):"";
+    const abs=Math.abs(value);
+    return `${sign}${String(Math.floor(abs/60)).padStart(2,"0")}:${String(abs%60).padStart(2,"0")}`;
+  }
   function currentFilters(){
     return {
       month:$("occurrences-month")?.value||new Date().toISOString().slice(0,7),
@@ -103,17 +109,35 @@
   function renderSummary(summary={}){
     for(const [key,,id] of config)if($(id))$(id).textContent=Number(summary[key]||0);
     if($("occ-kpi-absences"))$("occ-kpi-absences").textContent=Number(summary.absences||0);
-    if($("occ-kpi-bank-hours"))$("occ-kpi-bank-hours").textContent=Number(summary.bank_hours||0);
+    if($("occ-kpi-bank-hours"))$("occ-kpi-bank-hours").textContent=summary.bh_net||formatDuration(summary.bh_net_minutes||0);
+    if($("occ-kpi-bank-hours-positive"))$("occ-kpi-bank-hours-positive").textContent=summary.bh_positive||formatDuration(summary.bh_positive_minutes||0);
+    if($("occ-kpi-bank-hours-negative"))$("occ-kpi-bank-hours-negative").textContent=summary.bh_negative||`-${formatDuration(summary.bh_negative_minutes||0,{signed:false})}`;
     if($("occ-kpi-review"))$("occ-kpi-review").textContent=Number(summary.review_days||0);
+    const early=rows.reduce((sum,row)=>sum+number(row,"early_exits"),0);
+    if($("occ-kpi-early-exits"))$("occ-kpi-early-exits").textContent=early;
+  }
+  function dashboardRows(){
+    const f=currentFilters();
+    return rows.filter(row=>{
+      if(f.shiftId && String(row.shift_id||"")!==String(f.shiftId))return false;
+      if(f.coordinator && normalize(row.coordinator?.name||"")!==normalize(f.coordinator))return false;
+      if(f.employeeId && String(row.employee_id)!==String(f.employeeId))return false;
+      return true;
+    });
   }
   function renderStatusSummary(){
+    const base=dashboardRows();
     const counts={GREEN:0,YELLOW:0,RED:0};
-    rows.forEach(row=>{const key=String(row.indicator_status||"");if(key in counts)counts[key]++;});
+    base.forEach(row=>{const key=String(row.indicator_status||"");if(key in counts)counts[key]++;});
+    const total=base.length||0;
     if($("occ-status-green"))$("occ-status-green").textContent=counts.GREEN;
     if($("occ-status-yellow"))$("occ-status-yellow").textContent=counts.YELLOW;
     if($("occ-status-red"))$("occ-status-red").textContent=counts.RED;
-    if($("occ-kpi-total-employees"))$("occ-kpi-total-employees").textContent=rows.length;
-    document.querySelectorAll("#occurrences-status-summary [data-status],#occurrences-primary-kpis [data-status]").forEach(button=>button.classList.toggle("active-filter",button.dataset.status===$("occurrences-status")?.value));
+    if($("occ-status-green-pct"))$("occ-status-green-pct").textContent=total?`${Math.round(counts.GREEN/total*100)}% da equipe`:'Dentro do padrão';
+    if($("occ-status-yellow-pct"))$("occ-status-yellow-pct").textContent=total?`${Math.round(counts.YELLOW/total*100)}% da equipe`:'Requer acompanhamento';
+    if($("occ-status-red-pct"))$("occ-status-red-pct").textContent=total?`${Math.round(counts.RED/total*100)}% da equipe`:'Ação prioritária';
+    if($("occ-kpi-total-employees"))$("occ-kpi-total-employees").textContent=total;
+    document.querySelectorAll("#occurrences-primary-kpis [data-status]").forEach(button=>button.classList.toggle("active-filter",button.dataset.status===$("occurrences-status")?.value));
   }
   function visibleRows(){
     const query=normalize($("occurrences-search")?.value);
@@ -143,14 +167,38 @@
     return `<option value="">${esc(emptyLabel)}</option>`+[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}" data-name="${esc(r.full_name)}">${esc(r.full_name)}</option>`).join("");
   }
   function fillManagementSelectors(){
-    const shifts=[...new Map(rows.filter(r=>r.shift_id).map(r=>[String(r.shift_id),r.shift_name||"Turno"])).entries()].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));
-    if($("occurrences-manage-shift"))$("occurrences-manage-shift").innerHTML='<option value="">Selecione o turno</option>'+shifts.map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join("");
     if($("occurrences-manage-employee"))$("occurrences-manage-employee").innerHTML='<option value="">Selecione o colaborador</option>'+[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}">${esc(r.full_name)}</option>`).join("");
-    if($("occurrences-manage-shift-coordinator"))$("occurrences-manage-shift-coordinator").innerHTML=coordinatorOptions("Sem coordenador");
     if($("occurrences-manage-employee-coordinator"))$("occurrences-manage-employee-coordinator").innerHTML=coordinatorOptions("Usar coordenador do turno");
-    const f=currentFilters();
-    if($("occurrences-management-status"))$("occurrences-management-status").textContent=f.companyId&&f.branchId?"Filial pronta para configurar coordenadores.":"Selecione uma empresa e uma filial para configurar coordenadores.";
+    renderTeamManagement();
   }
+  function teamShiftRows(){
+    const map=new Map();
+    rows.filter(r=>r.shift_id).forEach(r=>{
+      const id=String(r.shift_id), item=map.get(id)||{id,name:r.shift_name||"Turno",employees:[],green:0,yellow:0,red:0};
+      item.employees.push(r);
+      const status=String(r.indicator_status||"").toLowerCase(); if(status==="green")item.green++; else if(status==="yellow")item.yellow++; else if(status==="red")item.red++;
+      map.set(id,item);
+    });
+    return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
+  }
+  function renderTeamManagement(){
+    const holder=$("occurrences-team-cards"); if(!holder)return;
+    const f=currentFilters();
+    if(!f.companyId||!f.branchId){holder.innerHTML='<div class="muted">Selecione uma empresa e uma filial no painel antes de configurar as equipes.</div>';return;}
+    const shifts=teamShiftRows();
+    if(!shifts.length){holder.innerHTML='<div class="muted">Nenhum turno encontrado para esta filial.</div>';return;}
+    holder.innerHTML=shifts.map(item=>{
+      const current=management.shiftCoordinators?.[item.id]?.id||"";
+      const options=coordinatorOptions("Sem coordenador").replace(`value="${esc(current)}"`,`value="${esc(current)}" selected`);
+      return `<article class="occ-team-card" data-shift-id="${esc(item.id)}"><div class="occ-team-card-info"><strong>${esc(item.name)}</strong><span>${item.employees.length} colaborador${item.employees.length===1?"":"es"}</span><small><b class="green">🟢 ${item.green}</b><b class="yellow">🟡 ${item.yellow}</b><b class="red">🔴 ${item.red}</b></small></div><label>Coordenador responsável<select class="occ-team-coordinator-select">${options}</select></label><button type="button" class="secondary occ-team-save">Salvar</button></article>`;
+    }).join("");
+  }
+  function openTeamManagement(){
+    const modal=$("occurrences-management"); if(!modal)return;
+    const f=currentFilters(); if(!f.companyId||!f.branchId){toast?.("Selecione empresa e filial antes de gerenciar as equipes.","error");return;}
+    renderTeamManagement(); modal.hidden=false; modal.setAttribute("aria-hidden","false"); document.body.classList.add("occ-team-modal-open");
+  }
+  function closeTeamManagement(){const modal=$("occurrences-management");if(!modal)return;modal.hidden=true;modal.setAttribute("aria-hidden","true");document.body.classList.remove("occ-team-modal-open");}
 
   async function loadManagement(){
     const f=currentFilters(); management={shiftCoordinators:{},employeeCoordinators:{}};
@@ -161,11 +209,11 @@
     const el=$(selectId); if(!el||!el.value)return null;
     return {id:String(el.value),name:el.options[el.selectedIndex]?.textContent||""};
   }
-  async function saveManagement(kind){
+  async function saveManagement(kind,payload={}){
     const f=currentFilters(); if(!f.companyId||!f.branchId){toast?.("Selecione empresa e filial.","error");return;}
     if(kind==="shift"){
-      const id=$("occurrences-manage-shift")?.value; if(!id){toast?.("Selecione o turno.","error");return;}
-      const coord=selectedCoordinator("occurrences-manage-shift-coordinator"); if(coord)management.shiftCoordinators[id]=coord; else delete management.shiftCoordinators[id];
+      const id=payload.shiftId||""; if(!id){toast?.("Selecione o turno.","error");return;}
+      const coord=payload.coordinator||null; if(coord)management.shiftCoordinators[id]=coord; else delete management.shiftCoordinators[id];
     }else{
       const id=$("occurrences-manage-employee")?.value; if(!id){toast?.("Selecione o colaborador.","error");return;}
       const coord=selectedCoordinator("occurrences-manage-employee-coordinator"); if(coord)management.employeeCoordinators[id]=coord; else delete management.employeeCoordinators[id];
@@ -234,7 +282,7 @@
         <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.registration||"Sem matrícula")} · ${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
         <td><strong>${esc(row.shift_name||"Sem turno")}</strong><small class="occurrence-subline">${esc(row.coordinator?.name||"Sem coordenador")}</small></td>
         <td><span class="occ-status ${row.indicator_status==="RED"?"is-red":row.indicator_status==="YELLOW"?"is-yellow":"is-green"}" title="${esc((row.indicator_reasons||[]).join(" · ")||"Dentro do padrão")}">${row.indicator_status==="RED"?"🔴 Vermelho":row.indicator_status==="YELLOW"?"🟡 Amarelo":"🟢 Verde"}</span><small class="occurrence-subline occ-status-reason">${esc((row.indicator_reasons||[]).join(" · ")||"Dentro do padrão")}</small></td>
-        <td>${number(row,"absences")}</td><td>${number(row,"bank_hours")}</td>
+        <td>${number(row,"absences")}</td><td><strong class="${number(row,'bh_net_minutes')<0?'occ-bh-negative':number(row,'bh_net_minutes')>0?'occ-bh-positive':''}">${esc(row.bh_net||formatDuration(row.bh_net_minutes||0))}</strong><small class="occurrence-subline">+${formatDuration(row.bh_positive_minutes||0,{signed:false})} / -${formatDuration(row.bh_negative_minutes||0,{signed:false})}</small></td>
         <td class="${number(row,"review_days")>0?"occurrence-review":""}">${number(row,"review_days")}</td>
         <td><button type="button" class="secondary occ-journey-button" data-employee-id="${esc(row.employee_id)}">Ver jornada</button></td>
       </tr>`).join("");
@@ -299,6 +347,53 @@
     }
   }
 
+  function renderExecutiveInsights(){
+    const base=dashboardRows();
+    const counts={GREEN:0,YELLOW:0,RED:0};
+    base.forEach(row=>{const key=String(row.indicator_status||'');if(key in counts)counts[key]++;});
+    const total=base.length;
+    if($('occ-team-total'))$('occ-team-total').textContent=total;
+    const greenPct=total?counts.GREEN/total*100:0;
+    const yellowPct=total?counts.YELLOW/total*100:0;
+    const donut=$('occ-team-donut');
+    if(donut)donut.style.background=total?`conic-gradient(#159455 0 ${greenPct}%, #f4ad14 ${greenPct}% ${greenPct+yellowPct}%, #e23a3a ${greenPct+yellowPct}% 100%)`:'var(--line)';
+    if($('occ-team-legend'))$('occ-team-legend').innerHTML=[['GREEN','Regulares','#159455'],['YELLOW','Em atenção','#f4ad14'],['RED','Críticos','#e23a3a']].map(([k,label,color])=>`<div><i style="background:${color}"></i><strong>${counts[k]}</strong><span>${label} (${total?Math.round(counts[k]/total*100):0}%)</span></div>`).join('');
+
+    const impacts=[
+      {key:'absences',label:'Faltas',value:base.reduce((a,r)=>a+number(r,'absences'),0),tone:'red'},
+      {key:'bh_positive_minutes',label:'BH positivo',value:base.reduce((a,r)=>a+number(r,'bh_positive_minutes'),0),tone:'blue',isMinutes:true},
+      {key:'bh_negative_minutes',label:'BH negativo',value:base.reduce((a,r)=>a+number(r,'bh_negative_minutes'),0),tone:'red',isMinutes:true},
+      {key:'early_exits',label:'Saídas antecipadas',value:base.reduce((a,r)=>a+number(r,'early_exits'),0),tone:'yellow'},
+      {key:'incomplete_days',label:'Jornadas incompletas',value:base.reduce((a,r)=>a+number(r,'incomplete_days'),0),tone:'gray'},
+      {key:'review_days',label:'Dias para revisão',value:base.reduce((a,r)=>a+number(r,'review_days'),0),tone:'gray'}
+    ].sort((a,b)=>b.value-a.value);
+    const max=Math.max(1,...impacts.map(i=>i.value));
+    if($('occ-impact-bars'))$('occ-impact-bars').innerHTML=impacts.map(item=>`<div class="occ-impact-row"><span>${esc(item.label)}</span><div class="occ-impact-track"><i class="${item.tone}" style="width:${item.value?Math.max(7,Math.round(item.value/max*100)):0}%"></i></div><b>${item.isMinutes?formatDuration(item.value,{signed:false}):item.value}</b></div>`).join('');
+
+    const groups=new Map();
+    base.forEach(row=>{const name=row.shift_name||'Sem turno';if(!groups.has(name))groups.set(name,{GREEN:0,YELLOW:0,RED:0,total:0});const g=groups.get(name);g.total++;if(row.indicator_status in g)g[row.indicator_status]++;});
+    const shifts=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+    if($('occ-shift-grid'))$('occ-shift-grid').innerHTML=shifts.length?shifts.map(([name,g])=>`<div class="occ-shift-card"><strong>${esc(name)}</strong><div><span class="green">${g.GREEN} (${Math.round(g.GREEN/g.total*100)}%)</span><span class="yellow">${g.YELLOW} (${Math.round(g.YELLOW/g.total*100)}%)</span><span class="red">${g.RED} (${Math.round(g.RED/g.total*100)}%)</span></div></div>`).join(''):'<span class="muted">Sem turnos neste filtro.</span>';
+
+    const affectedCount=key=>base.filter(r=>number(r,key)>0).length;
+    if($('occ-attention-list'))$('occ-attention-list').innerHTML=impacts.filter(i=>i.value>0).slice(0,5).map((item,index)=>`<div class="occ-insight-item"><b>${index+1}</b><span><strong>${esc(item.label)}</strong><small>${item.isMinutes?formatDuration(item.value,{signed:false}):`${item.value} ocorrência${item.value===1?'':'s'}`} · afeta ${affectedCount(item.key)} colaborador${affectedCount(item.key)===1?'':'es'}</small></span></div>`).join('')||'<div class="occ-empty-good">Nenhum ponto crítico encontrado.</div>';
+
+    const positives=[];
+    const regularPct=total?Math.round(counts.GREEN/total*100):0;
+    positives.push(`${counts.GREEN} colaborador${counts.GREEN===1?'':'es'} dentro do padrão (${regularPct}%).`);
+    const noAbs=base.filter(r=>number(r,'absences')===0).length;
+    positives.push(`${noAbs} colaborador${noAbs===1?'':'es'} sem faltas na competência.`);
+    if(shifts.length){const best=shifts.map(([name,g])=>({name,pct:g.total?g.GREEN/g.total*100:0})).sort((a,b)=>b.pct-a.pct)[0];positives.push(`${best.name} apresenta ${Math.round(best.pct)}% de colaboradores regulares.`);}
+    if($('occ-positive-list'))$('occ-positive-list').innerHTML=positives.map(text=>`<div class="occ-positive-item"><i>●</i><span>${esc(text)}</span></div>`).join('');
+
+    const top=impacts[0];
+    let suggestion='Manter o acompanhamento da jornada e das ocorrências da equipe.';
+    if(top?.value){
+      suggestion={absences:'Priorizar os colaboradores com faltas e verificar reincidências, justificativas e necessidade de orientação individual.',bh_positive_minutes:'Revisar onde o BH positivo está sendo gerado e confirmar necessidade e autorização das horas adicionais.',bh_negative_minutes:'Identificar a origem do BH negativo e acompanhar a regularização do saldo com a liderança.',early_exits:'Conferir as saídas antecipadas, separar os casos justificados e acompanhar os colaboradores com repetição.',incomplete_days:'Regularizar as marcações incompletas antes de tomar decisões sobre jornada e reforçar o registro correto do ponto.',review_days:'Priorizar a conferência dos dias para revisão para que o painel reflita somente dados de ponto confirmados.'}[top.key]||suggestion;
+    }
+    if($('occ-general-suggestion'))$('occ-general-suggestion').textContent=suggestion;
+  }
+
   function renderImportStatus(imports=[]){
     const status=$("occurrences-import-status");
     if(!status)return;
@@ -344,6 +439,7 @@
       renderSummary(data.summary||{});
       renderStatusSummary();
       renderCharts(data.summary||{});
+      renderExecutiveInsights();
       renderFilter();
       renderTable();
       renderImportStatus(Array.isArray(data.imports)?data.imports:[]);
@@ -354,6 +450,7 @@
       renderSummary({});
       renderStatusSummary();
       renderCharts({});
+      renderExecutiveInsights();
       renderTable();
       if($("occurrences-import-status"))$("occurrences-import-status").textContent=error.message||"Não foi possível carregar as ocorrências.";
     }
@@ -460,12 +557,14 @@
     $("occurrences-branch")?.addEventListener("change",()=>{loadedKey="";load(true);});
     month?.addEventListener("change",()=>{loadedKey="";load(true);});
     $("occurrences-search")?.addEventListener("input",renderTable);
-    ["occurrences-shift","occurrences-coordinator","occurrences-employee"].forEach(id=>$(id)?.addEventListener("change",renderTable));
+    ["occurrences-shift","occurrences-coordinator","occurrences-employee"].forEach(id=>$(id)?.addEventListener("change",()=>{renderStatusSummary();renderExecutiveInsights();renderTable();}));
     $("occurrences-status")?.addEventListener("change",()=>{renderStatusSummary();renderTable();});
-    document.querySelectorAll("#occurrences-status-summary [data-status],#occurrences-primary-kpis [data-status]").forEach(button=>button.addEventListener("click",()=>{const select=$("occurrences-status");if(!select)return;select.value=select.value===button.dataset.status?"":button.dataset.status;renderStatusSummary();renderTable();}));
-    $("occurrences-save-shift-coordinator")?.addEventListener("click",()=>saveManagement("shift").catch(error=>toast?.(error.message||"Falha ao salvar.","error")));
+    document.querySelectorAll("#occurrences-primary-kpis [data-status]").forEach(button=>button.addEventListener("click",()=>{const select=$("occurrences-status");if(!select)return;select.value=select.value===button.dataset.status?"":button.dataset.status;renderStatusSummary();renderTable();}));
     $("occurrences-save-employee-coordinator")?.addEventListener("click",()=>saveManagement("employee").catch(error=>toast?.(error.message||"Falha ao salvar.","error")));
-    $("occurrences-manage-shift")?.addEventListener("change",()=>{const id=$("occurrences-manage-shift")?.value;$("occurrences-manage-shift-coordinator").value=management.shiftCoordinators?.[id]?.id||"";});
+    $("occurrences-management-open")?.addEventListener("click",openTeamManagement);
+    $("occurrences-management-close")?.addEventListener("click",closeTeamManagement);
+    document.querySelectorAll("[data-management-close]").forEach(el=>el.addEventListener("click",closeTeamManagement));
+    $("occurrences-team-cards")?.addEventListener("click",event=>{const button=event.target.closest(".occ-team-save");if(!button)return;const card=button.closest(".occ-team-card"),select=card?.querySelector(".occ-team-coordinator-select");if(!card||!select)return;const coordinator=select.value?{id:String(select.value),name:select.options[select.selectedIndex]?.textContent||""}:null;saveManagement("shift",{shiftId:card.dataset.shiftId,coordinator}).then(renderTeamManagement).catch(error=>toast?.(error.message||"Falha ao salvar.","error"));});
     $("occurrences-manage-employee")?.addEventListener("change",()=>{const id=$("occurrences-manage-employee")?.value;$("occurrences-manage-employee-coordinator").value=management.employeeCoordinators?.[id]?.id||"";});
     $("occurrences-journey-close")?.addEventListener("click",()=>{if($("occurrences-journey-panel"))$("occurrences-journey-panel").hidden=true;});
     $("occurrences-clear-filter")?.addEventListener("click",()=>{
@@ -473,10 +572,19 @@
       if($("occurrences-search"))$("occurrences-search").value="";
       ["occurrences-shift","occurrences-coordinator","occurrences-employee","occurrences-status"].forEach(id=>{if($(id))$(id).value="";});
       renderStatusSummary();
+      renderExecutiveInsights();
       document.querySelectorAll("#occurrences-summary article").forEach(card=>card.classList.remove("active-filter"));
       renderFilter();
       renderTable();
     });
+    $("occurrences-presentation")?.addEventListener("click",()=>{
+      document.body.classList.toggle("occurrences-presentation-mode");
+      const active=document.body.classList.contains("occurrences-presentation-mode");
+      if($("occurrences-presentation"))$("occurrences-presentation").textContent=active?"✕ Sair da apresentação":"▣ Modo Apresentação";
+      if(active&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
+      else if(!active&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});
+    });
+    document.addEventListener("fullscreenchange",()=>{if(!document.fullscreenElement&&document.body.classList.contains("occurrences-presentation-mode")){document.body.classList.remove("occurrences-presentation-mode");if($("occurrences-presentation"))$("occurrences-presentation").textContent="▣ Modo Apresentação";}});
     $("occurrences-print")?.addEventListener("click",printReport);
     window.addEventListener("afterprint",clearPrintMode);
     document.querySelectorAll("#occurrences-summary article[data-key]").forEach(card=>card.addEventListener("click",()=>selectKey(card.dataset.key)));

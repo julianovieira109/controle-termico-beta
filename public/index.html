@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.23">
+  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.26">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -498,7 +498,7 @@
                     <th data-company-sort="city">Cidade/UF</th>
                     <th>Filiais</th>
                     <th data-company-sort="active">Situação</th>
-                    <th>Ações</th>
+                    <th>Jornada</th>
                   </tr>
                 </thead>
                 <tbody id="companies-list"></tbody>
@@ -1393,199 +1393,133 @@
     
     <section id="occurrences" class="view">
       <div class="occurrences-print-header">
-        <div>
-          <span class="eyebrow">Controle Térmico</span>
-          <h2>Relatório de Controle de Ocorrências</h2>
-          <p id="occurrences-print-reference">Competência e escopo selecionados</p>
-        </div>
-        <div class="occurrences-print-meta">
-          <strong id="occurrences-print-company">Todas as empresas</strong>
-          <span id="occurrences-print-branch">Todas as filiais</span>
-          <small id="occurrences-print-generated"></small>
-        </div>
+        <div><span class="eyebrow">Controle Térmico</span><h2>Relatório de Controle de Ocorrências</h2><p id="occurrences-print-reference">Competência e escopo selecionados</p></div>
+        <div class="occurrences-print-meta"><strong id="occurrences-print-company">Todas as empresas</strong><span id="occurrences-print-branch">Todas as filiais</span><small id="occurrences-print-generated"></small></div>
       </div>
 
-      <div class="occurrences-hero">
-        <div>
-          <span class="eyebrow">Controle operacional</span>
-          <h3>Controle de Ocorrências</h3>
-          <p>Acompanhe as ocorrências importadas do Cartão de Ponto Senior por empresa, filial, competência e colaborador.</p>
+      <header class="occ-dash-header">
+        <div class="occ-dash-title">
+          <span class="eyebrow">Departamento Pessoal</span>
+          <h2>Painel de Pessoas</h2>
+          <p>Disciplina · Presença · Resultados</p>
         </div>
-        <div class="occurrences-toolbar">
-          <label>Empresa
-            <select id="occurrences-company"><option value="">Todas as empresas</option></select>
-          </label>
-          <label>Filial
-            <select id="occurrences-branch"><option value="">Todas as filiais</option></select>
-          </label>
-          <label>Competência
-            <input type="month" id="occurrences-month">
-          </label>
-          <label>Turno
-            <select id="occurrences-shift"><option value="">Todos os turnos</option></select>
-          </label>
-          <label>Coordenador
-            <select id="occurrences-coordinator"><option value="">Todos os coordenadores</option></select>
-          </label>
-          <label>Colaborador
-            <select id="occurrences-employee"><option value="">Todos os colaboradores</option></select>
-          </label>
-          <label>Indicador
-            <select id="occurrences-status"><option value="">Todos os indicadores</option><option value="GREEN">🟢 Verde</option><option value="YELLOW">🟡 Amarelo</option><option value="RED">🔴 Vermelho</option></select>
-          </label>
-          <button type="button" class="primary occurrences-print-button" id="occurrences-print">Imprimir relatório</button>
+        <div class="occ-dash-filters">
+          <label>Competência<input type="month" id="occurrences-month"></label>
+          <label>Turno<select id="occurrences-shift"><option value="">Todos</option></select></label>
+          <label>Coordenador<select id="occurrences-coordinator"><option value="">Todos</option></select></label>
+          <button type="button" class="secondary occ-team-management-button" id="occurrences-management-open">⚙ Gerenciar Equipes</button>
+          <button type="button" class="secondary occ-presentation-button" id="occurrences-presentation">▣ Modo Apresentação</button>
         </div>
+      </header>
+
+      <div class="occ-dash-scope">
+        <label>Empresa<select id="occurrences-company"><option value="">Todas as empresas</option></select></label>
+        <label>Filial<select id="occurrences-branch"><option value="">Todas as filiais</option></select></label>
+        <label>Colaborador<select id="occurrences-employee"><option value="">Todos os colaboradores</option></select></label>
+        <label>Indicador<select id="occurrences-status"><option value="">Todos</option><option value="GREEN">🟢 Verde</option><option value="YELLOW">🟡 Amarelo</option><option value="RED">🔴 Vermelho</option></select></label>
+        <div id="occurrences-source-status" class="occurrences-source-status"><span>Cartão de Ponto</span><strong id="occurrences-import-status">Carregando...</strong></div>
+        <button type="button" class="secondary" id="occurrences-print">Imprimir relatório</button>
       </div>
 
-      <div id="occurrences-source-status" class="occurrences-source-status">
-        <span>Cartão de Ponto</span>
-        <strong id="occurrences-import-status">Carregando...</strong>
+      <div class="occ-dash-kpis" id="occurrences-primary-kpis">
+        <article class="occ-kpi total"><span>Colaboradores</span><strong id="occ-kpi-total-employees">—</strong><small>na competência</small></article>
+        <button type="button" class="occ-kpi green" data-status="GREEN"><span>🟢 Regulares</span><strong id="occ-status-green">—</strong><small id="occ-status-green-pct">Dentro do padrão</small></button>
+        <button type="button" class="occ-kpi yellow" data-status="YELLOW"><span>🟡 Em atenção</span><strong id="occ-status-yellow">—</strong><small id="occ-status-yellow-pct">Requer acompanhamento</small></button>
+        <button type="button" class="occ-kpi red" data-status="RED"><span>🔴 Críticos</span><strong id="occ-status-red">—</strong><small id="occ-status-red-pct">Ação prioritária</small></button>
+        <article class="occ-kpi"><span>Faltas</span><strong id="occ-kpi-absences">—</strong><small>registros</small></article>
+        <article class="occ-kpi"><span>BH líquido</span><strong id="occ-kpi-bank-hours">—</strong><small>saldo calculado</small></article>
+        <article class="occ-kpi"><span>Saídas antecipadas</span><strong id="occ-kpi-early-exits">—</strong><small>ocorrências</small></article>
+        <article class="occ-kpi"><span>Para revisão</span><strong id="occ-kpi-review">—</strong><small>dias</small></article>
       </div>
 
-      <details class="occurrences-management panel" id="occurrences-management">
-        <summary><strong>Coordenadores por turno e colaborador</strong><span>Configuração gerencial da filial selecionada</span></summary>
-        <div class="occurrences-management-body">
-          <p class="hint">Selecione uma empresa e uma filial. O coordenador definido diretamente no colaborador tem prioridade sobre o coordenador padrão do turno.</p>
-          <div class="occurrences-management-grid">
-            <label>Turno
-              <select id="occurrences-manage-shift"><option value="">Selecione o turno</option></select>
-            </label>
-            <label>Coordenador padrão do turno
-              <select id="occurrences-manage-shift-coordinator"><option value="">Sem coordenador</option></select>
-            </label>
-            <button type="button" class="secondary" id="occurrences-save-shift-coordinator">Salvar turno</button>
+      <section class="occ-executive-grid">
+        <article class="panel occ-exec-card">
+          <div class="occ-exec-head"><h3>Distribuição da Equipe</h3><small>Semáforo da competência</small></div>
+          <div class="occ-team-distribution">
+            <div class="occ-team-donut" id="occ-team-donut"><div><strong id="occ-team-total">0</strong><span>colaboradores</span></div></div>
+            <div class="occ-team-legend" id="occ-team-legend"></div>
           </div>
-          <div class="occurrences-management-grid">
-            <label>Colaborador
-              <select id="occurrences-manage-employee"><option value="">Selecione o colaborador</option></select>
-            </label>
-            <label>Coordenador específico
-              <select id="occurrences-manage-employee-coordinator"><option value="">Usar coordenador do turno</option></select>
-            </label>
-            <button type="button" class="secondary" id="occurrences-save-employee-coordinator">Salvar colaborador</button>
-          </div>
-          <div id="occurrences-management-status" class="hint">Aguardando empresa e filial.</div>
-        </div>
-      </details>
+        </article>
+        <article class="panel occ-exec-card">
+          <div class="occ-exec-head"><h3>Principais Ocorrências</h3><small>O que mais impacta a equipe</small></div>
+          <div class="occ-impact-bars" id="occ-impact-bars"></div>
+        </article>
+        <article class="panel occ-exec-card">
+          <div class="occ-exec-head"><h3>Situação por Turno</h3><small>Regularidade das equipes</small></div>
+          <div class="occ-shift-grid" id="occ-shift-grid"></div>
+        </article>
+      </section>
 
-      <div class="occurrences-primary-kpis" id="occurrences-primary-kpis">
-        <article><span>Colaboradores</span><strong id="occ-kpi-total-employees">—</strong><small>na competência</small></article>
-        <button type="button" data-status="GREEN"><span>🟢 Regulares</span><strong id="occ-status-green">—</strong><small>Dentro do padrão</small></button>
-        <button type="button" data-status="YELLOW"><span>🟡 Em atenção</span><strong id="occ-status-yellow">—</strong><small>Requer acompanhamento</small></button>
-        <button type="button" data-status="RED"><span>🔴 Críticos</span><strong id="occ-status-red">—</strong><small>Ação prioritária</small></button>
-        <article><span>Faltas</span><strong id="occ-kpi-absences">—</strong><small>registros</small></article>
-        <article><span>BH</span><strong id="occ-kpi-bank-hours">—</strong><small>ocorrências</small></article>
-        <article><span>Para revisão</span><strong id="occ-kpi-review">—</strong><small>dias</small></article>
+      <section class="occ-main-grid">
+        <article class="panel occurrences-detail-panel">
+          <div class="panel-head occurrences-detail-head">
+            <div><span class="eyebrow">Equipe</span><h3>Colaboradores</h3><p class="hint">Filtre e abra a jornada para identificar a origem do indicador.</p></div>
+            <div class="occurrences-actions"><label class="occurrences-search">Buscar<input id="occurrences-search" type="search" placeholder="Nome ou matrícula"></label><button type="button" class="secondary" id="occurrences-clear-filter">Limpar</button></div>
+          </div>
+          <div id="occurrences-active-filter" class="occurrences-active-filter" hidden></div>
+          <div class="table-wrap occurrences-table-wrap">
+            <table class="occurrences-table"><thead><tr><th>Colaborador</th><th>Turno / Coordenador</th><th>Indicador</th><th>Faltas</th><th>BH (+ / -)</th><th>Revisão</th><th>Jornada</th></tr></thead><tbody id="occurrences-table-body"><tr><td colspan="7" class="muted">Selecione uma competência.</td></tr></tbody></table>
+          </div>
+          <div class="occurrences-footer"><span id="occurrences-visible-count">0 colaboradores exibidos</span><small>Fonte: Cartão de Ponto Senior confirmado.</small></div>
+        </article>
+
+        <aside class="occ-insights-column">
+          <article class="panel occ-insight attention"><div class="occ-insight-head"><h3>⚠ Principais Pontos de Atenção</h3></div><div id="occ-attention-list" class="occ-insight-list"></div></article>
+          <article class="panel occ-insight positive"><div class="occ-insight-head"><h3>👍 Destaques Positivos</h3></div><div id="occ-positive-list" class="occ-insight-list"></div></article>
+          <article class="panel occ-insight suggestion"><div class="occ-insight-head"><h3>💡 Sugestão de Melhoria</h3></div><p id="occ-general-suggestion">Carregando análise da equipe...</p></article>
+        </aside>
+      </section>
+
+      <div class="occ-team-management-modal" id="occurrences-management" hidden aria-hidden="true">
+        <div class="occ-team-management-backdrop" data-management-close></div>
+        <section class="occ-team-management-dialog" role="dialog" aria-modal="true" aria-labelledby="occurrences-management-title">
+          <header class="occ-team-management-head">
+            <div><span class="eyebrow">Configuração gerencial</span><h3 id="occurrences-management-title">Gestão de Equipes e Coordenadores</h3><p>Defina o responsável padrão de cada turno. Use exceções somente quando um colaborador responder a outro coordenador.</p></div>
+            <button type="button" class="secondary" id="occurrences-management-close">Fechar</button>
+          </header>
+          <div class="occ-team-management-content">
+            <section class="occ-team-section">
+              <div class="occ-team-section-head"><div><h4>Turnos e responsáveis</h4><p class="hint">Configuração principal usada pelo Painel de Pessoas.</p></div><span id="occurrences-management-status" class="hint">Aguardando empresa e filial.</span></div>
+              <div id="occurrences-team-cards" class="occ-team-cards"><div class="muted">Selecione uma empresa e uma filial.</div></div>
+            </section>
+            <details class="occ-team-exceptions">
+              <summary><strong>Exceções por colaborador</strong><span>Somente casos especiais</span></summary>
+              <div class="occ-team-exception-body">
+                <p class="hint">O coordenador específico substitui o coordenador padrão do turno apenas para o colaborador selecionado.</p>
+                <div class="occurrences-management-grid"><label>Colaborador<select id="occurrences-manage-employee"><option value="">Selecione o colaborador</option></select></label><label>Coordenador específico<select id="occurrences-manage-employee-coordinator"><option value="">Usar coordenador do turno</option></select></label><button type="button" class="secondary" id="occurrences-save-employee-coordinator">Salvar exceção</button></div>
+              </div>
+            </details>
+          </div>
+        </section>
       </div>
 
       <details class="occurrences-analysis-more panel">
-        <summary><strong>Ver análise completa da competência</strong><span>Ocorrências detalhadas e gráficos</span></summary>
+        <summary><strong>Ver análise completa da competência</strong><span>Ocorrências detalhadas e gráficos técnicos</span></summary>
         <div class="occurrences-analysis-more-body">
-      <div class="occurrences-status-summary" id="occurrences-status-summary">
-        <button type="button" data-status="GREEN"><span>🟢 Verde</span><strong id="occ-status-green">—</strong><small>Dentro do padrão</small></button>
-        <button type="button" data-status="YELLOW"><span>🟡 Amarelo</span><strong id="occ-status-yellow">—</strong><small>Requer atenção</small></button>
-        <button type="button" data-status="RED"><span>🔴 Vermelho</span><strong id="occ-status-red">—</strong><small>Ação prioritária</small></button>
-      </div>
-
-      <div class="occurrences-summary" id="occurrences-summary">
-        <article data-key="days_off"><span>Folgas</span><strong id="occ-sum-days-off">—</strong><small>registros</small></article>
-        <article data-key="absences"><span>Faltas</span><strong id="occ-sum-absences">—</strong><small>registros</small></article>
-        <article data-key="bank_hours"><span>BH / Banco de Horas</span><strong id="occ-sum-bank-hours">—</strong><small>ocorrências</small></article>
-        <article data-key="medical"><span>Atestados</span><strong id="occ-sum-medical">—</strong><small>registros</small></article>
-        <article data-key="vacations"><span>Férias</span><strong id="occ-sum-vacations">—</strong><small>dias</small></article>
-        <article data-key="dsr"><span>DSR</span><strong id="occ-sum-dsr">—</strong><small>registros</small></article>
-        <article data-key="licenses"><span>Licenças</span><strong id="occ-sum-licenses">—</strong><small>registros</small></article>
-        <article data-key="leaves"><span>Afastamentos</span><strong id="occ-sum-leaves">—</strong><small>registros</small></article>
-        <article data-key="compensated"><span>Compensados</span><strong id="occ-sum-compensated">—</strong><small>registros</small></article>
-        <article data-key="courses"><span>Curso</span><strong id="occ-sum-courses">—</strong><small>registros</small></article>
-        <article data-key="bereavement"><span>Óbito</span><strong id="occ-sum-bereavement">—</strong><small>registros</small></article>
-        <article class="review-card" data-key="review_days"><span>Dias para revisão</span><strong id="occ-sum-review-days">—</strong><small>conferir ponto</small></article>
-      </div>
-
-      <section class="occurrences-charts" aria-labelledby="occurrences-charts-title">
-        <div class="occurrences-charts-head">
-          <div>
-            <span class="eyebrow">Indicadores gráficos</span>
-            <h3 id="occurrences-charts-title">Análise da competência</h3>
-            <p>Visualize a distribuição das ocorrências e os pontos que exigem maior atenção.</p>
+          <div class="occurrences-summary" id="occurrences-summary">
+            <article data-key="days_off"><span>Folgas</span><strong id="occ-sum-days-off">—</strong><small>registros</small></article>
+            <article data-key="absences"><span>Faltas</span><strong id="occ-sum-absences">—</strong><small>registros</small></article>
+            <article data-key="bank_hours"><span>BH / Banco de Horas</span><strong id="occ-sum-bank-hours">—</strong><small>ocorrências</small></article>
+            <article data-key="medical"><span>Atestados</span><strong id="occ-sum-medical">—</strong><small>registros</small></article>
+            <article data-key="vacations"><span>Férias</span><strong id="occ-sum-vacations">—</strong><small>dias</small></article>
+            <article data-key="dsr"><span>DSR</span><strong id="occ-sum-dsr">—</strong><small>registros</small></article>
+            <article data-key="licenses"><span>Licenças</span><strong id="occ-sum-licenses">—</strong><small>registros</small></article>
+            <article data-key="leaves"><span>Afastamentos</span><strong id="occ-sum-leaves">—</strong><small>registros</small></article>
+            <article data-key="compensated"><span>Compensados</span><strong id="occ-sum-compensated">—</strong><small>registros</small></article>
+            <article data-key="courses"><span>Curso</span><strong id="occ-sum-courses">—</strong><small>registros</small></article>
+            <article data-key="bereavement"><span>Óbito</span><strong id="occ-sum-bereavement">—</strong><small>registros</small></article>
+            <article class="review-card" data-key="review_days"><span>Dias para revisão</span><strong id="occ-sum-review-days">—</strong><small>conferir ponto</small></article>
           </div>
-          <div class="occurrences-kpi-line">
-            <span>Colaboradores com ocorrência <strong id="occurrences-kpi-employees">0</strong></span>
-            <span>Total de ocorrências <strong id="occurrences-kpi-total">0</strong></span>
-          </div>
-        </div>
-        <div class="occurrences-charts-grid">
-          <article class="occurrences-chart-card">
-            <div class="occurrences-chart-title">
-              <div><strong>Ocorrências por tipo</strong><span>Comparativo dos registros encontrados na competência.</span></div>
-            </div>
-            <div id="occurrences-bar-chart" class="occurrences-bar-chart"></div>
-          </article>
-          <article class="occurrences-chart-card">
-            <div class="occurrences-chart-title">
-              <div><strong>Composição das principais ocorrências</strong><span>Participação de faltas, BH, atestados, férias e revisão.</span></div>
-            </div>
-            <div class="occurrences-donut-wrap">
-              <div id="occurrences-donut" class="occurrences-donut">
-                <div><strong id="occurrences-donut-total">0</strong><span>registros</span></div>
-              </div>
-              <div id="occurrences-donut-legend" class="occurrences-donut-legend"></div>
-            </div>
-          </article>
-        </div>
-      </section>
-
+          <section class="occurrences-charts"><div class="occurrences-charts-head"><div><span class="eyebrow">Indicadores gráficos</span><h3>Análise da competência</h3><p>Distribuição técnica das ocorrências reconhecidas.</p></div><div class="occurrences-kpi-line"><span>Colaboradores com ocorrência <strong id="occurrences-kpi-employees">0</strong></span><span>Total de ocorrências <strong id="occurrences-kpi-total">0</strong></span></div></div>
+            <div class="occurrences-charts-grid"><article class="occurrences-chart-card"><div class="occurrences-chart-title"><div><strong>Ocorrências por tipo</strong></div></div><div id="occurrences-bar-chart" class="occurrences-bar-chart"></div></article><article class="occurrences-chart-card"><div class="occurrences-chart-title"><div><strong>Composição</strong></div></div><div class="occurrences-donut-wrap"><div id="occurrences-donut" class="occurrences-donut"><div><strong id="occurrences-donut-total">0</strong><span>registros</span></div></div><div id="occurrences-donut-legend" class="occurrences-donut-legend"></div></div></article></div>
+          </section>
         </div>
       </details>
 
-      <section class="panel occurrences-detail-panel">
-        <div class="panel-head occurrences-detail-head">
-          <div>
-            <span class="eyebrow">Detalhamento</span>
-            <h3>Ocorrências por colaborador</h3>
-            <p class="hint">Use a busca ou clique em um indicador acima para filtrar os colaboradores.</p>
-          </div>
-          <div class="occurrences-actions">
-            <label class="occurrences-search">Buscar colaborador
-              <input id="occurrences-search" type="search" placeholder="Nome ou matrícula">
-            </label>
-            <button type="button" class="secondary" id="occurrences-clear-filter">Limpar filtro</button>
-          </div>
-        </div>
-        <div id="occurrences-active-filter" class="occurrences-active-filter" hidden></div>
-        <div class="table-wrap occurrences-table-wrap">
-          <table class="occurrences-table">
-            <thead>
-              <tr>
-                <th>Colaborador</th><th>Turno / Coordenador</th><th>Indicador</th><th>Faltas</th><th>BH</th><th>Revisão</th><th>Jornada</th>
-              </tr>
-            </thead>
-            <tbody id="occurrences-table-body">
-              <tr><td colspan="7" class="muted">Selecione uma competência.</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="occurrences-footer">
-          <span id="occurrences-visible-count">0 colaboradores exibidos</span>
-          <small>Fonte: ocorrências reconhecidas no Cartão de Ponto importado.</small>
-        </div>
-      </section>
-
       <section class="panel occurrences-journey-panel" id="occurrences-journey-panel" hidden>
-        <div class="panel-head occurrences-detail-head">
-          <div><span class="eyebrow">Jornada do colaborador</span><h3 id="occurrences-journey-title">Detalhamento da jornada</h3><p class="hint" id="occurrences-journey-subtitle">Marcações reais importadas do Cartão Senior.</p></div>
-          <button type="button" class="secondary" id="occurrences-journey-close">Fechar</button>
-        </div>
-        <div class="occurrences-journey-insights">
-          <div class="occurrences-journey-summary" id="occurrences-journey-summary">Selecione um colaborador para analisar a jornada.</div>
-          <div class="occurrences-journey-suggestion" id="occurrences-journey-suggestion"><strong>Sugestão de melhoria</strong><span>A análise será exibida após selecionar um colaborador.</span></div>
-        </div>
-        <div class="table-wrap occurrences-table-wrap">
-          <table class="occurrences-table occurrences-journey-table">
-            <thead><tr><th>Data</th><th>Jornada prevista</th><th>Entrada</th><th>Saída intervalo</th><th>Retorno intervalo</th><th>Saída</th><th>Intervalo</th><th>Situação</th></tr></thead>
-            <tbody id="occurrences-journey-body"><tr><td colspan="8" class="muted">Selecione um colaborador.</td></tr></tbody>
-          </table>
-        </div>
+        <div class="panel-head occurrences-detail-head"><div><span class="eyebrow">Jornada do colaborador</span><h3 id="occurrences-journey-title">Detalhamento da jornada</h3><p class="hint" id="occurrences-journey-subtitle">Marcações reais importadas do Cartão Senior.</p></div><button type="button" class="secondary" id="occurrences-journey-close">Fechar</button></div>
+        <div class="occurrences-journey-insights"><div class="occurrences-journey-summary" id="occurrences-journey-summary">Selecione um colaborador para analisar a jornada.</div><div class="occurrences-journey-suggestion" id="occurrences-journey-suggestion"><strong>Sugestão de melhoria</strong><span>A análise será exibida após selecionar um colaborador.</span></div></div>
+        <div class="table-wrap occurrences-table-wrap"><table class="occurrences-table occurrences-journey-table"><thead><tr><th>Data</th><th>Jornada prevista</th><th>Entrada</th><th>Saída intervalo</th><th>Retorno intervalo</th><th>Saída</th><th>Intervalo</th><th>Situação</th></tr></thead><tbody id="occurrences-journey-body"><tr><td colspan="8" class="muted">Selecione um colaborador.</td></tr></tbody></table></div>
       </section>
     </section>
 
@@ -2695,9 +2629,9 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.31-beta.17"></script>
+  <script src="/js/core.js?v=1.0.31-beta.30"></script>
   <script src="/js/help-manual.js?v=1.0.31-beta.17"></script>
-  <script src="/js/admin-access.js?v=1.0.31-beta.17"></script>
+  <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.17"></script>
   <script src="/js/thermal-schedule.js?v=1.0.31-beta.18"></script>
   <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>
@@ -2707,6 +2641,6 @@
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.17"></script>
-  <script src="/js/occurrences-control.js?v=1.0.31-beta.24"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.28"></script>
 </body>
 </html>

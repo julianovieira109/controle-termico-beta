@@ -241,33 +241,86 @@ async function loadDashboardAlerts(){
 }
 
 async function loadDashboard(){
+  // A competência é parte do estado da tela e precisa existir mesmo se uma API falhar.
+  // Assim uma falha isolada no resumo não impede operações/alertas de carregarem.
+  const month=dashboardAlertMonthValue();
   setDashboardLoading(true);
-  try{
-    const d=await api("/api/dashboard/summary");
-    dashboardActiveEmployees=Number(d.employees||0);
-    $("sum-employees").textContent=d.employees;
-    $("sum-companies").textContent=d.companies;
-    $("sum-branches").textContent=d.branches;
-    $("sum-users").textContent=d.users;
-    const missingShift=Number(d.missingShift||0);
-    $("sum-missing-shift").textContent=missingShift;
-    $("welcome-title").textContent=`Olá, ${currentUser.name}`;
 
+  const loadSummary=async()=>{
+    let lastError;
+    for(let attempt=0;attempt<2;attempt+=1){
+      try{
+        return await api(`/api/dashboard/summary?_=${Date.now()}`);
+      }catch(error){
+        lastError=error;
+        if(attempt===0)await new Promise(resolve=>setTimeout(resolve,500));
+      }
+    }
+    throw lastError;
+  };
+
+  const results=await Promise.allSettled([
+    loadSummary(),
+    loadDashboardOperations(),
+    loadDashboardAlerts()
+  ]);
+
+  const [summaryResult,operationsResult,alertsResult]=results;
+  if(summaryResult.status==="fulfilled"){
+    const d=summaryResult.value||{};
+    dashboardActiveEmployees=Number(d.employees||0);
+    $("sum-employees").textContent=d.employees??"—";
+    $("sum-companies").textContent=d.companies??"—";
+    $("sum-branches").textContent=d.branches??"—";
+    $("sum-users").textContent=d.users??"—";
+    const missingShift=Number(d.missingShift||0);
+    $("sum-missing-shift").textContent=d.missingShift??"—";
+    $("welcome-title").textContent=`Olá, ${currentUser.name}`;
     const missingCard=$("missing-shift-card");
     missingCard?.classList.toggle("is-clear",missingShift===0);
     if($("sum-missing-shift-status")){
       $("sum-missing-shift-status").textContent=missingShift===0?"Tudo certo":"Requer atenção";
     }
-
     if($("pending-shift-alert"))$("pending-shift-alert").hidden=true;
+  }else{
+    console.error("[DASHBOARD_SUMMARY]",summaryResult.reason);
+  }
 
-    await Promise.all([loadDashboardOperations(),loadDashboardAlerts()]);
-    setDashboardLoading(false);
-  }catch(error){
-    console.error("[DASHBOARD]",error);
-    showDashboardLoadError(error.message);
+  if(operationsResult.status==="rejected")console.error("[DASHBOARD_OPERATIONS]",operationsResult.reason);
+  if(alertsResult.status==="rejected")console.error("[DASHBOARD_ALERTS]",alertsResult.reason);
+
+  setDashboardLoading(false);
+  renderDashboardGraphs();
+
+  const failures=results.filter(result=>result.status==="rejected");
+  if(failures.length===3){
+    showDashboardLoadError(failures[0]?.reason?.message||"Não foi possível carregar os dados do Painel.");
+  }else if(failures.length){
+    const message=failures.map(result=>result.reason?.message).filter(Boolean).join(" | ");
+    console.warn("[DASHBOARD_PARTIAL]",message);
+  }
+
+  return {month,partial:failures.length>0};
+}
+
+// Disponibiliza um ponto de entrada estável para o núcleo da aplicação.
+window.loadDashboard=loadDashboard;
+
+// Bootstrap independente do Dashboard.
+// O core.js é carregado antes deste arquivo; em conexões muito rápidas o showApp() pode
+// terminar antes de window.loadDashboard existir. Nesse cenário o antigo setTimeout(0)
+// não tinha o que chamar e o Painel ficava eternamente com "—".
+// Inicializamos a competência imediatamente e ouvimos o evento explícito de app pronta.
+function ensureDashboardBoot(){
+  dashboardAlertMonthValue();
+  const dashboard=$("dashboard");
+  if(!dashboard?.classList.contains("active"))return;
+  if(typeof currentUser!=="undefined" && currentUser){
+    loadDashboard().catch(error=>console.error("[DASHBOARD_SELF_BOOT]",error));
   }
 }
+window.addEventListener("controle:app-ready",()=>setTimeout(ensureDashboardBoot,0));
+setTimeout(ensureDashboardBoot,0);
 
 if($("dashboard-alert-month")){
   $("dashboard-alert-month").onchange=()=>Promise.all([loadDashboardOperations(),loadDashboardAlerts()]).catch(error=>toast(error.message,"error"));
