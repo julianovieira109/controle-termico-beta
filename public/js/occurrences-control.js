@@ -357,7 +357,14 @@
     const yellowPct=total?counts.YELLOW/total*100:0;
     const donut=$('occ-team-donut');
     if(donut)donut.style.background=total?`conic-gradient(#159455 0 ${greenPct}%, #f4ad14 ${greenPct}% ${greenPct+yellowPct}%, #e23a3a ${greenPct+yellowPct}% 100%)`:'var(--line)';
-    if($('occ-team-legend'))$('occ-team-legend').innerHTML=[['GREEN','Regulares','#159455'],['YELLOW','Em atenção','#f4ad14'],['RED','Críticos','#e23a3a']].map(([k,label,color])=>`<div><i style="background:${color}"></i><strong>${counts[k]}</strong><span>${label} (${total?Math.round(counts[k]/total*100):0}%)</span></div>`).join('');
+    const statusMeta={GREEN:{label:'Regulares',color:'#159455',tone:'green'},YELLOW:{label:'Em atenção',color:'#f4ad14',tone:'yellow'},RED:{label:'Críticos',color:'#e23a3a',tone:'red'}};
+    if($('occ-team-legend'))$('occ-team-legend').innerHTML=['GREEN','YELLOW','RED'].map(k=>{
+      const meta=statusMeta[k],pct=total?Math.round(counts[k]/total*100):0;
+      return `<div class="occ-team-status ${meta.tone}"><div class="occ-team-status-top"><span><i style="background:${meta.color}"></i>${meta.label}</span><strong>${counts[k]}</strong></div><div class="occ-team-status-bar"><i style="width:${pct}%;background:${meta.color}"></i></div><small>${pct}% da equipe</small></div>`;
+    }).join('');
+    const dominantKey=['RED','YELLOW','GREEN'].sort((a,b)=>counts[b]-counts[a])[0];
+    const dominant=statusMeta[dominantKey],dominantPct=total?Math.round(counts[dominantKey]/total*100):0;
+    if($('occ-team-dominant'))$('occ-team-dominant').innerHTML=total?`<span>Leitura da equipe</span><strong class="${dominant.tone}">${dominantPct}% ${dominant.label.toLowerCase()}</strong><small>${dominantKey==='RED'?'Prioridade para ações corretivas':dominantKey==='YELLOW'?'Equipe requer acompanhamento':'Maioria dentro do padrão'}</small>`:'<span>Leitura da equipe</span><strong>—</strong><small>Sem colaboradores neste filtro</small>';
 
     const impacts=[
       {key:'absences',label:'Faltas',value:base.reduce((a,r)=>a+number(r,'absences'),0),tone:'red'},

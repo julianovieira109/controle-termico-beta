@@ -468,3 +468,28 @@ body.occurrences-presentation-mode #occurrences .occ-kpi{min-height:98px}
 @media(max-width:1450px){#occurrences .occ-dash-kpis{grid-template-columns:repeat(5,minmax(130px,1fr))}#occurrences .occ-dash-scope{grid-template-columns:repeat(4,minmax(150px,1fr))}#occurrences .occurrences-source-status{grid-column:span 3}#occurrences .occ-print-report{justify-self:end}}
 @media(max-width:1100px){#occurrences .occ-dash-title{min-width:0}#occurrences .occ-dash-scope{grid-template-columns:repeat(2,minmax(150px,1fr))}#occurrences .occurrences-source-status{grid-column:1/-1}#occurrences .occ-print-report{justify-self:stretch}#occurrences .occ-dash-kpis{grid-template-columns:repeat(3,minmax(130px,1fr))}}
 @media(max-width:700px){#occurrences .occ-dash-title-row{align-items:flex-start}#occurrences .occ-dash-brandmark{width:42px;height:42px;flex-basis:42px;border-radius:12px}#occurrences .occ-dash-title h2{font-size:1.35rem}#occurrences .occ-dash-scope{grid-template-columns:1fr}#occurrences .occ-dash-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))}#occurrences .occ-kpi{min-height:86px}}
+
+/* Beta.35 — distribuição executiva da equipe */
+#occurrences .occ-team-distribution{display:grid;grid-template-columns:minmax(155px,.78fr) minmax(190px,1.22fr);gap:22px;align-items:stretch;padding:18px 20px 20px;min-height:205px}
+#occurrences .occ-team-chart-zone{display:grid;align-content:center;justify-items:center;gap:12px;padding-right:18px;border-right:1px solid #e5edf3}
+#occurrences .occ-team-donut{width:142px;height:142px;box-shadow:0 12px 26px rgba(22,56,82,.10);filter:none}
+#occurrences .occ-team-donut:after{inset:31px;box-shadow:inset 0 0 0 1px rgba(20,64,96,.05)}
+#occurrences .occ-team-donut strong{font-size:1.7rem;font-weight:900;line-height:1;color:#123b5b}
+#occurrences .occ-team-donut span{margin-top:4px;font-size:.62rem;font-weight:700;letter-spacing:.02em;color:#758b9a}
+#occurrences .occ-team-dominant{width:100%;text-align:center;display:grid;gap:2px;padding:8px 10px;border-radius:10px;background:#f6f9fb;border:1px solid #e4edf3}
+#occurrences .occ-team-dominant>span{font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#7b8f9d}
+#occurrences .occ-team-dominant>strong{font-size:.82rem;font-weight:900;color:#173b58}
+#occurrences .occ-team-dominant>strong.green{color:#117343}#occurrences .occ-team-dominant>strong.yellow{color:#a06b00}#occurrences .occ-team-dominant>strong.red{color:#c82f35}
+#occurrences .occ-team-dominant>small{font-size:.59rem;color:#7b8f9d}
+#occurrences .occ-team-breakdown{display:grid;align-content:center;gap:10px}
+#occurrences .occ-team-status{padding:10px 12px;border:1px solid #e2eaf0;border-radius:11px;background:linear-gradient(180deg,#fff,#f9fbfc)}
+#occurrences .occ-team-status-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#occurrences .occ-team-status-top>span{display:flex;align-items:center;gap:7px;font-size:.7rem;font-weight:800;color:#39566b}
+#occurrences .occ-team-status-top i{width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 3px rgba(0,0,0,.035)}
+#occurrences .occ-team-status-top strong{font-size:1rem;font-weight:900;color:#173b58}
+#occurrences .occ-team-status-bar{height:6px;margin:7px 0 5px;border-radius:999px;background:#e8eef2;overflow:hidden}
+#occurrences .occ-team-status-bar i{display:block;height:100%;border-radius:inherit;min-width:0}
+#occurrences .occ-team-status small{display:block;text-align:right;font-size:.58rem;font-weight:700;color:#8395a2}
+#occurrences .occ-team-status.green{border-left:3px solid #159455}#occurrences .occ-team-status.yellow{border-left:3px solid #f4ad14}#occurrences .occ-team-status.red{border-left:3px solid #e23a3a}
+.theme-dark #app #occurrences .occ-team-chart-zone{border-color:#35505f}.theme-dark #app #occurrences .occ-team-dominant,.theme-dark #app #occurrences .occ-team-status{background:#172935;border-color:#35505f}.theme-dark #app #occurrences .occ-team-donut strong,.theme-dark #app #occurrences .occ-team-status-top strong{color:#eaf4fb}.theme-dark #app #occurrences .occ-team-status-top>span{color:#c8dbe7}.theme-dark #app #occurrences .occ-team-status-bar{background:#29424f}
+@media(max-width:900px){#occurrences .occ-team-distribution{grid-template-columns:1fr;min-height:0}#occurrences .occ-team-chart-zone{padding-right:0;padding-bottom:15px;border-right:0;border-bottom:1px solid #e5edf3}#occurrences .occ-team-breakdown{width:100%}}
