@@ -167,14 +167,38 @@
     return `<option value="">${esc(emptyLabel)}</option>`+[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}" data-name="${esc(r.full_name)}">${esc(r.full_name)}</option>`).join("");
   }
   function fillManagementSelectors(){
-    const shifts=[...new Map(rows.filter(r=>r.shift_id).map(r=>[String(r.shift_id),r.shift_name||"Turno"])).entries()].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));
-    if($("occurrences-manage-shift"))$("occurrences-manage-shift").innerHTML='<option value="">Selecione o turno</option>'+shifts.map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join("");
     if($("occurrences-manage-employee"))$("occurrences-manage-employee").innerHTML='<option value="">Selecione o colaborador</option>'+[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}">${esc(r.full_name)}</option>`).join("");
-    if($("occurrences-manage-shift-coordinator"))$("occurrences-manage-shift-coordinator").innerHTML=coordinatorOptions("Sem coordenador");
     if($("occurrences-manage-employee-coordinator"))$("occurrences-manage-employee-coordinator").innerHTML=coordinatorOptions("Usar coordenador do turno");
-    const f=currentFilters();
-    if($("occurrences-management-status"))$("occurrences-management-status").textContent=f.companyId&&f.branchId?"Filial pronta para configurar coordenadores.":"Selecione uma empresa e uma filial para configurar coordenadores.";
+    renderTeamManagement();
   }
+  function teamShiftRows(){
+    const map=new Map();
+    rows.filter(r=>r.shift_id).forEach(r=>{
+      const id=String(r.shift_id), item=map.get(id)||{id,name:r.shift_name||"Turno",employees:[],green:0,yellow:0,red:0};
+      item.employees.push(r);
+      const status=String(r.indicator_status||"").toLowerCase(); if(status==="green")item.green++; else if(status==="yellow")item.yellow++; else if(status==="red")item.red++;
+      map.set(id,item);
+    });
+    return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
+  }
+  function renderTeamManagement(){
+    const holder=$("occurrences-team-cards"); if(!holder)return;
+    const f=currentFilters();
+    if(!f.companyId||!f.branchId){holder.innerHTML='<div class="muted">Selecione uma empresa e uma filial no painel antes de configurar as equipes.</div>';return;}
+    const shifts=teamShiftRows();
+    if(!shifts.length){holder.innerHTML='<div class="muted">Nenhum turno encontrado para esta filial.</div>';return;}
+    holder.innerHTML=shifts.map(item=>{
+      const current=management.shiftCoordinators?.[item.id]?.id||"";
+      const options=coordinatorOptions("Sem coordenador").replace(`value="${esc(current)}"`,`value="${esc(current)}" selected`);
+      return `<article class="occ-team-card" data-shift-id="${esc(item.id)}"><div class="occ-team-card-info"><strong>${esc(item.name)}</strong><span>${item.employees.length} colaborador${item.employees.length===1?"":"es"}</span><small><b class="green">🟢 ${item.green}</b><b class="yellow">🟡 ${item.yellow}</b><b class="red">🔴 ${item.red}</b></small></div><label>Coordenador responsável<select class="occ-team-coordinator-select">${options}</select></label><button type="button" class="secondary occ-team-save">Salvar</button></article>`;
+    }).join("");
+  }
+  function openTeamManagement(){
+    const modal=$("occurrences-management"); if(!modal)return;
+    const f=currentFilters(); if(!f.companyId||!f.branchId){toast?.("Selecione empresa e filial antes de gerenciar as equipes.","error");return;}
+    renderTeamManagement(); modal.hidden=false; modal.setAttribute("aria-hidden","false"); document.body.classList.add("occ-team-modal-open");
+  }
+  function closeTeamManagement(){const modal=$("occurrences-management");if(!modal)return;modal.hidden=true;modal.setAttribute("aria-hidden","true");document.body.classList.remove("occ-team-modal-open");}
 
   async function loadManagement(){
     const f=currentFilters(); management={shiftCoordinators:{},employeeCoordinators:{}};
@@ -185,11 +209,11 @@
     const el=$(selectId); if(!el||!el.value)return null;
     return {id:String(el.value),name:el.options[el.selectedIndex]?.textContent||""};
   }
-  async function saveManagement(kind){
+  async function saveManagement(kind,payload={}){
     const f=currentFilters(); if(!f.companyId||!f.branchId){toast?.("Selecione empresa e filial.","error");return;}
     if(kind==="shift"){
-      const id=$("occurrences-manage-shift")?.value; if(!id){toast?.("Selecione o turno.","error");return;}
-      const coord=selectedCoordinator("occurrences-manage-shift-coordinator"); if(coord)management.shiftCoordinators[id]=coord; else delete management.shiftCoordinators[id];
+      const id=payload.shiftId||""; if(!id){toast?.("Selecione o turno.","error");return;}
+      const coord=payload.coordinator||null; if(coord)management.shiftCoordinators[id]=coord; else delete management.shiftCoordinators[id];
     }else{
       const id=$("occurrences-manage-employee")?.value; if(!id){toast?.("Selecione o colaborador.","error");return;}
       const coord=selectedCoordinator("occurrences-manage-employee-coordinator"); if(coord)management.employeeCoordinators[id]=coord; else delete management.employeeCoordinators[id];
@@ -536,9 +560,11 @@
     ["occurrences-shift","occurrences-coordinator","occurrences-employee"].forEach(id=>$(id)?.addEventListener("change",()=>{renderStatusSummary();renderExecutiveInsights();renderTable();}));
     $("occurrences-status")?.addEventListener("change",()=>{renderStatusSummary();renderTable();});
     document.querySelectorAll("#occurrences-primary-kpis [data-status]").forEach(button=>button.addEventListener("click",()=>{const select=$("occurrences-status");if(!select)return;select.value=select.value===button.dataset.status?"":button.dataset.status;renderStatusSummary();renderTable();}));
-    $("occurrences-save-shift-coordinator")?.addEventListener("click",()=>saveManagement("shift").catch(error=>toast?.(error.message||"Falha ao salvar.","error")));
     $("occurrences-save-employee-coordinator")?.addEventListener("click",()=>saveManagement("employee").catch(error=>toast?.(error.message||"Falha ao salvar.","error")));
-    $("occurrences-manage-shift")?.addEventListener("change",()=>{const id=$("occurrences-manage-shift")?.value;$("occurrences-manage-shift-coordinator").value=management.shiftCoordinators?.[id]?.id||"";});
+    $("occurrences-management-open")?.addEventListener("click",openTeamManagement);
+    $("occurrences-management-close")?.addEventListener("click",closeTeamManagement);
+    document.querySelectorAll("[data-management-close]").forEach(el=>el.addEventListener("click",closeTeamManagement));
+    $("occurrences-team-cards")?.addEventListener("click",event=>{const button=event.target.closest(".occ-team-save");if(!button)return;const card=button.closest(".occ-team-card"),select=card?.querySelector(".occ-team-coordinator-select");if(!card||!select)return;const coordinator=select.value?{id:String(select.value),name:select.options[select.selectedIndex]?.textContent||""}:null;saveManagement("shift",{shiftId:card.dataset.shiftId,coordinator}).then(renderTeamManagement).catch(error=>toast?.(error.message||"Falha ao salvar.","error"));});
     $("occurrences-manage-employee")?.addEventListener("change",()=>{const id=$("occurrences-manage-employee")?.value;$("occurrences-manage-employee-coordinator").value=management.employeeCoordinators?.[id]?.id||"";});
     $("occurrences-journey-close")?.addEventListener("click",()=>{if($("occurrences-journey-panel"))$("occurrences-journey-panel").hidden=true;});
     $("occurrences-clear-filter")?.addEventListener("click",()=>{

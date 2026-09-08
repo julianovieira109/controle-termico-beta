@@ -1407,6 +1407,7 @@
           <label>Competência<input type="month" id="occurrences-month"></label>
           <label>Turno<select id="occurrences-shift"><option value="">Todos</option></select></label>
           <label>Coordenador<select id="occurrences-coordinator"><option value="">Todos</option></select></label>
+          <button type="button" class="secondary occ-team-management-button" id="occurrences-management-open">⚙ Gerenciar Equipes</button>
           <button type="button" class="secondary occ-presentation-button" id="occurrences-presentation">▣ Modo Apresentação</button>
         </div>
       </header>
@@ -1469,14 +1470,28 @@
         </aside>
       </section>
 
-      <details class="occurrences-management panel" id="occurrences-management">
-        <summary><strong>Coordenadores por turno e colaborador</strong><span>Configuração gerencial</span></summary>
-        <div class="occurrences-management-body"><p class="hint">O coordenador definido diretamente no colaborador tem prioridade sobre o coordenador padrão do turno.</p>
-          <div class="occurrences-management-grid"><label>Turno<select id="occurrences-manage-shift"><option value="">Selecione o turno</option></select></label><label>Coordenador padrão<select id="occurrences-manage-shift-coordinator"><option value="">Sem coordenador</option></select></label><button type="button" class="secondary" id="occurrences-save-shift-coordinator">Salvar turno</button></div>
-          <div class="occurrences-management-grid"><label>Colaborador<select id="occurrences-manage-employee"><option value="">Selecione o colaborador</option></select></label><label>Coordenador específico<select id="occurrences-manage-employee-coordinator"><option value="">Usar coordenador do turno</option></select></label><button type="button" class="secondary" id="occurrences-save-employee-coordinator">Salvar colaborador</button></div>
-          <div id="occurrences-management-status" class="hint">Aguardando empresa e filial.</div>
-        </div>
-      </details>
+      <div class="occ-team-management-modal" id="occurrences-management" hidden aria-hidden="true">
+        <div class="occ-team-management-backdrop" data-management-close></div>
+        <section class="occ-team-management-dialog" role="dialog" aria-modal="true" aria-labelledby="occurrences-management-title">
+          <header class="occ-team-management-head">
+            <div><span class="eyebrow">Configuração gerencial</span><h3 id="occurrences-management-title">Gestão de Equipes e Coordenadores</h3><p>Defina o responsável padrão de cada turno. Use exceções somente quando um colaborador responder a outro coordenador.</p></div>
+            <button type="button" class="secondary" id="occurrences-management-close">Fechar</button>
+          </header>
+          <div class="occ-team-management-content">
+            <section class="occ-team-section">
+              <div class="occ-team-section-head"><div><h4>Turnos e responsáveis</h4><p class="hint">Configuração principal usada pelo Painel de Pessoas.</p></div><span id="occurrences-management-status" class="hint">Aguardando empresa e filial.</span></div>
+              <div id="occurrences-team-cards" class="occ-team-cards"><div class="muted">Selecione uma empresa e uma filial.</div></div>
+            </section>
+            <details class="occ-team-exceptions">
+              <summary><strong>Exceções por colaborador</strong><span>Somente casos especiais</span></summary>
+              <div class="occ-team-exception-body">
+                <p class="hint">O coordenador específico substitui o coordenador padrão do turno apenas para o colaborador selecionado.</p>
+                <div class="occurrences-management-grid"><label>Colaborador<select id="occurrences-manage-employee"><option value="">Selecione o colaborador</option></select></label><label>Coordenador específico<select id="occurrences-manage-employee-coordinator"><option value="">Usar coordenador do turno</option></select></label><button type="button" class="secondary" id="occurrences-save-employee-coordinator">Salvar exceção</button></div>
+              </div>
+            </details>
+          </div>
+        </section>
+      </div>
 
       <details class="occurrences-analysis-more panel">
         <summary><strong>Ver análise completa da competência</strong><span>Ocorrências detalhadas e gráficos técnicos</span></summary>
