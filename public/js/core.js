@@ -648,6 +648,10 @@ function navigate(view){
   const titles={dashboard:"Painel",companies:"Empresas e filiais",users:"Usuários",employees:"Colaboradores",reports:"Relatórios",occurrences:"Controle de Ocorrências",settings:"Configurações",help:"Assistente de Ajuda",manual:"Manual do Sistema"};
   $("page-title").textContent=titles[view];
   $("page-title").classList.toggle("help-title-contrast",view==="help");
+  // Recarrega o Painel sempre que o usuário retornar à visão principal.
+  // Isso evita que uma falha transitória durante o login deixe os cards em estado vazio
+  // até um F5, sem criar botão manual de atualização.
+  if(view==="dashboard" && typeof loadDashboard==="function")loadDashboard();
   if(view==="companies")loadCompanyBranchAdmin();
   if(view==="users")loadUsers();
   if(view==="employees"){

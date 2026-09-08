@@ -80,9 +80,18 @@ test('identifica 3º turno por nome ou código Senior 56', () => {
   assert.equal(thermal.isThirdShift({ shift_name: '1º Turno', shift_senior_code: '46' }), false);
 });
 
-test('3º turno desloca a data de referência do ponto em +1 dia', () => {
-  assert.equal(thermal.pointReportDate('2026-08-31', { shift_senior_code: '56' }), '2026-09-01');
+test('3º turno preserva a data oficial informada pelo Senior', () => {
+  assert.equal(thermal.pointReportDate('2026-08-31', { shift_senior_code: '56' }), '2026-08-31');
   assert.equal(thermal.pointReportDate('2026-08-31', { shift_senior_code: '46' }), '2026-08-31');
+});
+
+test('virada da meia-noite continua sendo tratada no cálculo da jornada do 3º turno', () => {
+  const schedule=thermal.parseShiftSchedule('22:00 - 02:00 - 03:00 - 06:00');
+  assert.ok(schedule);
+  assert.equal(schedule.start,22*60);
+  assert.equal(schedule.breakStart,26*60);
+  assert.equal(schedule.breakEnd,27*60);
+  assert.equal(schedule.end,30*60);
 });
 
 test('formatação de horário suporta minutos após meia-noite', () => {

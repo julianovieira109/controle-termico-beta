@@ -241,9 +241,17 @@ async function loadDashboardAlerts(){
 }
 
 async function loadDashboard(){
+  // Evita respostas antigas de cache e dá uma segunda chance para falhas transitórias
+  // de rede/serviço logo após um deploy.
   setDashboardLoading(true);
   try{
-    const d=await api("/api/dashboard/summary");
+    let d;
+    try{
+      d=await api(`/api/dashboard/summary?_=${Date.now()}`);
+    }catch(firstError){
+      await new Promise(resolve=>setTimeout(resolve,650));
+      d=await api(`/api/dashboard/summary?_=${Date.now()}`);
+    }
     dashboardActiveEmployees=Number(d.employees||0);
     $("sum-employees").textContent=d.employees;
     $("sum-companies").textContent=d.companies;

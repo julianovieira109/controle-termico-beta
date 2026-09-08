@@ -7,10 +7,21 @@ const html=fs.readFileSync(path.join(__dirname,'../public/index.html'),'utf8');
 const js=fs.readFileSync(path.join(__dirname,'../public/js/calendar-reports.js'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'../public/css/enhancements.css'),'utf8');
 
-test('botão principal abre Central de impressão',()=>{
-  assert.match(html,/id="report-print"[^>]*>Central de impressão</);
+test('impressão principal imprime tudo e Central fica como opção personalizada',()=>{
+  assert.match(html,/id="report-print"[^>]*>Imprimir tudo</);
+  assert.match(html,/id="report-print-custom"[^>]*>Impressão personalizada</);
   assert.match(html,/id="report-print-center"/);
-  assert.match(js,/\$\("report-print"\)\.onclick=openPrintCenter/);
+  assert.match(js,/\$\("report-print"\)\.onclick=printAllReports/);
+  assert.match(js,/\$\("report-print-custom"\)\)\$\("report-print-custom"\)\.onclick=openPrintCenter/);
+});
+
+test('imprimir tudo mantém validação e não abre a Central',()=>{
+  const start=js.indexOf('function printAllReports');
+  const end=js.indexOf('\n}\n',start)+3;
+  const block=js.slice(start,end);
+  assert.match(block,/validateReportPrint\(\)/);
+  assert.match(block,/window\.print\(\)/);
+  assert.doesNotMatch(block,/openPrintCenter/);
 });
 
 test('central permite filtrar os três tipos de ficha',()=>{

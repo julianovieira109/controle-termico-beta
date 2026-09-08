@@ -40,3 +40,28 @@ test('filial com competência mas colaborador sem linhas de ponto gera aviso',()
   const r=validator.validate({month:'2026-08',employees:[employee({point_schedules:{},point_states:{}})],thermalConfig:cfg,pointCompetenceBranches:['10']});
   assert.equal(r.valid,true); assert.ok(r.warnings.some(x=>x.code==='NO_POINT_ROWS'));
 });
+
+
+test('bloqueio de ponto ausente é agrupado por filial',()=>{
+  const employees=[
+    employee({id:1,full_name:'A',branch_id:10,branch_name:'TRANZILOG'}),
+    employee({id:2,full_name:'B',branch_id:10,branch_name:'TRANZILOG'}),
+    employee({id:3,full_name:'C',branch_id:10,branch_name:'TRANZILOG'})
+  ];
+  const r=validator.validate({month:'2026-08',employees,thermalConfig:cfg,pointCompetenceBranches:[]});
+  const missing=r.blockers.filter(x=>x.code==='POINT_COMPETENCE_MISSING');
+  assert.equal(missing.length,1);
+  assert.match(missing[0].message,/TRANZILOG/);
+  assert.match(missing[0].message,/3 colaboradores afetados/);
+  assert.equal(r.counts.blockers,1);
+});
+
+test('ponto ausente em filiais diferentes gera um bloqueio por filial',()=>{
+  const employees=[
+    employee({id:1,full_name:'A',branch_id:10,branch_name:'FILIAL A'}),
+    employee({id:2,full_name:'B',branch_id:20,branch_name:'FILIAL B'})
+  ];
+  const r=validator.validate({month:'2026-08',employees,thermalConfig:cfg,pointCompetenceBranches:[]});
+  const missing=r.blockers.filter(x=>x.code==='POINT_COMPETENCE_MISSING');
+  assert.equal(missing.length,2);
+});
