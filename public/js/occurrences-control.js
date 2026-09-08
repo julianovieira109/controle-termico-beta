@@ -479,15 +479,17 @@
     });
 
     const tableRows=rows.length
-      ?rows.map(row=>`
+      ?rows.map((row,index)=>`
         <tr>
-          <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.registration||"Sem matrícula")} · ${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
+          <td class="occurrence-rank">${index+1}</td>
+          <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
+          <td class="occurrence-registration">${esc(row.registration||"-")}</td>
           <td>${number(row,"days_off")}</td><td>${number(row,"absences")}</td><td>${number(row,"bank_hours")}</td>
           <td>${number(row,"medical")}</td><td>${number(row,"vacations")}</td><td>${number(row,"dsr")}</td>
           <td>${number(row,"licenses")}</td><td>${number(row,"leaves")}</td><td>${number(row,"compensated")}</td>
           <td>${number(row,"courses")}</td><td>${number(row,"bereavement")}</td><td>${number(row,"review_days")}</td>
         </tr>`).join("")
-      :'<tr><td colspan="13">Nenhum registro encontrado para o filtro selecionado.</td></tr>';
+      :'<tr><td colspan="15">Nenhum registro encontrado para o filtro selecionado.</td></tr>';
 
     const detail=document.createElement("section");
     detail.className="panel occurrences-detail-panel";
@@ -503,7 +505,7 @@
         <table class="occurrences-table">
           <thead>
             <tr>
-              <th>Colaborador</th><th>Folgas</th><th>Faltas</th><th>BH</th><th>Atestados</th>
+              <th>#</th><th>Colaborador</th><th>Matrícula</th><th>Folgas</th><th>Faltas</th><th>BH</th><th>Atestados</th>
               <th>Férias</th><th>DSR</th><th>Licenças</th><th>Afast.</th><th>Comp.</th>
               <th>Curso</th><th>Óbito</th><th>Revisão</th>
             </tr>
@@ -516,7 +518,18 @@
         <small>Fonte: Cartão de Ponto Senior importado no Controle Térmico.</small>
       </div>`;
 
-    holder.replaceChildren(header,summary,charts,detail);
+    const f=currentFilters();
+    const period=importPeriod(Array.isArray(lastData.imports)?lastData.imports:[]);
+    const totalOccurrences=config.reduce((sum,[key])=>sum+Number(lastData.summary?.[key]||0),0);
+    const context=document.createElement("section");
+    context.className="occurrences-print-context";
+    context.innerHTML=`
+      <div><span>Competência</span><strong>${esc(monthLabel(f.month))}</strong><small>${period?`${formatDate(period.start)} a ${formatDate(period.end)}`:"Período da competência"}</small></div>
+      <div><span>Empresa</span><strong>${esc(selectedText("occurrences-company","Todas as empresas"))}</strong><small>Escopo do relatório</small></div>
+      <div><span>Filial</span><strong>${esc(selectedText("occurrences-branch","Todas as filiais"))}</strong><small>Unidade selecionada</small></div>
+      <div><span>Totais gerais</span><strong>${rows.length} colaboradores</strong><small>${totalOccurrences} ocorrências registradas</small></div>`;
+
+    holder.replaceChildren(header,context,summary,charts,detail);
     holder.setAttribute("aria-hidden","false");
     return true;
   }
