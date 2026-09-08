@@ -163,17 +163,23 @@
     fillManagementSelectors();
   }
 
-  function coordinatorOptions(emptyLabel){
-    return `<option value="">${esc(emptyLabel)}</option>`+[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}" data-name="${esc(r.full_name)}">${esc(r.full_name)}</option>`).join("");
+  function branchManagementRows(){
+    const f=currentFilters();
+    if(!f.companyId||!f.branchId)return [];
+    return rows.filter(r=>String(r.company_id||"")===String(f.companyId)&&String(r.branch_id||"")===String(f.branchId));
+  }
+  function coordinatorOptions(emptyLabel,sourceRows=branchManagementRows()){
+    return `<option value="">${esc(emptyLabel)}</option>`+[...sourceRows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}" data-name="${esc(r.full_name)}">${esc(r.full_name)} · ${esc(r.shift_name||"Sem turno")}</option>`).join("");
   }
   function fillManagementSelectors(){
-    if($("occurrences-manage-employee"))$("occurrences-manage-employee").innerHTML='<option value="">Selecione o colaborador</option>'+[...rows].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}">${esc(r.full_name)}</option>`).join("");
-    if($("occurrences-manage-employee-coordinator"))$("occurrences-manage-employee-coordinator").innerHTML=coordinatorOptions("Usar coordenador do turno");
+    const scoped=branchManagementRows();
+    if($("occurrences-manage-employee"))$("occurrences-manage-employee").innerHTML='<option value="">Selecione o colaborador</option>'+[...scoped].sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),"pt-BR")).map(r=>`<option value="${esc(r.employee_id)}">${esc(r.full_name)} · ${esc(r.shift_name||"Sem turno")}</option>`).join("");
+    if($("occurrences-manage-employee-coordinator"))$("occurrences-manage-employee-coordinator").innerHTML=coordinatorOptions("Usar coordenador do turno",scoped);
     renderTeamManagement();
   }
   function teamShiftRows(){
     const map=new Map();
-    rows.filter(r=>r.shift_id).forEach(r=>{
+    branchManagementRows().filter(r=>r.shift_id).forEach(r=>{
       const id=String(r.shift_id), item=map.get(id)||{id,name:r.shift_name||"Turno",employees:[],green:0,yellow:0,red:0};
       item.employees.push(r);
       const status=String(r.indicator_status||"").toLowerCase(); if(status==="green")item.green++; else if(status==="yellow")item.yellow++; else if(status==="red")item.red++;
@@ -239,7 +245,11 @@
     if(!worked)return {level:'neutral',label:String(day.point_state||'-'),actual,planned};
     if(marks.length<4)return {level:'red',label:'Jornada incompleta',actual,planned};
     if(actual==null)return {level:'red',label:'Intervalo não confirmado',actual,planned};
-    if(planned!=null&&actual!==planned)return {level:'yellow',label:`Intervalo fora do padrão (${actual} min / previsto ${planned} min)`,actual,planned};
+    if(planned!=null){
+      const intervalDiff=Math.abs(actual-planned);
+      if(intervalDiff>10)return {level:'red',label:`Intervalo fora do padrão (${actual} min / previsto ${planned} min)`,actual,planned,intervalDiff};
+      if(intervalDiff>5)return {level:'yellow',label:`Intervalo fora do padrão (${actual} min / previsto ${planned} min)`,actual,planned,intervalDiff};
+    }
     if(/SA[ÍI]DA\s+ANTECIPADA/i.test(day.occurrence||''))return {level:'red',label:'Saída antecipada',actual,planned};
     if(/BH|HORA\s*EXTRA/i.test(day.occurrence||''))return {level:'yellow',label:'BH / hora adicional',actual,planned};
     return {level:'green',label:'Dentro do padrão',actual,planned};
@@ -253,7 +263,7 @@
     try{
       const data=await api(`/api/dashboard/occurrences/journey?month=${encodeURIComponent(currentFilters().month)}&employeeId=${encodeURIComponent(employeeId)}`); const days=Array.isArray(data.days)?data.days:[];
       const analyses=days.map(day=>journeyDayAnalysis(day));
-      const irregular=analyses.filter(item=>item.level==='yellow'&&item.label.startsWith('Intervalo')).length;
+      const irregular=analyses.filter(item=>(item.level==='yellow'||item.level==='red')&&item.label.startsWith('Intervalo')).length;
       const incomplete=analyses.filter(item=>item.level==='red'&&/Jornada|Intervalo/.test(item.label)).length;
       const additional=analyses.filter((item,index)=>/BH|HORA\s*EXTRA/i.test(days[index]?.occurrence||'')).length;
       const early=analyses.filter((item,index)=>/SA[ÍI]DA\s+ANTECIPADA/i.test(days[index]?.occurrence||'')).length;
@@ -503,7 +513,7 @@
         const days=byEmployee.get(String(row.employee_id))||[];
         const bhPositive=days.reduce((sum,d)=>sum+Number(d.bh_positive_minutes||0),0);
         const bhNegative=days.reduce((sum,d)=>sum+Number(d.bh_negative_minutes||0),0);
-        const intervalIssues=days.filter(day=>{const a=journeyDayAnalysis(day);return a.level==='yellow'&&String(a.label||'').startsWith('Intervalo fora do padrão');}).length;
+        const intervalIssues=days.filter(day=>{const a=journeyDayAnalysis(day);return (a.level==='yellow'||a.level==='red')&&String(a.label||'').startsWith('Intervalo fora do padrão');}).length;
         const coordinator=row.coordinator?.name||'Não definido';
         return `<article class="journey-employee-section${index?' journey-page-break':''}">
           <header class="journey-employee-head">

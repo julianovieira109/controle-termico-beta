@@ -19,8 +19,9 @@ function parseBhBreakdown(occurrence){
   // dos totais precisa respeitar essa ordem: o primeiro total é o total trabalhado.
   // Em BH 50%, quando existem quatro ou mais totais, o segundo é BH - e o
   // terceiro é BH +. Com dois/três totais, o segundo é o BH + (o terceiro,
-  // quando "Noturnas", é adicional noturno). Um único total em BH 50% é
-  // apenas Trabalho e NÃO pode ser contado como BH.
+  // quando "Noturnas", é adicional noturno). Quando a ocorrência traz apenas
+  // um total após "BH 50%", esse valor já é o próprio BH positivo. Isso ocorre
+  // em cartões onde o total de Trabalho não é repetido dentro do texto da ocorrência.
   // Em BH (-), o segundo total é BH -; em Folga BH há somente o próprio saldo.
   if(/BH\s*\(-\)/i.test(text)){
     if(times.length===1)negative=toMinutes(times[0]);
@@ -31,6 +32,8 @@ function parseBhBreakdown(occurrence){
       positive=toMinutes(times[2]);
     }else if(times.length>=2){
       positive=toMinutes(times[1]);
+    }else if(times.length===1){
+      positive=toMinutes(times[0]);
     }
   }
   return {positive,negative,net:positive-negative};
@@ -443,6 +446,15 @@ router.get("/occurrences/journey",requireOccurrencesAccess,async(req,res,next)=>
       WHERE p.employee_id=$1::uuid AND p.work_date >= $2::date AND p.work_date < ($2::date + INTERVAL '1 month') ${scope}
       ORDER BY p.work_date
     `,params);
+    for(const row of rows){
+      const bh=parseBhBreakdown(row.occurrence);
+      row.bh_positive_minutes=bh.positive;
+      row.bh_negative_minutes=bh.negative;
+      row.bh_net_minutes=bh.net;
+      row.bh_positive=formatBhMinutes(bh.positive);
+      row.bh_negative=bh.negative?`-${formatBhMinutes(bh.negative).replace(/^[-+]/,'')}`:'00:00';
+      row.bh_net=formatBhMinutes(bh.net);
+    }
     res.json({month,employeeId,days:rows});
   }catch(error){next(error);}
 });
@@ -499,8 +511,35 @@ router.put("/occurrences/management",requireOccurrencesAccess,async(req,res,next
     const companyId=String(req.body?.companyId||"").trim(); const branchId=String(req.body?.branchId||"").trim();
     if(!companyId||!branchId)return res.status(400).json({error:"Selecione empresa e filial para salvar os coordenadores."});
     if(!req.scope.isAdmin&&(String(companyId)!==String(req.scope.companyId)||!req.scope.branchIds.map(String).includes(String(branchId))))return res.status(403).json({error:"Filial fora do seu escopo."});
-    const cleanMap=value=>Object.fromEntries(Object.entries(value&&typeof value==='object'?value:{}).filter(([k,v])=>k&&v&&typeof v==='object'&&String(v.name||'').trim()).map(([k,v])=>[k,{id:String(v.id||''),name:String(v.name||'').trim()}]));
-    const value={shiftCoordinators:cleanMap(req.body?.shiftCoordinators),employeeCoordinators:cleanMap(req.body?.employeeCoordinators)};
+    // A configuração gerencial é sempre filial-específica. Não confiamos nos
+    // ids/nomes enviados pelo navegador: turnos, colaboradores e coordenadores
+    // precisam existir entre os colaboradores da empresa + filial selecionadas.
+    const {rows:branchEmployees}=await pool.query(`
+      SELECT e.id employee_id,e.full_name,e.shift_id
+      FROM employees e
+      WHERE e.company_id=$1::uuid AND e.branch_id=$2::uuid AND COALESCE(e.active,true)=true
+    `,[companyId,branchId]);
+    const employeesById=new Map(branchEmployees.map(item=>[String(item.employee_id),item]));
+    const validShiftIds=new Set(branchEmployees.map(item=>String(item.shift_id||'')).filter(Boolean));
+    const requestedShift=req.body?.shiftCoordinators&&typeof req.body.shiftCoordinators==='object'?req.body.shiftCoordinators:{};
+    const requestedEmployee=req.body?.employeeCoordinators&&typeof req.body.employeeCoordinators==='object'?req.body.employeeCoordinators:{};
+    const coordinatorFromBranch=value=>{
+      const candidate=employeesById.get(String(value?.id||''));
+      return candidate?{id:String(candidate.employee_id),name:String(candidate.full_name||'').trim()}:null;
+    };
+    const shiftCoordinators={};
+    for(const [shiftId,rawCoordinator] of Object.entries(requestedShift)){
+      if(!validShiftIds.has(String(shiftId)))continue;
+      const coordinator=coordinatorFromBranch(rawCoordinator);
+      if(coordinator)shiftCoordinators[String(shiftId)]=coordinator;
+    }
+    const employeeCoordinators={};
+    for(const [employeeId,rawCoordinator] of Object.entries(requestedEmployee)){
+      if(!employeesById.has(String(employeeId)))continue;
+      const coordinator=coordinatorFromBranch(rawCoordinator);
+      if(coordinator)employeeCoordinators[String(employeeId)]=coordinator;
+    }
+    const value={shiftCoordinators,employeeCoordinators};
     const existing=await pool.query("SELECT id FROM system_settings WHERE company_id=$1 AND branch_id=$2 AND setting_key='occurrences-management' ORDER BY updated_at DESC LIMIT 1",[companyId,branchId]);
     if(existing.rows[0])await pool.query("UPDATE system_settings SET setting_value=$1::jsonb,updated_at=NOW() WHERE id=$2",[JSON.stringify(value),existing.rows[0].id]);
     else await pool.query("INSERT INTO system_settings(company_id,branch_id,setting_key,setting_value) VALUES($1,$2,'occurrences-management',$3::jsonb)",[companyId,branchId,JSON.stringify(value)]);
