@@ -6,23 +6,6 @@ const audit=require("../db/audit");
 const router=express.Router();
 router.use(authenticate,applyScope,requirePermission("dashboard.view"));
 
-function parseBhMinutes(occurrence){
-  const text=String(occurrence||"").split(" | ")[0].trim();
-  if(!/(^|[^A-Z])BH([^A-Z]|$)/i.test(text))return 0;
-  const times=[...text.matchAll(/(?:^|\s)((?:[01]\d|2[0-3]):[0-5]\d)(?=\s|$)/g)].map(m=>m[1]);
-  if(!times.length)return 0;
-  const [h,m]=times[times.length-1].split(":").map(Number);
-  const minutes=h*60+m;
-  return /BH\s*\(-\)/i.test(text)?-minutes:minutes;
-}
-
-function formatBhMinutes(minutes){
-  const value=Math.round(Number(minutes)||0);
-  const sign=value>0?"+":value<0?"-":"";
-  const abs=Math.abs(value);
-  return `${sign}${String(Math.floor(abs/60)).padStart(2,"0")}:${String(abs%60).padStart(2,"0")}`;
-}
-
 router.get("/summary",async(req,res,next)=>{
   try{
     if(req.scope.isAdmin){
@@ -303,7 +286,6 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='FOLGA')::int days_off,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FALTA','ABSENT'))::int absences,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.occurrence,'')) ~ '(^|[^A-Z])BH([^A-Z]|$)')::int bank_hours,
-        COALESCE(jsonb_agg(p.occurrence) FILTER(WHERE UPPER(COALESCE(p.occurrence,'')) ~ '(^|[^A-Z])BH([^A-Z]|$)'), '[]'::jsonb) bh_occurrences,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('ATESTADO','MEDICAL'))::int medical,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FERIAS','FÉRIAS','VACATION'))::int vacations,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='DSR')::int dsr,
@@ -339,51 +321,28 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
       row.coordinator_source=employeeCoordinator?"COLABORADOR":shiftCoordinator?"TURNO":null;
       const absences=Number(row.absences||0);
       const bankHours=Number(row.bank_hours||0);
-      const bhEntries=Array.isArray(row.bh_occurrences)?row.bh_occurrences:[];
-      const bhNetMinutes=bhEntries.reduce((sum,item)=>sum+parseBhMinutes(item),0);
-      const bhPositiveMinutes=bhEntries.reduce((sum,item)=>{const value=parseBhMinutes(item);return sum+(value>0?value:0);},0);
-      const bhNegativeMinutes=bhEntries.reduce((sum,item)=>{const value=parseBhMinutes(item);return sum+(value<0?Math.abs(value):0);},0);
-      row.bh_net_minutes=bhNetMinutes;
-      row.bh_positive_minutes=bhPositiveMinutes;
-      row.bh_negative_minutes=bhNegativeMinutes;
-      row.bh_net=formatBhMinutes(bhNetMinutes);
-      row.bh_positive=formatBhMinutes(bhPositiveMinutes);
-      row.bh_negative=bhNegativeMinutes?`-${formatBhMinutes(bhNegativeMinutes).replace(/^[-+]/,'')}`:'00:00';
       const reviews=Number(row.review_days||0);
       const earlyExits=Number(row.early_exits||0);
       const workedDays=Number(row.worked_days||0);
       const completeWorkDays=Number(row.complete_work_days||0);
       const incompleteDays=Math.max(0,workedDays-completeWorkDays);
-      // Semáforo gerencial calibrado: ocorrências justificadas continuam
-      // informativas. BH passa a ser analisado pelo tempo real acumulado, e
-      // não pela simples quantidade de dias em que a Senior escreveu "BH".
-      // Tolerância inicial: até 30 min líquidos não agrava o indicador.
-      // Positivo: atenção acima de 30 min e crítico a partir de 10h.
-      // Negativo: atenção acima de 30 min e crítico a partir de 4h.
+      // Semáforo gerencial: ocorrências justificadas (atestado, férias, licença,
+      // afastamento, curso, óbito, DSR e folga) são informativas e não pioram
+      // o indicador por si só. O BH abaixo mede recorrência de ocorrência no
+      // cartão; saldo em horas será tratado separadamente quando disponível.
       const critical=[]; const attention=[];
       if(absences>=2)critical.push(`${absences} faltas`); else if(absences===1)attention.push('1 falta');
-      if(earlyExits>=3)critical.push(`${earlyExits} saídas antecipadas`); else if(earlyExits>0)attention.push(`${earlyExits} saída${earlyExits===1?'':'s'} antecipada${earlyExits===1?'':'s'}`);
+      if(earlyExits>=2)critical.push(`${earlyExits} saídas antecipadas`); else if(earlyExits===1)attention.push('1 saída antecipada');
       if(reviews>=3)critical.push(`${reviews} dias para revisão`); else if(reviews>0)attention.push(`${reviews} dia${reviews===1?'':'s'} para revisão`);
-      if(incompleteDays>=3)critical.push(`${incompleteDays} jornadas incompletas`); else if(incompleteDays>0)attention.push(`${incompleteDays} jornada${incompleteDays===1?'':'s'} incompleta${incompleteDays===1?'':'s'}`);
-      if(bhNegativeMinutes>=240)critical.push(`BH negativo ${row.bh_negative}`);
-      else if(bhPositiveMinutes>=600)critical.push(`BH positivo ${row.bh_positive}`);
-      else if(Math.abs(bhNetMinutes)>30||bhPositiveMinutes>30||bhNegativeMinutes>30)attention.push(`BH ${row.bh_net}`);
+      if(incompleteDays>=2)critical.push(`${incompleteDays} jornadas incompletas`); else if(incompleteDays===1)attention.push('1 jornada incompleta');
+      if(bankHours>=3)critical.push(`${bankHours} ocorrências de BH`); else if(bankHours>0)attention.push(`${bankHours} ocorrência${bankHours===1?'':'s'} de BH`);
       row.indicator_status=critical.length?'RED':attention.length?'YELLOW':'GREEN';
       row.indicator_reasons=critical.length?critical:attention;
       row.incomplete_days=incompleteDays;
       row.green_eligible=row.indicator_status==='GREEN';
     }
 
-    const summary=rows.reduce((acc,row)=>{
-      for(const key of ["days_off","absences","bank_hours","medical","vacations","dsr","licenses","leaves","compensated","courses","bereavement","review_days"])acc[key]=(acc[key]||0)+Number(row[key]||0);
-      acc.bh_positive_minutes=(acc.bh_positive_minutes||0)+Number(row.bh_positive_minutes||0);
-      acc.bh_negative_minutes=(acc.bh_negative_minutes||0)+Number(row.bh_negative_minutes||0);
-      acc.bh_net_minutes=(acc.bh_net_minutes||0)+Number(row.bh_net_minutes||0);
-      return acc;
-    },{});
-    summary.bh_positive=formatBhMinutes(summary.bh_positive_minutes||0);
-    summary.bh_negative=(summary.bh_negative_minutes||0)?`-${formatBhMinutes(summary.bh_negative_minutes).replace(/^[-+]/,'')}`:'00:00';
-    summary.bh_net=formatBhMinutes(summary.bh_net_minutes||0);
+    const summary=rows.reduce((acc,row)=>{for(const key of ["days_off","absences","bank_hours","medical","vacations","dsr","licenses","leaves","compensated","courses","bereavement","review_days"])acc[key]=(acc[key]||0)+Number(row[key]||0);return acc;},{});
 
     const importParams=[month]; const importFilters=[];
     if(!req.scope.isAdmin){importParams.push(req.scope.companyId);importFilters.push(`i.company_id=$${importParams.length}`);importParams.push(req.scope.branchIds);importFilters.push(`i.branch_id=ANY($${importParams.length}::uuid[])`);}

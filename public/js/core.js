@@ -542,15 +542,7 @@ function showApp(){
     openMyPassword(true);
     return;
   }
-  if(hasPermission("dashboard.view")){
-    // O núcleo não depende da ordem de carregamento do módulo do Dashboard.
-    // Agenda a leitura após os scripts terminarem de inicializar.
-    setTimeout(()=>{
-      if(typeof window.loadDashboard==="function"){
-        window.loadDashboard().catch(error=>console.error("[DASHBOARD_BOOT]",error));
-      }
-    },0);
-  }
+  if(hasPermission("dashboard.view"))loadDashboard();
   else if(hasPermission("reports.view"))navigate("reports");
   else if(hasPermission("employees.view"))navigate("employees");
   else if(hasPermission("settings.view")||hasPermission("calendar.manage"))navigate("settings");
@@ -656,12 +648,6 @@ function navigate(view){
   const titles={dashboard:"Painel",companies:"Empresas e filiais",users:"Usuários",employees:"Colaboradores",reports:"Relatórios",occurrences:"Controle de Ocorrências",settings:"Configurações",help:"Assistente de Ajuda",manual:"Manual do Sistema"};
   $("page-title").textContent=titles[view];
   $("page-title").classList.toggle("help-title-contrast",view==="help");
-  // Recarrega o Painel sempre que o usuário retornar à visão principal.
-  // Isso evita que uma falha transitória durante o login deixe os cards em estado vazio
-  // até um F5, sem criar botão manual de atualização.
-  if(view==="dashboard" && typeof window.loadDashboard==="function"){
-    window.loadDashboard().catch(error=>console.error("[DASHBOARD_NAVIGATION]",error));
-  }
   if(view==="companies")loadCompanyBranchAdmin();
   if(view==="users")loadUsers();
   if(view==="employees"){

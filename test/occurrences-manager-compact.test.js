@@ -9,7 +9,7 @@ test('Controle de Ocorrências prioriza painel gerencial enxuto',()=>{
   const html=read('public/index.html');
   assert.match(html,/id="occurrences-primary-kpis"/);
   assert.match(html,/Ver análise completa da competência/);
-  assert.match(html,/Colaborador<\/th><th>Turno \/ Coordenador<\/th><th>Indicador<\/th><th>Faltas<\/th><th>BH \(\+ \/ -\)<\/th><th>Revisão<\/th><th>Jornada/);
+  assert.match(html,/Colaborador<\/th><th>Turno \/ Coordenador<\/th><th>Indicador<\/th><th>Faltas<\/th><th>BH<\/th><th>Revisão<\/th><th>Jornada/);
 });
 
 test('Jornada compara intervalo real com jornada prevista sem alterar ponto Senior',()=>{
