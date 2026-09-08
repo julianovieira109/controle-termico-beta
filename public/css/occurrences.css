@@ -346,3 +346,125 @@ body.occurrences-presentation-mode .occ-team-management-button{display:none!impo
 #occurrences .occ-presentation-button:hover{background:rgba(255,255,255,.2);color:#fff}
 @media(max-width:1250px){#occurrences .occ-dash-header{align-items:stretch;flex-direction:column}#occurrences .occ-dash-filters{grid-template-columns:repeat(3,minmax(145px,1fr)) auto auto;width:100%}}
 @media(max-width:900px){#occurrences .occ-dash-filters{grid-template-columns:1fr 1fr}#occurrences .occ-team-management-button,#occurrences .occ-presentation-button{width:100%}}
+
+/* V1.0.31 Beta.34 — Painel de Pessoas Professional UI */
+#occurrences{
+  --occ-navy:#0b3f68;
+  --occ-navy-2:#0f5689;
+  --occ-blue:#1678bd;
+  --occ-blue-soft:#eaf4fb;
+  --occ-border:#dbe5ed;
+  --occ-shadow:0 8px 26px rgba(24,55,82,.075);
+  --occ-shadow-hover:0 12px 30px rgba(24,55,82,.12);
+  --occ-radius:14px;
+  color:#17324a;
+}
+#occurrences .panel{border-color:var(--occ-border);box-shadow:var(--occ-shadow);border-radius:var(--occ-radius)}
+#occurrences .occ-dash-header{
+  position:relative;overflow:hidden;
+  min-height:116px;padding:20px 24px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:16px;
+  background:linear-gradient(118deg,#0a3a61 0%,#0d4c7b 55%,#0f5d92 100%);
+  box-shadow:0 14px 34px rgba(9,52,86,.18);
+}
+#occurrences .occ-dash-header:before,
+#occurrences .occ-dash-header:after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+#occurrences .occ-dash-header:before{width:240px;height:240px;right:-105px;top:-130px;background:rgba(255,255,255,.07)}
+#occurrences .occ-dash-header:after{width:120px;height:120px;right:90px;bottom:-85px;background:rgba(255,255,255,.045)}
+#occurrences .occ-dash-title,#occurrences .occ-dash-filters{position:relative;z-index:1}
+#occurrences .occ-dash-title-row{display:flex;align-items:center;gap:14px}
+#occurrences .occ-dash-brandmark{display:grid;place-items:center;flex:0 0 50px;width:50px;height:50px;border-radius:14px;background:linear-gradient(145deg,#fff,#dcedf8);color:#0d507f;font-size:.88rem;font-weight:950;letter-spacing:.05em;box-shadow:0 7px 18px rgba(0,0,0,.16),inset 0 0 0 1px rgba(255,255,255,.7)}
+#occurrences .occ-dash-title .eyebrow{display:block;margin-bottom:2px;color:#b9dcf5;font-size:.66rem;font-weight:900;letter-spacing:.16em}
+#occurrences .occ-dash-title h2{font-size:1.72rem;font-weight:850;letter-spacing:-.025em}
+#occurrences .occ-dash-title p{color:#d5e9f8;font-size:.72rem;font-weight:650;letter-spacing:.08em;text-transform:uppercase}
+#occurrences .occ-dash-filters{gap:12px}
+#occurrences .occ-dash-filters label{font-size:.66rem;letter-spacing:.035em;text-transform:uppercase;color:#cfe6f7}
+#occurrences .occ-dash-filters select,#occurrences .occ-dash-filters input{height:44px;border-radius:10px;border-color:rgba(255,255,255,.52);font-weight:700;box-shadow:0 5px 14px rgba(6,45,75,.12);transition:.18s ease}
+#occurrences .occ-dash-filters select:focus,#occurrences .occ-dash-filters input:focus{outline:3px solid rgba(102,193,249,.28);border-color:#8ed2fa}
+#occurrences .occ-team-management-button,#occurrences .occ-presentation-button{height:44px;min-height:44px;border-radius:10px;font-size:.76rem;box-shadow:0 5px 14px rgba(6,45,75,.10)}
+#occurrences .occ-team-management-button{background:#f8fcff;color:#0a4d7a;border-color:#d8e9f5}
+#occurrences .occ-presentation-button{background:rgba(255,255,255,.09);backdrop-filter:blur(6px)}
+
+#occurrences .occ-dash-scope{margin-top:12px;padding:13px 14px;display:grid;grid-template-columns:minmax(170px,.85fr) minmax(150px,.65fr) minmax(220px,1.1fr) minmax(145px,.6fr) minmax(300px,1.8fr) auto;gap:10px;align-items:end;border:1px solid var(--occ-border);border-radius:14px;background:linear-gradient(180deg,#fff,#fbfdff);box-shadow:0 5px 18px rgba(24,55,82,.055)}
+#occurrences .occ-dash-scope label{font-size:.65rem;font-weight:850;color:#415b70;letter-spacing:.02em}
+#occurrences .occ-dash-scope select{height:40px;margin-top:5px;border-color:#d7e2ea;border-radius:9px;background:#fff;font-weight:650}
+#occurrences .occurrences-source-status{min-height:40px;display:flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid #bfe1cd;border-radius:9px;background:#f2fbf6;color:#176c42;overflow:hidden}
+#occurrences .occurrences-source-status:before{content:"✓";display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:#1b9a5a;color:#fff;font-size:.7rem;font-weight:900}
+#occurrences .occurrences-source-status span{font-size:.62rem;font-weight:850;white-space:nowrap}
+#occurrences .occurrences-source-status strong{font-size:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#occurrences .occ-print-report{height:40px;display:inline-flex;align-items:center;gap:7px;border-radius:9px;font-weight:800;color:#0a5484;border-color:#c9dce9;background:#fff}
+
+#occurrences .occ-dash-kpis{margin:12px 0;display:grid;grid-template-columns:repeat(10,minmax(110px,1fr));gap:9px}
+#occurrences .occ-kpi{position:relative;overflow:hidden;min-height:92px;padding:13px 13px 12px;border:1px solid var(--occ-border);border-radius:13px;background:linear-gradient(180deg,#fff,#fbfdff);box-shadow:0 6px 18px rgba(24,55,82,.055);text-align:left;transition:transform .17s ease,box-shadow .17s ease,border-color .17s ease}
+#occurrences button.occ-kpi{cursor:pointer}
+#occurrences button.occ-kpi:hover{transform:translateY(-2px);box-shadow:var(--occ-shadow-hover);border-color:#c9dbe8}
+#occurrences .occ-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:#8ea7ba}
+#occurrences .occ-kpi.green:before{background:#16985a}#occurrences .occ-kpi.yellow:before{background:#e3a414}#occurrences .occ-kpi.red:before{background:#dd3737}
+#occurrences .occ-kpi-bh-positive:before{background:#15905a}#occurrences .occ-kpi-bh-negative:before{background:#d74343}#occurrences .occ-kpi-bh-net:before{background:#487ca6}
+#occurrences .occ-kpi span{display:block;min-height:25px;color:#536b7e;font-size:.68rem;font-weight:850;letter-spacing:.01em}
+#occurrences .occ-kpi strong{display:block;margin-top:3px;color:#142f46;font-size:1.42rem;line-height:1.1;letter-spacing:-.035em}
+#occurrences .occ-kpi small{display:block;margin-top:5px;color:#7a8d9b;font-size:.61rem;font-weight:600}
+#occurrences .occ-kpi.green{background:linear-gradient(180deg,#fff,#f6fcf9)}#occurrences .occ-kpi.yellow{background:linear-gradient(180deg,#fff,#fffbf1)}#occurrences .occ-kpi.red{background:linear-gradient(180deg,#fff,#fff7f7)}
+#occurrences .occ-kpi-bh-positive strong{color:#138951}#occurrences .occ-kpi-bh-negative strong{color:#cb3535}#occurrences .occ-kpi-bh-net strong{color:#225b86}
+
+#occurrences .occ-executive-grid{gap:12px;margin-bottom:12px}
+#occurrences .occ-exec-card{overflow:hidden;border-radius:14px}
+#occurrences .occ-exec-head{padding:12px 15px;background:linear-gradient(180deg,#fbfdff,#f4f8fb);border-bottom:1px solid #e2eaf0}
+#occurrences .occ-exec-head h3{font-size:.9rem;font-weight:850;color:#173b58}
+#occurrences .occ-exec-head small{font-size:.64rem;color:#7a8d9b}
+#occurrences .occ-team-distribution{padding:17px}
+#occurrences .occ-team-donut{filter:drop-shadow(0 6px 12px rgba(28,57,80,.10))}
+#occurrences .occ-impact-bars{padding:16px 17px}
+#occurrences .occ-impact-row{min-height:26px}
+#occurrences .occ-impact-track{height:8px;background:#e9eff4}
+#occurrences .occ-shift-grid{padding:14px;gap:9px}
+#occurrences .occ-shift-card{padding:11px 12px;border-color:#dde7ee;border-radius:10px;background:#fbfdff;box-shadow:0 2px 8px rgba(24,55,82,.035)}
+
+#occurrences .occ-main-grid{gap:12px}
+#occurrences .occurrences-detail-panel{overflow:hidden;background:#fff}
+#occurrences .occurrences-detail-head{padding:14px 16px;border-bottom:1px solid #e3ebf1;background:linear-gradient(180deg,#fff,#fbfdff)}
+#occurrences .occurrences-detail-head .eyebrow{color:#3b78a3;font-size:.61rem;letter-spacing:.14em}
+#occurrences .occurrences-detail-head h3{margin:2px 0;font-size:1rem;color:#173b58}
+#occurrences .occurrences-detail-head .hint{font-size:.68rem}
+#occurrences .occurrences-actions{align-items:end}
+#occurrences .occurrences-search{font-size:.64rem;font-weight:800;color:#5f7485}
+#occurrences .occurrences-search input{height:38px;border-radius:9px;border-color:#d7e2ea;background:#fff}
+#occurrences .occurrences-table-wrap{max-height:520px}
+#occurrences .occurrences-table{min-width:850px}
+#occurrences .occurrences-table thead th{position:sticky;top:0;z-index:2;padding:9px 8px;background:#f2f6f9;color:#41596c;border-bottom:1px solid #dce6ed;font-size:.64rem;font-weight:900;letter-spacing:.045em;text-transform:uppercase}
+#occurrences .occurrences-table tbody tr{transition:background .14s ease}
+#occurrences .occurrences-table tbody tr:hover{background:#f6fbff}
+#occurrences .occurrences-table td{padding:10px 8px;border-bottom-color:#e8eef3;vertical-align:middle}
+#occurrences .occurrence-employee strong{font-size:.75rem;color:#203d54}.occurrence-employee small{color:#83929d}
+#occurrences .occ-status{border-radius:999px;padding:4px 8px;font-size:.66rem;font-weight:850}
+#occurrences .occurrences-footer{padding:9px 14px;border-top:1px solid #e6edf2;background:#fbfdff;color:#718493;font-size:.65rem}
+
+#occurrences .occ-insights-column{gap:10px}
+#occurrences .occ-insight{border-radius:13px;box-shadow:0 6px 18px rgba(24,55,82,.055)}
+#occurrences .occ-insight-head{padding:11px 13px}
+#occurrences .occ-insight h3{font-size:.82rem;font-weight:850}
+#occurrences .occ-insight-item{padding:9px 11px}
+#occurrences .occ-insight-item>b{box-shadow:0 3px 8px rgba(180,35,24,.18)}
+#occurrences .occ-insight.suggestion p{font-size:.75rem;color:#4c6375}
+
+#occurrences .occurrences-analysis-more{border:1px solid var(--occ-border);border-radius:13px;box-shadow:0 5px 16px rgba(24,55,82,.045);overflow:hidden}
+#occurrences .occurrences-analysis-more>summary{padding:12px 15px;background:#fbfdff}
+#occurrences .occurrences-analysis-more>summary strong{color:#244a67;font-size:.78rem}
+#occurrences .occurrences-analysis-more>summary span{color:#82929e;font-size:.65rem}
+
+.theme-dark #app #occurrences{--occ-border:#35505f}
+.theme-dark #app #occurrences .occ-dash-scope,.theme-dark #app #occurrences .occ-kpi,.theme-dark #app #occurrences .occurrences-detail-head,.theme-dark #app #occurrences .occurrences-footer,.theme-dark #app #occurrences .occurrences-analysis-more>summary{background:#172935;border-color:#35505f}
+.theme-dark #app #occurrences .occ-kpi strong,.theme-dark #app #occurrences .occ-exec-head h3,.theme-dark #app #occurrences .occurrences-detail-head h3{color:#eaf4fb}
+.theme-dark #app #occurrences .occ-kpi span,.theme-dark #app #occurrences .occ-kpi small{color:#9fb3c1}
+.theme-dark #app #occurrences .occ-exec-head{background:#1a2f3c;border-color:#35505f}
+.theme-dark #app #occurrences .occurrences-table thead th{background:#1a303d;color:#c8d7e1;border-color:#35505f}
+.theme-dark #app #occurrences .occurrences-table tbody tr:hover{background:#1a303d}
+
+body.occurrences-presentation-mode #occurrences .occ-dash-header{min-height:104px}
+body.occurrences-presentation-mode #occurrences .occ-dash-kpis{gap:11px}
+body.occurrences-presentation-mode #occurrences .occ-kpi{min-height:98px}
+
+@media(max-width:1450px){#occurrences .occ-dash-kpis{grid-template-columns:repeat(5,minmax(130px,1fr))}#occurrences .occ-dash-scope{grid-template-columns:repeat(4,minmax(150px,1fr))}#occurrences .occurrences-source-status{grid-column:span 3}#occurrences .occ-print-report{justify-self:end}}
+@media(max-width:1100px){#occurrences .occ-dash-title{min-width:0}#occurrences .occ-dash-scope{grid-template-columns:repeat(2,minmax(150px,1fr))}#occurrences .occurrences-source-status{grid-column:1/-1}#occurrences .occ-print-report{justify-self:stretch}#occurrences .occ-dash-kpis{grid-template-columns:repeat(3,minmax(130px,1fr))}}
+@media(max-width:700px){#occurrences .occ-dash-title-row{align-items:flex-start}#occurrences .occ-dash-brandmark{width:42px;height:42px;flex-basis:42px;border-radius:12px}#occurrences .occ-dash-title h2{font-size:1.35rem}#occurrences .occ-dash-scope{grid-template-columns:1fr}#occurrences .occ-dash-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))}#occurrences .occ-kpi{min-height:86px}}

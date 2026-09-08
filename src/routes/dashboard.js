@@ -6,20 +6,38 @@ const audit=require("../db/audit");
 const router=express.Router();
 router.use(authenticate,applyScope,requirePermission("dashboard.view"));
 
-function parseBhMinutes(occurrence){
+function parseBhBreakdown(occurrence){
   const text=String(occurrence||"").split(" | ")[0].trim();
-  if(!/(^|[^A-Z])BH([^A-Z]|$)/i.test(text))return 0;
+  if(!/(^|[^A-Z])BH([^A-Z]|$)/i.test(text))return {positive:0,negative:0,net:0};
   const times=[...text.matchAll(/(?:^|\s)((?:[01]\d|2[0-3]):[0-5]\d)(?=\s|$)/g)].map(m=>m[1]);
-  if(!times.length)return 0;
-  // Nas linhas do Senior, quando há jornada trabalhada, o primeiro total após
-  // a ocorrência representa o total trabalhado. O saldo de BH vem na coluna
-  // seguinte. Totais posteriores podem ser adicionais/noturnos e não devem
-  // ser somados como Banco de Horas. Em "Folga BH" há somente o próprio
-  // saldo, portanto usamos o único horário disponível.
-  const bhTime=times.length===1?times[0]:times[1];
-  const [h,m]=bhTime.split(":").map(Number);
-  const minutes=h*60+m;
-  return /BH\s*\(-\)/i.test(text)?-minutes:minutes;
+  const toMinutes=value=>{const [h,m]=String(value||"00:00").split(":").map(Number);return (h||0)*60+(m||0);};
+  let positive=0,negative=0;
+
+  // O Cartão Senior imprime as colunas nesta ordem:
+  // Trabalho | BH - | BH + | HE 100% | Falta | Ad. Not | Viagem.
+  // A ocorrência armazenada perde os espaços das colunas, portanto a posição
+  // dos totais precisa respeitar essa ordem: o primeiro total é o total trabalhado.
+  // Em BH 50%, quando existem quatro ou mais totais, o segundo é BH - e o
+  // terceiro é BH +. Com dois/três totais, o segundo é o BH + (o terceiro,
+  // quando "Noturnas", é adicional noturno). Um único total em BH 50% é
+  // apenas Trabalho e NÃO pode ser contado como BH.
+  // Em BH (-), o segundo total é BH -; em Folga BH há somente o próprio saldo.
+  if(/BH\s*\(-\)/i.test(text)){
+    if(times.length===1)negative=toMinutes(times[0]);
+    else if(times.length>=2)negative=toMinutes(times[1]);
+  }else{
+    if(times.length>=4){
+      negative=toMinutes(times[1]);
+      positive=toMinutes(times[2]);
+    }else if(times.length>=2){
+      positive=toMinutes(times[1]);
+    }
+  }
+  return {positive,negative,net:positive-negative};
+}
+
+function parseBhMinutes(occurrence){
+  return parseBhBreakdown(occurrence).net;
 }
 
 function formatBhMinutes(minutes){
@@ -346,9 +364,10 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
       const absences=Number(row.absences||0);
       const bankHours=Number(row.bank_hours||0);
       const bhEntries=Array.isArray(row.bh_occurrences)?row.bh_occurrences:[];
-      const bhNetMinutes=bhEntries.reduce((sum,item)=>sum+parseBhMinutes(item),0);
-      const bhPositiveMinutes=bhEntries.reduce((sum,item)=>{const value=parseBhMinutes(item);return sum+(value>0?value:0);},0);
-      const bhNegativeMinutes=bhEntries.reduce((sum,item)=>{const value=parseBhMinutes(item);return sum+(value<0?Math.abs(value):0);},0);
+      const bhBreakdowns=bhEntries.map(parseBhBreakdown);
+      const bhPositiveMinutes=bhBreakdowns.reduce((sum,item)=>sum+item.positive,0);
+      const bhNegativeMinutes=bhBreakdowns.reduce((sum,item)=>sum+item.negative,0);
+      const bhNetMinutes=bhPositiveMinutes-bhNegativeMinutes;
       row.bh_net_minutes=bhNetMinutes;
       row.bh_positive_minutes=bhPositiveMinutes;
       row.bh_negative_minutes=bhNegativeMinutes;

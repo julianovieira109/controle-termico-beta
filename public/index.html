@@ -1399,9 +1399,14 @@
 
       <header class="occ-dash-header">
         <div class="occ-dash-title">
-          <span class="eyebrow">Departamento Pessoal</span>
-          <h2>Painel de Pessoas</h2>
-          <p>Disciplina · Presença · Resultados</p>
+          <div class="occ-dash-title-row">
+            <span class="occ-dash-brandmark" aria-hidden="true">DP</span>
+            <div>
+              <span class="eyebrow">Departamento Pessoal</span>
+              <h2>Painel de Pessoas</h2>
+              <p>Disciplina · Presença · Ocorrências · Resultados</p>
+            </div>
+          </div>
         </div>
         <div class="occ-dash-filters">
           <label>Competência<input type="month" id="occurrences-month"></label>
@@ -1418,7 +1423,7 @@
         <label>Colaborador<select id="occurrences-employee"><option value="">Todos os colaboradores</option></select></label>
         <label>Indicador<select id="occurrences-status"><option value="">Todos</option><option value="GREEN">🟢 Verde</option><option value="YELLOW">🟡 Amarelo</option><option value="RED">🔴 Vermelho</option></select></label>
         <div id="occurrences-source-status" class="occurrences-source-status"><span>Cartão de Ponto</span><strong id="occurrences-import-status">Carregando...</strong></div>
-        <button type="button" class="secondary" id="occurrences-print">Imprimir relatório</button>
+        <button type="button" class="secondary occ-print-report" id="occurrences-print"><span aria-hidden="true">▣</span><span>Imprimir relatório</span></button>
       </div>
 
       <div class="occ-dash-kpis" id="occurrences-primary-kpis">
