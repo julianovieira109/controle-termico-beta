@@ -225,6 +225,8 @@
 
   function timeToMinutes(value){const m=String(value||"").match(/^(\d{1,2}):(\d{2})$/);return m?Number(m[1])*60+Number(m[2]):null;}
   function intervalMinutes(markings){if(!Array.isArray(markings)||markings.length<4)return null;let a=timeToMinutes(markings[1]),b=timeToMinutes(markings[2]);if(a==null||b==null)return null;if(b<a)b+=1440;return b-a;}
+  function pairDuration(start,end){let a=timeToMinutes(start),b=timeToMinutes(end);if(a==null||b==null)return 0;if(b<a)b+=1440;return Math.max(0,b-a);}
+  function workedMinutes(markings){if(!Array.isArray(markings)||markings.length<2)return null;let total=0,pairs=0;for(let i=0;i+1<markings.length;i+=2){const value=pairDuration(markings[i],markings[i+1]);if(value||markings[i]===markings[i+1]){total+=value;pairs++;}}return pairs?total:null;}
   function plannedIntervalMinutes(description){
     const schedule=global.ThermalSchedule?.parseShiftSchedule?.(description);
     return schedule?Math.max(0,schedule.breakEnd-schedule.breakStart):null;
@@ -463,7 +465,61 @@
     }
   }
 
-  function buildPrintDocument(){
+  function journeyPrintRows(dayRows=[]){
+    return dayRows.map(day=>{
+      const marks=Array.isArray(day.markings)?day.markings:[];
+      const analysis=journeyDayAnalysis(day);
+      const work=workedMinutes(marks);
+      const bhPos=Number(day.bh_positive_minutes||0);
+      const bhNeg=Number(day.bh_negative_minutes||0);
+      const classes=[analysis.level==='red'?'is-critical':analysis.level==='yellow'?'is-attention':''];
+      if(bhPos)classes.push('has-bh-positive');
+      if(bhNeg)classes.push('has-bh-negative');
+      return `<tr class="${classes.join(' ')}">
+        <td>${formatDate(day.work_date)}</td>
+        <td>${esc(marks[0]||'-')}</td><td>${esc(marks[1]||'-')}</td><td>${esc(marks[2]||'-')}</td><td>${esc(marks[3]||'-')}</td>
+        <td>${work==null?'-':formatDuration(work,{signed:false})}</td>
+        <td>${analysis.actual==null?'-':`${analysis.actual} min${analysis.planned!=null?` / ${analysis.planned} prev.`:''}`}</td>
+        <td>${bhPos?`<span class="bh-chip positive">+${formatDuration(bhPos,{signed:false})}</span>`:'-'}</td>
+        <td>${bhNeg?`<span class="bh-chip negative">-${formatDuration(bhNeg,{signed:false})}</span>`:'-'}</td>
+        <td><strong>${analysis.level==='red'?'CRÍTICO':analysis.level==='yellow'?'ATENÇÃO':analysis.level==='green'?'OK':esc(analysis.label||'-')}</strong><small>${esc(day.occurrence||'')}</small></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function buildJourneyPrintAppendix(journeyDays=[]){
+    const byEmployee=new Map();
+    (journeyDays||[]).forEach(day=>{
+      const key=String(day.employee_id||'');
+      if(!key)return;
+      const list=byEmployee.get(key)||[]; list.push(day); byEmployee.set(key,list);
+    });
+    const reportRows=rows;
+    if(!reportRows.length)return null;
+    const section=document.createElement('section');
+    section.className='occurrences-journey-appendix';
+    section.innerHTML=`<div class="journey-appendix-title"><span class="eyebrow">Jornadas</span><h2>Jornada, Banco de Horas e Intervalos</h2><p>Marcações do Cartão Senior com destaque para BH positivo, BH negativo e intervalos fora do padrão.</p></div>`+
+      reportRows.map((row,index)=>{
+        const days=byEmployee.get(String(row.employee_id))||[];
+        const bhPositive=days.reduce((sum,d)=>sum+Number(d.bh_positive_minutes||0),0);
+        const bhNegative=days.reduce((sum,d)=>sum+Number(d.bh_negative_minutes||0),0);
+        const intervalIssues=days.filter(day=>{const a=journeyDayAnalysis(day);return a.level==='yellow'&&String(a.label||'').startsWith('Intervalo fora do padrão');}).length;
+        const coordinator=row.coordinator?.name||'Não definido';
+        return `<article class="journey-employee-section${index?' journey-page-break':''}">
+          <header class="journey-employee-head">
+            <div><span class="employee-index">${index+1}</span><strong>${esc(row.full_name)}</strong><small>Matrícula ${esc(row.registration||'-')} · ${esc(row.shift_name||'Sem turno')} · Coordenador: ${esc(coordinator)}</small></div>
+            <div class="journey-employee-kpis"><span>BH+ <b class="positive">+${formatDuration(bhPositive,{signed:false})}</b></span><span>BH- <b class="negative">-${formatDuration(bhNegative,{signed:false})}</b></span><span>Intervalos fora do padrão <b>${intervalIssues}</b></span></div>
+          </header>
+          <table class="journey-print-table">
+            <thead><tr><th>Data</th><th>Entrada</th><th>Início int.</th><th>Retorno</th><th>Saída</th><th>Jornada</th><th>Intervalo</th><th>BH+</th><th>BH-</th><th>Situação / ocorrência</th></tr></thead>
+            <tbody>${days.length?journeyPrintRows(days):'<tr><td colspan="10">Nenhuma jornada encontrada nesta competência.</td></tr>'}</tbody>
+          </table>
+        </article>`;
+      }).join('');
+    return section;
+  }
+
+  function buildPrintDocument(journeyDays=[]){
     updatePrintHeader();
     const holder=$("occurrences-print-document");
     if(!holder)return false;
@@ -478,45 +534,34 @@
       root.querySelectorAll("[id]").forEach(el=>el.removeAttribute("id"));
     });
 
+    const reportRows=rows;
     const tableRows=rows.length
       ?rows.map((row,index)=>`
         <tr>
           <td class="occurrence-rank">${index+1}</td>
           <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
           <td class="occurrence-registration">${esc(row.registration||"-")}</td>
-          <td>${number(row,"days_off")}</td><td>${number(row,"absences")}</td><td>${number(row,"bank_hours")}</td>
+          <td>${number(row,"days_off")}</td><td>${number(row,"absences")}</td>
+          <td class="bh-positive-cell">+${formatDuration(row.bh_positive_minutes||0,{signed:false})}</td>
+          <td class="bh-negative-cell">-${formatDuration(row.bh_negative_minutes||0,{signed:false})}</td>
           <td>${number(row,"medical")}</td><td>${number(row,"vacations")}</td><td>${number(row,"dsr")}</td>
-          <td>${number(row,"licenses")}</td><td>${number(row,"leaves")}</td><td>${number(row,"compensated")}</td>
-          <td>${number(row,"courses")}</td><td>${number(row,"bereavement")}</td><td>${number(row,"review_days")}</td>
+          <td>${number(row,"licenses")}</td><td>${number(row,"leaves")}</td><td>${number(row,"review_days")}</td>
         </tr>`).join("")
-      :'<tr><td colspan="15">Nenhum registro encontrado para o filtro selecionado.</td></tr>';
+      :'<tr><td colspan="13">Nenhum registro encontrado para o filtro selecionado.</td></tr>';
 
     const detail=document.createElement("section");
     detail.className="panel occurrences-detail-panel";
     detail.innerHTML=`
       <div class="panel-head occurrences-detail-head">
-        <div>
-          <span class="eyebrow">Detalhamento</span>
-          <h3>Ocorrências por colaborador</h3>
-          <p class="hint">Relatório completo da empresa, filial e competência selecionadas.</p>
-        </div>
+        <div><span class="eyebrow">Detalhamento</span><h3>Ocorrências por colaborador</h3><p class="hint">Resumo gerencial da competência selecionada.</p></div>
       </div>
       <div class="table-wrap occurrences-table-wrap">
         <table class="occurrences-table">
-          <thead>
-            <tr>
-              <th>#</th><th>Colaborador</th><th>Matrícula</th><th>Folgas</th><th>Faltas</th><th>BH</th><th>Atestados</th>
-              <th>Férias</th><th>DSR</th><th>Licenças</th><th>Afast.</th><th>Comp.</th>
-              <th>Curso</th><th>Óbito</th><th>Revisão</th>
-            </tr>
-          </thead>
+          <thead><tr><th>#</th><th>Colaborador</th><th>Matrícula</th><th>Folgas</th><th>Faltas</th><th>BH+</th><th>BH-</th><th>Atest.</th><th>Férias</th><th>DSR</th><th>Lic.</th><th>Afast.</th><th>Revisão</th></tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
       </div>
-      <div class="occurrences-footer">
-        <span>${rows.length} colaborador${rows.length===1?"":"es"} no relatório</span>
-        <small>Fonte: Cartão de Ponto Senior importado no Controle Térmico.</small>
-      </div>`;
+      <div class="occurrences-footer"><span>${reportRows.length} colaborador${reportRows.length===1?"":"es"} no relatório</span><small>Fonte: Cartão de Ponto Senior importado no Controle Térmico.</small></div>`;
 
     const f=currentFilters();
     const period=importPeriod(Array.isArray(lastData.imports)?lastData.imports:[]);
@@ -527,34 +572,39 @@
       <div><span>Competência</span><strong>${esc(monthLabel(f.month))}</strong><small>${period?`${formatDate(period.start)} a ${formatDate(period.end)}`:"Período da competência"}</small></div>
       <div><span>Empresa</span><strong>${esc(selectedText("occurrences-company","Todas as empresas"))}</strong><small>Escopo do relatório</small></div>
       <div><span>Filial</span><strong>${esc(selectedText("occurrences-branch","Todas as filiais"))}</strong><small>Unidade selecionada</small></div>
-      <div><span>Totais gerais</span><strong>${rows.length} colaboradores</strong><small>${totalOccurrences} ocorrências registradas</small></div>`;
+      <div><span>Totais gerais</span><strong>${reportRows.length} colaboradores</strong><small>${totalOccurrences} ocorrências registradas</small></div>`;
 
-    holder.replaceChildren(header,context,summary,charts,detail);
+    const journeyAppendix=buildJourneyPrintAppendix(journeyDays);
+    holder.replaceChildren(header,context,summary,charts,detail,...(journeyAppendix?[journeyAppendix]:[]));
     holder.setAttribute("aria-hidden","false");
     return true;
   }
 
-  function printWindowHtml(){
-    if(!buildPrintDocument())return "";
+  function printWindowHtml(journeyDays=[]){
+    if(!buildPrintDocument(journeyDays))return "";
     const content=$("occurrences-print-document")?.innerHTML||"";
     return global.OccurrencesPrintTemplate?.document(content)||"";
   }
 
-  function printReport(){
-    const html=printWindowHtml();
-    if(!html){
-      if(typeof toast==="function")toast("Não foi possível preparar o relatório para impressão.","error");
+  async function printReport(){
+    const f=currentFilters();
+    let journeyDays=[];
+    try{
+      if(typeof toast==="function")toast("Preparando jornadas para o relatório...","success");
+      const query=new URLSearchParams({month:f.month});
+      if(f.companyId)query.set('companyId',f.companyId);
+      if(f.branchId)query.set('branchId',f.branchId);
+      const data=await api(`/api/dashboard/occurrences/journeys?${query.toString()}`);
+      journeyDays=Array.isArray(data?.days)?data.days:[];
+    }catch(error){
+      if(typeof toast==="function")toast(error.message||"Não foi possível carregar as jornadas para impressão.","error");
       return;
     }
+    const html=printWindowHtml(journeyDays);
+    if(!html){if(typeof toast==="function")toast("Não foi possível preparar o relatório para impressão.","error");return;}
     const printWindow=window.open("","_blank","width=1200,height=850");
-    if(!printWindow){
-      if(typeof toast==="function")toast("O navegador bloqueou a janela de impressão. Permita pop-ups para este sistema.","error");
-      return;
-    }
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-    clearPrintMode();
+    if(!printWindow){if(typeof toast==="function")toast("O navegador bloqueou a janela de impressão. Permita pop-ups para este sistema.","error");return;}
+    printWindow.document.open(); printWindow.document.write(html); printWindow.document.close(); clearPrintMode();
   }
   function clearPrintMode(){
     document.body.classList.remove("occurrences-print-active");

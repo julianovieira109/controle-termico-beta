@@ -447,6 +447,43 @@ router.get("/occurrences/journey",requireOccurrencesAccess,async(req,res,next)=>
   }catch(error){next(error);}
 });
 
+router.get("/occurrences/journeys",requireOccurrencesAccess,async(req,res,next)=>{
+  try{
+    const month=String(req.query.month||"");
+    const companyId=String(req.query.companyId||"").trim();
+    const branchId=String(req.query.branchId||"").trim();
+    if(!/^\d{4}-\d{2}$/.test(month))return res.status(400).json({error:"Informe a competência no formato AAAA-MM."});
+    const params=[`${month}-01`];
+    const filters=[];
+    if(!req.scope.isAdmin){
+      params.push(req.scope.companyId); filters.push(`p.company_id=$${params.length}`);
+      params.push(req.scope.branchIds); filters.push(`p.branch_id=ANY($${params.length}::uuid[])`);
+    }
+    if(companyId){params.push(companyId);filters.push(`p.company_id=$${params.length}::uuid`);}
+    if(branchId){params.push(branchId);filters.push(`p.branch_id=$${params.length}::uuid`);}
+    const scope=filters.length?` AND ${filters.join(" AND ")}`:"";
+    const {rows}=await pool.query(`
+      SELECT p.employee_id,p.work_date,p.schedule_code,p.markings,p.point_state,p.occurrence,p.eligible_for_automatic_rest,
+             e.full_name,e.registration,e.shift_id,s.name shift_name,s.description shift_description
+      FROM employee_point_days p
+      JOIN employees e ON e.id=p.employee_id
+      LEFT JOIN shifts s ON s.id=e.shift_id
+      WHERE p.work_date >= $1::date AND p.work_date < ($1::date + INTERVAL '1 month') ${scope}
+      ORDER BY e.full_name,p.work_date
+    `,params);
+    for(const row of rows){
+      const bh=parseBhBreakdown(row.occurrence);
+      row.bh_positive_minutes=bh.positive;
+      row.bh_negative_minutes=bh.negative;
+      row.bh_net_minutes=bh.net;
+      row.bh_positive=formatBhMinutes(bh.positive);
+      row.bh_negative=bh.negative?`-${formatBhMinutes(bh.negative).replace(/^[-+]/,'')}`:'00:00';
+      row.bh_net=formatBhMinutes(bh.net);
+    }
+    res.json({month,days:rows});
+  }catch(error){next(error);}
+});
+
 router.get("/occurrences/management",requireOccurrencesAccess,async(req,res,next)=>{
   try{
     const companyId=String(req.query.companyId||"").trim(); const branchId=String(req.query.branchId||"").trim();
