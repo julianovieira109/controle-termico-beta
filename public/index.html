@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.32">
+  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.41">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -1426,7 +1426,24 @@
         <button type="button" class="secondary occ-print-report" id="occurrences-print"><span aria-hidden="true">▣</span><span>Imprimir relatório</span></button>
       </div>
 
-      <div class="occ-dash-kpis" id="occurrences-primary-kpis">
+      <nav class="occ-analysis-tabs" id="occ-analysis-tabs" aria-label="Análises do controle de ocorrências">
+        <button type="button" class="active" data-occ-tab="overview">📊 Visão Geral</button>
+        <button type="button" data-occ-tab="intervals">⏱️ Intervalos</button>
+        <button type="button" data-occ-tab="absences">❌ Faltas</button>
+        <button type="button" data-occ-tab="bh-positive">➕ BH Positivo</button>
+        <button type="button" data-occ-tab="bh-negative">➖ BH Negativo</button>
+        <button type="button" data-occ-tab="justifications">📝 Justificativas</button>
+        <button type="button" data-occ-tab="reviews">⚠️ Revisões</button>
+      </nav>
+
+      <section class="panel occ-analysis-panel" id="occ-analysis-panel" hidden>
+        <div class="occ-analysis-head"><div><span class="eyebrow">Análise individual</span><h3 id="occ-analysis-title">Análise</h3><p id="occ-analysis-subtitle" class="hint"></p></div><div class="occ-analysis-kpis" id="occ-analysis-kpis"></div></div>
+        <div class="occ-analysis-chart" id="occ-analysis-chart"></div>
+        <div class="table-wrap"><table class="occurrences-table occ-analysis-table"><thead id="occ-analysis-thead"></thead><tbody id="occ-analysis-tbody"></tbody></table></div>
+        <div class="occurrences-footer"><span id="occ-analysis-count">0 registros</span><small>Os filtros de empresa, filial, turno, coordenador e colaborador permanecem ativos.</small></div>
+      </section>
+
+      <div class="occ-dash-kpis occ-overview-block" id="occurrences-primary-kpis">
         <article class="occ-kpi total"><span>Colaboradores</span><strong id="occ-kpi-total-employees">—</strong><small>na competência</small></article>
         <button type="button" class="occ-kpi green" data-status="GREEN"><span>🟢 Regulares</span><strong id="occ-status-green">—</strong><small id="occ-status-green-pct">Dentro do padrão</small></button>
         <button type="button" class="occ-kpi yellow" data-status="YELLOW"><span>🟡 Em atenção</span><strong id="occ-status-yellow">—</strong><small id="occ-status-yellow-pct">Requer acompanhamento</small></button>
@@ -1439,7 +1456,7 @@
         <article class="occ-kpi"><span>Para revisão</span><strong id="occ-kpi-review">—</strong><small>dias</small></article>
       </div>
 
-      <section class="occ-executive-grid">
+      <section class="occ-executive-grid occ-overview-block">
         <article class="panel occ-exec-card">
           <div class="occ-exec-head"><h3>Distribuição da Equipe</h3><small>Semáforo da competência</small></div>
           <div class="occ-team-distribution">
@@ -1460,7 +1477,7 @@
         </article>
       </section>
 
-      <section class="occ-main-grid">
+      <section class="occ-main-grid occ-overview-block">
         <article class="panel occurrences-detail-panel">
           <div class="panel-head occurrences-detail-head">
             <div><span class="eyebrow">Equipe</span><h3>Colaboradores</h3><p class="hint">Filtre e abra a jornada para identificar a origem do indicador.</p></div>
@@ -2651,6 +2668,6 @@
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
-  <script src="/js/occurrences-control.js?v=1.0.31-beta.39"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.41"></script>
 </body>
 </html>
