@@ -491,8 +491,38 @@ if($("my-password-form"))$("my-password-form").onsubmit=async event=>{
   }catch(error){feedback.textContent=error.message;}
 };
 
+let sessionContextRefreshStarted=false;
+async function refreshAuthenticatedSessionContext(){
+  if(sessionContextRefreshStarted||!token||!currentUser)return;
+  sessionContextRefreshStarted=true;
+  try{
+    const data=await api("/api/auth/refresh-session",{method:"POST"});
+    if(!data?.token||!data?.user)return;
+    const accessChanged=Boolean(currentUser?.isMasterAdmin)!==Boolean(data.user.isMasterAdmin)||
+      JSON.stringify(currentUser?.permissions||{})!==JSON.stringify(data.user.permissions||{});
+    token=data.token;
+    currentUser=data.user;
+    sessionStorage.setItem("token",token);
+    sessionStorage.setItem("user",JSON.stringify(currentUser));
+    const isAdmin=currentUser.role==="ADMIN";
+    const isMasterAdmin=isAdmin&&currentUser.isMasterAdmin===true;
+    const hasOccurrencesAccess=isMasterAdmin||(isAdmin&&currentUser.permissions?.["occurrences.view"]===true);
+    document.querySelectorAll('[data-special-permission="occurrences.view"]').forEach(el=>{
+      el.style.display=hasOccurrencesAccess?"":"none";
+    });
+    if(accessChanged){
+      const accessName=currentUser.profileName||(isAdmin?"Administrador":"Operacional / DP");
+      if($("user-name"))$("user-name").textContent=`${currentUser.name} — ${accessName}`;
+      window.dispatchEvent(new CustomEvent("controle:session-refreshed",{detail:{hasOccurrencesAccess}}));
+    }
+  }catch(error){
+    console.warn("[SESSION_REFRESH] Não foi possível atualizar o contexto da sessão.",error);
+  }
+}
+
 function showApp(){
   $("login-screen").hidden=true;$("app").hidden=false;
+  refreshAuthenticatedSessionContext();
   setTimeout(()=>sanitizeEmployeeSearch(),250);
   setTimeout(()=>sanitizeEmployeeSearch(),900);
   const currentAccessName=currentUser.profileName||(

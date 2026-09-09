@@ -108,6 +108,36 @@ router.post("/login",limiter,async(req,res,next)=>{
   }catch(error){next(error);}
 });
 
+router.post("/refresh-session",authenticate,async(req,res,next)=>{
+  try{
+    const {rows}=await pool.query(
+      `SELECT u.id,u.name,u.email,u.role,u.profile_id,u.company_id,u.active,u.must_change_password,
+              COALESCE(p.name,CASE WHEN u.role='ADMIN' THEN 'Administrador' ELSE 'RH' END) profile_name,
+              COALESCE(p.master_admin,FALSE) is_master_admin
+       FROM users u
+       LEFT JOIN user_profiles p ON p.id=u.profile_id
+       WHERE u.id=$1 LIMIT 1`,[req.user.sub]
+    );
+    const user=rows[0];
+    if(!user||!user.active)return res.status(401).json({error:"Sessão inválida ou usuário inativo."});
+    const branchRows=await pool.query("SELECT branch_id FROM user_branches WHERE user_id=$1",[user.id]);
+    const branchIds=branchRows.rows.map(x=>x.branch_id);
+    const profilePermissionRows=user.profile_id
+      ? await pool.query("SELECT permission_key,allowed FROM profile_permissions WHERE profile_id=$1",[user.profile_id])
+      : {rows:[]};
+    const userPermissionRows=await pool.query("SELECT permission_key,allowed FROM user_permissions WHERE user_id=$1",[user.id]);
+    const permissions={
+      ...Object.fromEntries(profilePermissionRows.rows.map(p=>[p.permission_key,p.allowed])),
+      ...Object.fromEntries(userPermissionRows.rows.filter(p=>p.allowed===true).map(p=>[p.permission_key,true]))
+    };
+    const isMasterAdmin=user.role==="ADMIN"&&user.is_master_admin===true;
+    const mustChangePassword=user.must_change_password===true;
+    const payload={sub:user.id,name:user.name,role:user.role,profileId:user.profile_id,profileName:user.profile_name,isMasterAdmin,mustChangePassword,companyId:user.company_id,branchIds,permissions};
+    const refreshedToken=jwt.sign(payload,process.env.JWT_SECRET,{expiresIn:"8h"});
+    res.json({token:refreshedToken,user:{id:user.id,name:user.name,email:user.email,role:user.role,profileId:user.profile_id,profileName:user.profile_name,isMasterAdmin,mustChangePassword,companyId:user.company_id,branchIds,permissions}});
+  }catch(error){next(error);}
+});
+
 router.get("/recovery-config",(_req,res)=>{
   res.json({
     emailRecoveryEnabled:emailRecoveryConfigured(),
