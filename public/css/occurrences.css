@@ -499,3 +499,37 @@ body.occurrences-presentation-mode #occurrences .occ-kpi{min-height:98px}
 .occ-analysis-panel{margin-top:0}.occ-analysis-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:16px}.occ-analysis-head h3{margin:3px 0}.occ-analysis-kpis{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.occ-analysis-kpis span{min-width:105px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft,#f7f8fa);font-size:12px}.occ-analysis-kpis strong{display:block;font-size:18px;margin-top:2px}.occ-analysis-chart{display:flex;gap:10px;align-items:flex-end;min-height:0;margin:0 0 14px}.occ-analysis-bar{flex:1;min-width:110px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface-soft,#f7f8fa)}.occ-analysis-bar b,.occ-analysis-bar small{display:block}.occ-analysis-bar i{display:block;height:7px;border-radius:8px;background:var(--primary);margin-top:8px}.occ-analysis-table td small{display:block;color:var(--muted);margin-top:2px}.occ-analysis-alert{font-weight:700}.occ-analysis-alert.yellow{color:#a66b00}.occ-analysis-alert.red{color:#b42318}.occ-analysis-alert.green{color:#087a46}.occ-analysis-bh-plus{font-weight:800;color:#087a46}.occ-analysis-bh-minus{font-weight:800;color:#b42318}.occ-analysis-empty{text-align:center;padding:28px!important;color:var(--muted)}
 body.occ-analysis-specialized .occ-overview-block{display:none!important}body.occ-analysis-specialized #occ-analysis-panel{display:block!important}
 @media(max-width:800px){.occ-analysis-head{display:block}.occ-analysis-kpis{justify-content:flex-start;margin-top:12px}.occ-analysis-chart{overflow-x:auto}.occ-analysis-tabs{padding-bottom:10px}}
+
+
+/* Beta.43 — organização empresarial do Controle de Ocorrências. Somente apresentação. */
+#occurrences{--occ-navy:#17324d;--occ-blue:#24577d;--occ-soft:#f4f7fa;--occ-border:#d9e2ea}
+#occurrences .occ-dash-header{border:1px solid var(--occ-border);border-radius:18px;background:linear-gradient(135deg,var(--card) 0%,color-mix(in srgb,var(--card) 90%,var(--p) 10%) 100%);box-shadow:0 8px 24px rgba(27,50,72,.07);overflow:hidden}
+#occurrences .occ-dash-title{position:relative}
+#occurrences .occ-dash-title:after{content:"";position:absolute;left:0;bottom:-16px;width:72px;height:3px;border-radius:3px;background:var(--p)}
+#occurrences .occ-dash-title h2{letter-spacing:-.02em}
+#occurrences .occ-dash-title p{max-width:620px}
+#occurrences .occ-dash-scope{margin-top:12px;padding:14px;border:1px solid var(--occ-border);border-radius:14px;background:var(--card);box-shadow:0 4px 14px rgba(27,50,72,.04)}
+#occurrences .occ-dash-scope label,#occurrences .occ-dash-filters label{font-weight:700;color:var(--heading)}
+#occurrences .occ-dash-scope select,#occurrences .occ-dash-filters select,#occurrences .occ-dash-filters input{border-color:var(--occ-border);background:var(--bg)}
+.occ-analysis-center{margin:14px 0;padding:16px;border:1px solid var(--occ-border);border-radius:16px;background:var(--card);box-shadow:0 5px 18px rgba(27,50,72,.05)}
+.occ-analysis-center-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;padding:0 2px 13px;border-bottom:1px solid var(--line)}
+.occ-analysis-center-head h3{margin:3px 0 2px;color:var(--heading);font-size:16px}.occ-analysis-center-head p{margin:0;color:var(--muted);font-size:11px}
+.occ-analysis-scope-note{padding:6px 9px;border-radius:8px;background:var(--occ-soft);color:var(--muted);font-size:9px;font-weight:700;white-space:nowrap}
+.occ-analysis-tabs{display:grid;grid-template-columns:repeat(7,minmax(125px,1fr));gap:8px;overflow:visible;padding:12px 0 0;margin:0}
+.occ-analysis-tabs button{display:flex;align-items:center;gap:9px;min-height:58px;text-align:left;white-space:normal;border:1px solid var(--occ-border);background:var(--bg);color:var(--text);border-radius:11px;padding:9px 10px;font-weight:600;box-shadow:none;transition:.16s ease}
+.occ-analysis-tabs button>span:last-child{min-width:0}.occ-analysis-tabs button strong,.occ-analysis-tabs button small{display:block}.occ-analysis-tabs button strong{font-size:10px;color:var(--heading);line-height:1.2}.occ-analysis-tabs button small{margin-top:3px;color:var(--muted);font-size:7.5px;line-height:1.2;font-weight:500}
+.occ-analysis-tabs button:hover{border-color:color-mix(in srgb,var(--p) 55%,var(--occ-border));background:color-mix(in srgb,var(--bg) 94%,var(--p) 6%);transform:translateY(-1px)}
+.occ-analysis-tabs button.active{background:color-mix(in srgb,var(--card) 91%,var(--p) 9%);border-color:var(--p);color:var(--heading);box-shadow:inset 0 -3px 0 var(--p),0 4px 12px rgba(27,50,72,.07)}
+.occ-analysis-tabs button.active strong{color:var(--p)}
+.occ-tab-icon{display:grid;place-items:center;flex:0 0 27px;width:27px;height:27px;border-radius:8px;background:color-mix(in srgb,var(--p) 10%,var(--card));color:var(--p);font-size:13px;font-weight:900}
+.occ-analysis-tabs button.active .occ-tab-icon{background:var(--p);color:#fff}
+.occ-analysis-panel{border:1px solid var(--occ-border);border-radius:16px;box-shadow:0 7px 22px rgba(27,50,72,.06)}
+.occ-analysis-head{padding-bottom:13px;border-bottom:1px solid var(--line)}
+.occ-analysis-kpis span{border-color:var(--occ-border);background:var(--occ-soft);border-radius:9px}
+.occ-analysis-chart{padding:12px 0 2px}.occ-analysis-bar{border-color:var(--occ-border);background:var(--bg)}
+.occ-analysis-table thead th{background:var(--occ-soft);color:var(--heading);font-size:8px;text-transform:uppercase;letter-spacing:.04em}
+.occ-analysis-table tbody tr:hover{background:color-mix(in srgb,var(--card) 94%,var(--p) 6%)}
+#occurrences .occ-dash-kpis{gap:9px}#occurrences .occ-kpi{border-color:var(--occ-border);box-shadow:0 4px 14px rgba(27,50,72,.045)}
+.theme-dark #app #occurrences{--occ-soft:#172935;--occ-border:#35505f}.theme-dark #app .occ-analysis-center,.theme-dark #app #occurrences .occ-dash-scope{background:#142630}.theme-dark #app .occ-analysis-tabs button,.theme-dark #app .occ-analysis-bar{background:#172935}.theme-dark #app .occ-analysis-tabs button.active{background:color-mix(in srgb,#172935 82%,var(--p) 18%)}
+@media(max-width:1250px){.occ-analysis-tabs{grid-template-columns:repeat(4,minmax(150px,1fr))}}
+@media(max-width:800px){.occ-analysis-center-head{display:block}.occ-analysis-scope-note{display:inline-block;margin-top:10px}.occ-analysis-tabs{display:flex;overflow-x:auto}.occ-analysis-tabs button{min-width:165px}.occ-analysis-center{padding:12px}}

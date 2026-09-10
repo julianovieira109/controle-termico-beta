@@ -1403,8 +1403,8 @@
             <span class="occ-dash-brandmark" aria-hidden="true">DP</span>
             <div>
               <span class="eyebrow">Departamento Pessoal</span>
-              <h2>Painel de Pessoas</h2>
-              <p>Disciplina · Presença · Ocorrências · Resultados</p>
+              <h2>Controle de Ocorrências</h2>
+              <p>Painel gerencial do Departamento Pessoal · acompanhamento por competência<br><small>Disciplina · Presença · Ocorrências · Resultados</small></p>
             </div>
           </div>
         </div>
@@ -1426,15 +1426,21 @@
         <button type="button" class="secondary occ-print-report" id="occurrences-print"><span aria-hidden="true">▣</span><span>Imprimir relatório</span></button>
       </div>
 
-      <nav class="occ-analysis-tabs" id="occ-analysis-tabs" aria-label="Análises do controle de ocorrências">
-        <button type="button" class="active" data-occ-tab="overview">📊 Visão Geral</button>
-        <button type="button" data-occ-tab="intervals">⏱️ Intervalos</button>
-        <button type="button" data-occ-tab="absences">❌ Faltas</button>
-        <button type="button" data-occ-tab="bh-positive">➕ BH Positivo</button>
-        <button type="button" data-occ-tab="bh-negative">➖ BH Negativo</button>
-        <button type="button" data-occ-tab="justifications">📝 Justificativas</button>
-        <button type="button" data-occ-tab="reviews">⚠️ Revisões</button>
-      </nav>
+      <section class="occ-analysis-center" aria-labelledby="occ-analysis-center-title">
+        <div class="occ-analysis-center-head">
+          <div><span class="eyebrow">Central de análise</span><h3 id="occ-analysis-center-title">Acompanhamento por situação</h3><p>Selecione uma área para aprofundar a conferência sem perder os filtros do painel.</p></div>
+          <span class="occ-analysis-scope-note">Empresa · Filial · Turno · Coordenador · Colaborador</span>
+        </div>
+        <nav class="occ-analysis-tabs" id="occ-analysis-tabs" aria-label="Análises do controle de ocorrências">
+          <button type="button" class="active" data-occ-tab="overview"><span class="occ-tab-icon">▦</span><span><strong>Visão Geral</strong><small>Resumo da competência</small></span></button>
+          <button type="button" data-occ-tab="intervals"><span class="occ-tab-icon">◷</span><span><strong>Intervalos</strong><small>Realizado × previsto</small></span></button>
+          <button type="button" data-occ-tab="absences"><span class="occ-tab-icon">!</span><span><strong>Faltas</strong><small>Ausências e reincidências</small></span></button>
+          <button type="button" data-occ-tab="bh-positive"><span class="occ-tab-icon">+</span><span><strong>BH Positivo</strong><small>Créditos acumulados</small></span></button>
+          <button type="button" data-occ-tab="bh-negative"><span class="occ-tab-icon">−</span><span><strong>BH Negativo</strong><small>Débitos acumulados</small></span></button>
+          <button type="button" data-occ-tab="justifications"><span class="occ-tab-icon">≡</span><span><strong>Justificativas</strong><small>Ocorrências justificadas</small></span></button>
+          <button type="button" data-occ-tab="reviews"><span class="occ-tab-icon">✓</span><span><strong>Revisões</strong><small>Pendências para o DP</small></span></button>
+        </nav>
+      </section>
 
       <section class="panel occ-analysis-panel" id="occ-analysis-panel" hidden>
         <div class="occ-analysis-head"><div><span class="eyebrow">Análise individual</span><h3 id="occ-analysis-title">Análise</h3><p id="occ-analysis-subtitle" class="hint"></p></div><div class="occ-analysis-kpis" id="occ-analysis-kpis"></div></div>
@@ -2668,6 +2674,6 @@
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
-  <script src="/js/occurrences-control.js?v=1.0.31-beta.42"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.43"></script>
 </body>
 </html>
