@@ -629,7 +629,7 @@
 
 
   // Beta.41 — análises especializadas sem alterar os cálculos de origem.
-  let analysisTab="overview", analysisJourneyDays=[], analysisJourneyKey="";
+  let analysisTab="overview", analysisJourneyDays=[], analysisJourneyKey="", analysisShiftFilter="";
   const analysisMeta={
     intervals:{title:"Intervalos",subtitle:"Compare o intervalo realizado com o previsto e identifique desvios por colaborador."},
     absences:{title:"Faltas",subtitle:"Concentre a análise em faltas, reincidências, turno e liderança."},
@@ -648,11 +648,21 @@
   function analysisDayAllowed(day){const ids=new Set(analysisScopedRows().map(r=>String(r.employee_id)));return ids.has(String(day.employee_id));}
   function analysisKpis(items){const box=$("occ-analysis-kpis");if(box)box.innerHTML=items.map(([label,value])=>`<span>${esc(label)}<strong>${esc(String(value))}</strong></span>`).join('');}
   function analysisBars(groups){const box=$("occ-analysis-chart");if(!box)return;const arr=Object.entries(groups).sort((a,b)=>b[1]-a[1]).slice(0,6),max=Math.max(1,...arr.map(x=>x[1]));box.innerHTML=arr.map(([name,value])=>`<div class="occ-analysis-bar"><small>${esc(name)}</small><b>${value}</b><i style="width:${Math.round(value/max*100)}%"></i></div>`).join('');}
+  function renderIntervalShiftFilter(items){
+    const box=$("occ-analysis-chart");if(!box)return;
+    const groups=new Map();
+    items.forEach(x=>{const name=x.emp?.shift_name||x.day.shift_name||'Sem turno';groups.set(name,(groups.get(name)||0)+1);});
+    const arr=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+    if(analysisShiftFilter&&!groups.has(analysisShiftFilter))analysisShiftFilter='';
+    const buttons=[["",'Todos os turnos',items.length],...arr.map(([name,count])=>[name,name,count])];
+    box.classList.add('occ-analysis-shift-filter');
+    box.innerHTML=buttons.map(([value,label,count])=>`<button type="button" class="occ-analysis-shift-btn ${analysisShiftFilter===value?'active':''}" data-analysis-shift="${esc(value)}"><small>${esc(label)}</small><strong>${count}</strong><span>${value?'jornadas':'total'}</span></button>`).join('');
+  }
   function setAnalysisTable(headers,bodyRows,empty="Nenhum registro encontrado para os filtros atuais."){$("occ-analysis-thead").innerHTML=`<tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;$("occ-analysis-tbody").innerHTML=bodyRows.length?bodyRows.join(''):`<tr><td colspan="${headers.length}" class="occ-analysis-empty">${esc(empty)}</td></tr>`;$("occ-analysis-count").textContent=`${bodyRows.length} registro${bodyRows.length===1?'':'s'}`;}
   function employeeById(id){return rows.find(r=>String(r.employee_id)===String(id));}
   async function renderAnalysis(){
     if(analysisTab==='overview'){document.body.classList.remove('occ-analysis-specialized');$("occ-analysis-panel").hidden=true;return;}
-    document.body.classList.add('occ-analysis-specialized');$("occ-analysis-panel").hidden=false;const meta=analysisMeta[analysisTab];$("occ-analysis-title").textContent=meta.title;$("occ-analysis-subtitle").textContent=meta.subtitle;$("occ-analysis-tbody").innerHTML='<tr><td class="occ-analysis-empty">Carregando análise...</td></tr>';
+    document.body.classList.add('occ-analysis-specialized');$("occ-analysis-panel").hidden=false;$("occ-analysis-chart")?.classList.remove('occ-analysis-shift-filter');const meta=analysisMeta[analysisTab];$("occ-analysis-title").textContent=meta.title;$("occ-analysis-subtitle").textContent=meta.subtitle;$("occ-analysis-tbody").innerHTML='<tr><td class="occ-analysis-empty">Carregando análise...</td></tr>';
     const scoped=analysisScopedRows();
     if(analysisTab==='absences'){
       const list=scoped.filter(r=>number(r,'absences')>0).sort((a,b)=>number(b,'absences')-number(a,'absences'));const total=list.reduce((a,r)=>a+number(r,'absences'),0),groups={};list.forEach(r=>groups[r.shift_name||'Sem turno']=(groups[r.shift_name||'Sem turno']||0)+number(r,'absences'));analysisKpis([["Faltas",total],["Colaboradores",list.length],["Reincidentes",list.filter(r=>number(r,'absences')>1).length]]);analysisBars(groups);setAnalysisTable(['Colaborador','Turno / Coordenador','Faltas','Situação'],list.map(r=>`<tr><td><strong>${esc(r.full_name)}</strong><small>${esc(r.registration||'Sem matrícula')}</small></td><td>${esc(r.shift_name||'Sem turno')}<small>${esc(r.coordinator?.name||'Sem coordenador')}</small></td><td><strong>${number(r,'absences')}</strong></td><td><span class="occ-analysis-alert ${number(r,'absences')>1?'red':'yellow'}">${number(r,'absences')>1?'Reincidente':'Acompanhar'}</span></td></tr>`));return;
@@ -684,12 +694,13 @@
           const bhPos=Number(day.bh_positive_minutes||0),bhNeg=Number(day.bh_negative_minutes||0);
           return {day,a,emp,diff,abnormal,critical,markHtml,occurrence,work,bhPos,bhNeg};
         }).sort((a,b)=>String(a.day.work_date).localeCompare(String(b.day.work_date))||String(a.day.full_name||'').localeCompare(String(b.day.full_name||'')));
-        const irregular=rowsInterval.filter(x=>x.abnormal).length;
-        const attention=rowsInterval.filter(x=>x.abnormal&&!x.critical).length;
-        const critical=rowsInterval.filter(x=>x.critical).length;
-        analysisKpis([["Jornadas",rowsInterval.length],["Fora do padrão",irregular],["Atenção",attention],["Críticos",critical]]);
-        const groups={};rowsInterval.filter(x=>x.abnormal).forEach(x=>{const n=x.emp?.shift_name||x.day.shift_name||'Sem turno';groups[n]=(groups[n]||0)+1;});analysisBars(groups);
-        setAnalysisTable(['Matrícula','Colaborador','Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'],rowsInterval.map(x=>{const registration=x.emp?.registration||x.day.registration||'-',employeeName=x.emp?.full_name||x.day.full_name||'Colaborador não identificado';return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee"><strong>${esc(employeeName)}</strong></td><td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td></tr>`;}));
+        renderIntervalShiftFilter(rowsInterval);
+        const filteredIntervals=analysisShiftFilter?rowsInterval.filter(x=>(x.emp?.shift_name||x.day.shift_name||'Sem turno')===analysisShiftFilter):rowsInterval;
+        const irregular=filteredIntervals.filter(x=>x.abnormal).length;
+        const attention=filteredIntervals.filter(x=>x.abnormal&&!x.critical).length;
+        const critical=filteredIntervals.filter(x=>x.critical).length;
+        analysisKpis([["Jornadas",filteredIntervals.length],["Fora do padrão",irregular],["Atenção",attention],["Críticos",critical]]);
+        setAnalysisTable(['Matrícula','Colaborador','Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'],filteredIntervals.map(x=>{const registration=x.emp?.registration||x.day.registration||'-',employeeName=x.emp?.full_name||x.day.full_name||'Colaborador não identificado';return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee"><strong>${esc(employeeName)}</strong></td><td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td></tr>`;}));
       }catch(error){analysisKpis([]);analysisBars({});setAnalysisTable(['Intervalos'],[],error.message||'Não foi possível carregar os intervalos.');}return;
     }
   }
@@ -736,6 +747,7 @@
     });
     document.addEventListener("fullscreenchange",()=>{if(!document.fullscreenElement&&document.body.classList.contains("occurrences-presentation-mode")){document.body.classList.remove("occurrences-presentation-mode");if($("occurrences-presentation"))$("occurrences-presentation").textContent="▣ Modo Apresentação";}});
     $("occ-analysis-tabs")?.addEventListener("click",event=>{const button=event.target.closest("[data-occ-tab]");if(button)selectAnalysisTab(button.dataset.occTab);});
+    $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-analysis-shift]");if(!button||analysisTab!=="intervals")return;analysisShiftFilter=button.dataset.analysisShift||"";renderAnalysis();});
     $("occurrences-print")?.addEventListener("click",printReport);
     window.addEventListener("afterprint",clearPrintMode);
     document.querySelectorAll("#occurrences-summary article[data-key]").forEach(card=>card.addEventListener("click",()=>selectKey(card.dataset.key)));
