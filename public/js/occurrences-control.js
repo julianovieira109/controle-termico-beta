@@ -667,7 +667,30 @@
       const list=scoped.filter(r=>number(r,'review_days')>0||number(r,'incomplete_days')>0).sort((a,b)=>(number(b,'review_days')+number(b,'incomplete_days'))-(number(a,'review_days')+number(a,'incomplete_days')));analysisKpis([["Para revisão",list.reduce((a,r)=>a+number(r,'review_days'),0)],["Jornadas incompletas",list.reduce((a,r)=>a+number(r,'incomplete_days'),0)],["Colaboradores",list.length]]);const groups={};list.forEach(r=>groups[r.shift_name||'Sem turno']=(groups[r.shift_name||'Sem turno']||0)+number(r,'review_days')+number(r,'incomplete_days'));analysisBars(groups);setAnalysisTable(['Colaborador','Turno / Coordenador','Revisão','Incompletas','Prioridade'],list.map(r=>`<tr><td><strong>${esc(r.full_name)}</strong><small>${esc(r.registration||'Sem matrícula')}</small></td><td>${esc(r.shift_name||'Sem turno')}<small>${esc(r.coordinator?.name||'Sem coordenador')}</small></td><td>${number(r,'review_days')}</td><td>${number(r,'incomplete_days')}</td><td><span class="occ-analysis-alert ${(number(r,'review_days')+number(r,'incomplete_days'))>=3?'red':'yellow'}">${(number(r,'review_days')+number(r,'incomplete_days'))>=3?'Prioritário':'Conferir'}</span></td></tr>`));return;
     }
     if(analysisTab==='intervals'){
-      try{const days=(await ensureAnalysisJourneys()).filter(analysisDayAllowed),out=[];days.forEach(day=>{const a=journeyDayAnalysis(day);if(!a||a.actual==null)return;const emp=employeeById(day.employee_id);const planned=a.planned;const diff=planned==null?null:Math.abs(a.actual-planned);if(diff!=null&&diff<=5)return;out.push({day,a,emp,diff});});out.sort((a,b)=>(b.diff||999)-(a.diff||999));const critical=out.filter(x=>x.diff==null||x.diff>10).length,attention=out.length-critical;analysisKpis([["Fora do padrão",out.length],["Atenção",attention],["Críticos",critical]]);const groups={};out.forEach(x=>{const n=x.emp?.shift_name||x.day.shift_name||'Sem turno';groups[n]=(groups[n]||0)+1;});analysisBars(groups);setAnalysisTable(['Data','Colaborador','Turno / Coordenador','Realizado','Previsto','Diferença','Situação'],out.map(x=>`<tr><td>${formatDate(x.day.work_date)}</td><td><strong>${esc(x.day.full_name)}</strong><small>${esc(x.day.registration||'')}</small></td><td>${esc(x.emp?.shift_name||x.day.shift_name||'Sem turno')}<small>${esc(x.emp?.coordinator?.name||'Sem coordenador')}</small></td><td>${x.a.actual} min</td><td>${x.a.planned} min</td><td>${x.diff} min</td><td><span class="occ-analysis-alert ${x.diff>10?'red':'yellow'}">${x.diff>10?'Crítico':'Atenção'}</span></td></tr>`));}catch(error){analysisKpis([]);analysisBars({});setAnalysisTable(['Intervalos'],[],error.message||'Não foi possível carregar os intervalos.');}return;
+      try{
+        const days=(await ensureAnalysisJourneys()).filter(analysisDayAllowed);
+        const weekday=value=>{const d=new Date(`${String(value).slice(0,10)}T12:00:00`);return ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'][d.getDay()]||'-';};
+        const rowsInterval=days.map(day=>{
+          const a=journeyDayAnalysis(day),marks=Array.isArray(day.markings)?day.markings:[],emp=employeeById(day.employee_id);
+          const diff=a?.planned==null||a?.actual==null?null:Math.abs(a.actual-a.planned);
+          const abnormal=diff!=null&&diff>5;
+          const critical=diff!=null&&diff>10;
+          const markHtml=marks.map((mark,index)=>{
+            const text=esc(mark||'-');
+            return abnormal&&(index===1||index===2)?`<span class="occ-interval-mark ${critical?'critical':'attention'}">${text}</span>`:text;
+          }).join(' ');
+          const occurrence=String(day.occurrence||'').trim();
+          const work=workedMinutes(marks);
+          const bhPos=Number(day.bh_positive_minutes||0),bhNeg=Number(day.bh_negative_minutes||0);
+          return {day,a,emp,diff,abnormal,critical,markHtml,occurrence,work,bhPos,bhNeg};
+        }).sort((a,b)=>String(a.day.work_date).localeCompare(String(b.day.work_date))||String(a.day.full_name||'').localeCompare(String(b.day.full_name||'')));
+        const irregular=rowsInterval.filter(x=>x.abnormal).length;
+        const attention=rowsInterval.filter(x=>x.abnormal&&!x.critical).length;
+        const critical=rowsInterval.filter(x=>x.critical).length;
+        analysisKpis([["Jornadas",rowsInterval.length],["Fora do padrão",irregular],["Atenção",attention],["Críticos",critical]]);
+        const groups={};rowsInterval.filter(x=>x.abnormal).forEach(x=>{const n=x.emp?.shift_name||x.day.shift_name||'Sem turno';groups[n]=(groups[n]||0)+1;});analysisBars(groups);
+        setAnalysisTable(['Data','Sem','Hor','Marcações','Trabalho','BH -','BH +','Situação'],rowsInterval.map(x=>`<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}"><td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}${x.occurrence?` <span class="occ-interval-occurrence">${esc(x.occurrence)}</span>`:''}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td></tr>`));
+      }catch(error){analysisKpis([]);analysisBars({});setAnalysisTable(['Intervalos'],[],error.message||'Não foi possível carregar os intervalos.');}return;
     }
   }
   function selectAnalysisTab(tab){analysisTab=tab||'overview';document.querySelectorAll('#occ-analysis-tabs [data-occ-tab]').forEach(b=>b.classList.toggle('active',b.dataset.occTab===analysisTab));renderAnalysis();}

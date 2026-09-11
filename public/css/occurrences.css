@@ -533,3 +533,13 @@ body.occ-analysis-specialized .occ-overview-block{display:none!important}body.oc
 .theme-dark #app #occurrences{--occ-soft:#172935;--occ-border:#35505f}.theme-dark #app .occ-analysis-center,.theme-dark #app #occurrences .occ-dash-scope{background:#142630}.theme-dark #app .occ-analysis-tabs button,.theme-dark #app .occ-analysis-bar{background:#172935}.theme-dark #app .occ-analysis-tabs button.active{background:color-mix(in srgb,#172935 82%,var(--p) 18%)}
 @media(max-width:1250px){.occ-analysis-tabs{grid-template-columns:repeat(4,minmax(150px,1fr))}}
 @media(max-width:800px){.occ-analysis-center-head{display:block}.occ-analysis-scope-note{display:inline-block;margin-top:10px}.occ-analysis-tabs{display:flex;overflow-x:auto}.occ-analysis-tabs button{min-width:165px}.occ-analysis-center{padding:12px}}
+
+/* Beta.44 — jornada no padrão Senior dentro da análise de intervalos */
+#occurrences .occ-analysis-table .occ-interval-markings{white-space:nowrap;font-variant-numeric:tabular-nums}
+#occurrences .occ-analysis-table .occ-interval-mark{font-weight:900;text-decoration-line:underline;text-decoration-thickness:2px;text-underline-offset:3px;border-radius:4px;padding:1px 2px}
+#occurrences .occ-analysis-table .occ-interval-mark.attention{text-decoration-color:#d49300;background:#fff7df;color:#8a5b00}
+#occurrences .occ-analysis-table .occ-interval-mark.critical{text-decoration-color:#c92a2a;background:#fff0f0;color:#b42318}
+#occurrences .occ-analysis-table .occ-interval-occurrence{margin-left:5px;font-weight:700;color:var(--muted)}
+#occurrences .occ-analysis-table tr.occ-interval-row-attention td:first-child{box-shadow:inset 3px 0 0 #d49300}
+#occurrences .occ-analysis-table tr.occ-interval-row-critical td:first-child{box-shadow:inset 3px 0 0 #c92a2a}
+.theme-dark #app #occurrences .occ-analysis-table .occ-interval-mark.attention{background:#3b3218;color:#ffd66b}.theme-dark #app #occurrences .occ-analysis-table .occ-interval-mark.critical{background:#3d2023;color:#ff9b9b}
