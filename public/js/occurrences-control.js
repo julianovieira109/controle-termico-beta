@@ -660,6 +660,16 @@
   }
   function setAnalysisTable(headers,bodyRows,empty="Nenhum registro encontrado para os filtros atuais."){$("occ-analysis-thead").innerHTML=`<tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;$("occ-analysis-tbody").innerHTML=bodyRows.length?bodyRows.join(''):`<tr><td colspan="${headers.length}" class="occ-analysis-empty">${esc(empty)}</td></tr>`;$("occ-analysis-count").textContent=`${bodyRows.length} registro${bodyRows.length===1?'':'s'}`;}
   function employeeById(id){return rows.find(r=>String(r.employee_id)===String(id));}
+  function focusIntervalEmployee(employeeId){
+    const select=$("occurrences-employee"),id=String(employeeId||"");
+    if(!select||!id||![...select.options].some(option=>String(option.value)===id))return;
+    select.value=id;
+    analysisShiftFilter="";
+    renderStatusSummary();
+    renderExecutiveInsights();
+    renderTable();
+    renderAnalysis();
+  }
   async function renderAnalysis(){
     if(analysisTab==='overview'){document.body.classList.remove('occ-analysis-specialized');$("occ-analysis-panel").hidden=true;return;}
     document.body.classList.add('occ-analysis-specialized');$("occ-analysis-panel").hidden=false;$("occ-analysis-chart")?.classList.remove('occ-analysis-shift-filter');const meta=analysisMeta[analysisTab];$("occ-analysis-title").textContent=meta.title;$("occ-analysis-subtitle").textContent=meta.subtitle;$("occ-analysis-tbody").innerHTML='<tr><td class="occ-analysis-empty">Carregando análise...</td></tr>';
@@ -693,14 +703,24 @@
           const work=workedMinutes(marks);
           const bhPos=Number(day.bh_positive_minutes||0),bhNeg=Number(day.bh_negative_minutes||0);
           return {day,a,emp,diff,abnormal,critical,markHtml,occurrence,work,bhPos,bhNeg};
-        }).sort((a,b)=>String(a.day.work_date).localeCompare(String(b.day.work_date))||String(a.day.full_name||'').localeCompare(String(b.day.full_name||'')));
+        });
+        const selectedEmployee=currentFilters().employeeId;
+        rowsInterval.sort((a,b)=>{
+          const aName=String(a.emp?.full_name||a.day.full_name||''),bName=String(b.emp?.full_name||b.day.full_name||'');
+          const aDate=String(a.day.work_date||''),bDate=String(b.day.work_date||'');
+          return selectedEmployee?(aDate.localeCompare(bDate)||aName.localeCompare(bName,'pt-BR')):(aName.localeCompare(bName,'pt-BR')||aDate.localeCompare(bDate));
+        });
         renderIntervalShiftFilter(rowsInterval);
         const filteredIntervals=analysisShiftFilter?rowsInterval.filter(x=>(x.emp?.shift_name||x.day.shift_name||'Sem turno')===analysisShiftFilter):rowsInterval;
         const irregular=filteredIntervals.filter(x=>x.abnormal).length;
         const attention=filteredIntervals.filter(x=>x.abnormal&&!x.critical).length;
         const critical=filteredIntervals.filter(x=>x.critical).length;
         analysisKpis([["Jornadas",filteredIntervals.length],["Fora do padrão",irregular],["Atenção",attention],["Críticos",critical]]);
-        setAnalysisTable(['Matrícula','Colaborador','Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'],filteredIntervals.map(x=>{const registration=x.emp?.registration||x.day.registration||'-',employeeName=x.emp?.full_name||x.day.full_name||'Colaborador não identificado';return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee"><strong>${esc(employeeName)}</strong></td><td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td></tr>`;}));
+        setAnalysisTable(['Matrícula','Colaborador','Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'],filteredIntervals.map(x=>{
+          const registration=x.emp?.registration||x.day.registration||'-',employeeName=x.emp?.full_name||x.day.full_name||'Colaborador não identificado',employeeId=x.day.employee_id||x.emp?.employee_id;
+          const employeeCell=selectedEmployee?`<strong>${esc(employeeName)}</strong>`:`<button type="button" class="occ-interval-employee-link" data-interval-employee="${esc(employeeId||'')}"><strong>${esc(employeeName)}</strong><small>Ver jornada completa</small></button>`;
+          return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee">${employeeCell}</td><td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td></tr>`;
+        }));
       }catch(error){analysisKpis([]);analysisBars({});setAnalysisTable(['Intervalos'],[],error.message||'Não foi possível carregar os intervalos.');}return;
     }
   }
@@ -748,6 +768,7 @@
     document.addEventListener("fullscreenchange",()=>{if(!document.fullscreenElement&&document.body.classList.contains("occurrences-presentation-mode")){document.body.classList.remove("occurrences-presentation-mode");if($("occurrences-presentation"))$("occurrences-presentation").textContent="▣ Modo Apresentação";}});
     $("occ-analysis-tabs")?.addEventListener("click",event=>{const button=event.target.closest("[data-occ-tab]");if(button)selectAnalysisTab(button.dataset.occTab);});
     $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-analysis-shift]");if(!button||analysisTab!=="intervals")return;analysisShiftFilter=button.dataset.analysisShift||"";renderAnalysis();});
+    $("occ-analysis-tbody")?.addEventListener("click",event=>{const button=event.target.closest("[data-interval-employee]");if(!button||analysisTab!=="intervals")return;focusIntervalEmployee(button.dataset.intervalEmployee);});
     $("occurrences-print")?.addEventListener("click",printReport);
     window.addEventListener("afterprint",clearPrintMode);
     document.querySelectorAll("#occurrences-summary article[data-key]").forEach(card=>card.addEventListener("click",()=>selectKey(card.dataset.key)));

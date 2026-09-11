@@ -562,3 +562,10 @@ body.occ-analysis-specialized .occ-overview-block{display:none!important}body.oc
 .occ-analysis-shift-btn.active small,.occ-analysis-shift-btn.active strong{color:var(--p,var(--primary))}
 .theme-dark #app .occ-analysis-shift-btn{background:#172935}
 @media(max-width:800px){.occ-analysis-shift-btn{min-width:135px}}
+
+/* Beta.48 — navegação da análise geral para a jornada individual do colaborador. */
+#occ-analysis-panel .occ-interval-employee-link{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;border:0;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer;font:inherit}
+#occ-analysis-panel .occ-interval-employee-link strong{color:var(--p,var(--primary));text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+#occ-analysis-panel .occ-interval-employee-link small{font-size:9px;color:var(--muted);font-weight:650}
+#occ-analysis-panel .occ-interval-employee-link:hover strong{filter:brightness(.85);text-decoration-thickness:2px}
+#occ-analysis-panel .occ-interval-employee-link:focus-visible{outline:2px solid var(--p,var(--primary));outline-offset:3px;border-radius:4px}
