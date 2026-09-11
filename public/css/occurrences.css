@@ -569,3 +569,20 @@ body.occ-analysis-specialized .occ-overview-block{display:none!important}body.oc
 #occ-analysis-panel .occ-interval-employee-link small{font-size:9px;color:var(--muted);font-weight:650}
 #occ-analysis-panel .occ-interval-employee-link:hover strong{filter:brightness(.85);text-decoration-thickness:2px}
 #occ-analysis-panel .occ-interval-employee-link:focus-visible{outline:2px solid var(--p,var(--primary));outline-offset:3px;border-radius:4px}
+
+/* Beta.49 — resumo da jornada individual e retorno rápido para todos os colaboradores */
+#occ-analysis-panel .occ-employee-journey-summary{width:100%;border:1px solid var(--occ-border,var(--line));border-radius:12px;background:var(--bg,var(--surface,#fff));padding:14px 16px;box-shadow:0 3px 12px rgba(27,50,72,.04)}
+#occ-analysis-panel .occ-employee-summary-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+#occ-analysis-panel .occ-employee-summary-head>div{min-width:0}
+#occ-analysis-panel .occ-employee-summary-head small,#occ-analysis-panel .occ-employee-summary-head strong,#occ-analysis-panel .occ-employee-summary-head span{display:block}
+#occ-analysis-panel .occ-employee-summary-head small{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800}
+#occ-analysis-panel .occ-employee-summary-head strong{font-size:17px;color:var(--heading,var(--text));margin-top:2px}
+#occ-analysis-panel .occ-employee-summary-head span{font-size:11px;color:var(--muted);margin-top:3px}
+#occ-analysis-panel .occ-back-all-employees{white-space:nowrap}
+#occ-analysis-panel .occ-employee-summary-metrics{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:9px;padding-top:12px}
+#occ-analysis-panel .occ-employee-summary-metrics>span{border:1px solid var(--occ-border,var(--line));border-radius:9px;background:var(--occ-soft,var(--surface-soft,#f7f8fa));padding:9px 11px}
+#occ-analysis-panel .occ-employee-summary-metrics small,#occ-analysis-panel .occ-employee-summary-metrics strong{display:block}
+#occ-analysis-panel .occ-employee-summary-metrics small{font-size:9px;color:var(--muted);font-weight:700}
+#occ-analysis-panel .occ-employee-summary-metrics strong{font-size:16px;color:var(--heading,var(--text));margin-top:2px;font-variant-numeric:tabular-nums}
+.theme-dark #app #occ-analysis-panel .occ-employee-journey-summary{background:#172935}
+@media(max-width:900px){#occ-analysis-panel .occ-employee-summary-head{align-items:flex-start;flex-direction:column}#occ-analysis-panel .occ-employee-summary-metrics{grid-template-columns:repeat(2,minmax(120px,1fr))}.occ-back-all-employees{width:100%}}

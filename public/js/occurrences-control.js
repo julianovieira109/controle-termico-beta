@@ -658,6 +658,31 @@
     box.classList.add('occ-analysis-shift-filter');
     box.innerHTML=buttons.map(([value,label,count])=>`<button type="button" class="occ-analysis-shift-btn ${analysisShiftFilter===value?'active':''}" data-analysis-shift="${esc(value)}"><small>${esc(label)}</small><strong>${count}</strong><span>${value?'jornadas':'total'}</span></button>`).join('');
   }
+  function renderIntervalEmployeeSummary(items,employeeId){
+    const box=$("occ-analysis-chart");if(!box)return;
+    box.classList.remove('occ-analysis-shift-filter');
+    const first=items[0],emp=first?.emp||employeeById(employeeId)||{},day=first?.day||{};
+    const name=emp.full_name||day.full_name||'Colaborador';
+    const registration=emp.registration||day.registration||'-';
+    const shift=emp.shift_name||day.shift_name||'Sem turno';
+    const totalWork=items.reduce((sum,x)=>sum+(Number.isFinite(x.work)?x.work:0),0);
+    const totalBhPos=items.reduce((sum,x)=>sum+(x.bhPos||0),0);
+    const totalBhNeg=items.reduce((sum,x)=>sum+(x.bhNeg||0),0);
+    const abnormal=items.filter(x=>x.abnormal).length;
+    box.innerHTML=`<div class="occ-employee-journey-summary">
+      <div class="occ-employee-summary-head">
+        <div><small>Jornada individual</small><strong>${esc(name)}</strong><span>Matrícula ${esc(registration)} · ${esc(shift)}</span></div>
+        <button type="button" class="btn secondary occ-back-all-employees" data-back-all-employees="1">← Voltar para todos os colaboradores</button>
+      </div>
+      <div class="occ-employee-summary-metrics">
+        <span><small>Jornadas</small><strong>${items.length}</strong></span>
+        <span><small>Horas trabalhadas</small><strong>${formatDuration(totalWork,{signed:false})}</strong></span>
+        <span><small>BH +</small><strong class="occ-analysis-bh-plus">${totalBhPos?`+${formatDuration(totalBhPos,{signed:false})}`:'00:00'}</strong></span>
+        <span><small>BH -</small><strong class="occ-analysis-bh-minus">${totalBhNeg?`-${formatDuration(totalBhNeg,{signed:false})}`:'00:00'}</strong></span>
+        <span><small>Intervalos fora do padrão</small><strong>${abnormal}</strong></span>
+      </div>
+    </div>`;
+  }
   function setAnalysisTable(headers,bodyRows,empty="Nenhum registro encontrado para os filtros atuais."){$("occ-analysis-thead").innerHTML=`<tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;$("occ-analysis-tbody").innerHTML=bodyRows.length?bodyRows.join(''):`<tr><td colspan="${headers.length}" class="occ-analysis-empty">${esc(empty)}</td></tr>`;$("occ-analysis-count").textContent=`${bodyRows.length} registro${bodyRows.length===1?'':'s'}`;}
   function employeeById(id){return rows.find(r=>String(r.employee_id)===String(id));}
   function focusIntervalEmployee(employeeId){
@@ -710,17 +735,20 @@
           const aDate=String(a.day.work_date||''),bDate=String(b.day.work_date||'');
           return selectedEmployee?(aDate.localeCompare(bDate)||aName.localeCompare(bName,'pt-BR')):(aName.localeCompare(bName,'pt-BR')||aDate.localeCompare(bDate));
         });
-        renderIntervalShiftFilter(rowsInterval);
-        const filteredIntervals=analysisShiftFilter?rowsInterval.filter(x=>(x.emp?.shift_name||x.day.shift_name||'Sem turno')===analysisShiftFilter):rowsInterval;
+        if(selectedEmployee){analysisShiftFilter="";renderIntervalEmployeeSummary(rowsInterval,selectedEmployee);}else{renderIntervalShiftFilter(rowsInterval);}
+        const filteredIntervals=!selectedEmployee&&analysisShiftFilter?rowsInterval.filter(x=>(x.emp?.shift_name||x.day.shift_name||'Sem turno')===analysisShiftFilter):rowsInterval;
         const irregular=filteredIntervals.filter(x=>x.abnormal).length;
         const attention=filteredIntervals.filter(x=>x.abnormal&&!x.critical).length;
         const critical=filteredIntervals.filter(x=>x.critical).length;
         analysisKpis([["Jornadas",filteredIntervals.length],["Fora do padrão",irregular],["Atenção",attention],["Críticos",critical]]);
-        setAnalysisTable(['Matrícula','Colaborador','Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'],filteredIntervals.map(x=>{
+        const rowHtml=filteredIntervals.map(x=>{
           const registration=x.emp?.registration||x.day.registration||'-',employeeName=x.emp?.full_name||x.day.full_name||'Colaborador não identificado',employeeId=x.day.employee_id||x.emp?.employee_id;
-          const employeeCell=selectedEmployee?`<strong>${esc(employeeName)}</strong>`:`<button type="button" class="occ-interval-employee-link" data-interval-employee="${esc(employeeId||'')}"><strong>${esc(employeeName)}</strong><small>Ver jornada completa</small></button>`;
-          return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee">${employeeCell}</td><td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td></tr>`;
-        }));
+          const common=`<td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td>`;
+          if(selectedEmployee)return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}">${common}</tr>`;
+          const employeeCell=`<button type="button" class="occ-interval-employee-link" data-interval-employee="${esc(employeeId||'')}"><strong>${esc(employeeName)}</strong><small>Ver jornada completa</small></button>`;
+          return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee">${employeeCell}</td>${common}</tr>`;
+        });
+        setAnalysisTable(selectedEmployee?['Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação']:['Matrícula','Colaborador','Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'],rowHtml);
       }catch(error){analysisKpis([]);analysisBars({});setAnalysisTable(['Intervalos'],[],error.message||'Não foi possível carregar os intervalos.');}return;
     }
   }
@@ -769,6 +797,7 @@
     $("occ-analysis-tabs")?.addEventListener("click",event=>{const button=event.target.closest("[data-occ-tab]");if(button)selectAnalysisTab(button.dataset.occTab);});
     $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-analysis-shift]");if(!button||analysisTab!=="intervals")return;analysisShiftFilter=button.dataset.analysisShift||"";renderAnalysis();});
     $("occ-analysis-tbody")?.addEventListener("click",event=>{const button=event.target.closest("[data-interval-employee]");if(!button||analysisTab!=="intervals")return;focusIntervalEmployee(button.dataset.intervalEmployee);});
+    $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-back-all-employees]");if(!button||analysisTab!=="intervals")return;const select=$("occurrences-employee");if(!select)return;select.value="";analysisShiftFilter="";renderStatusSummary();renderExecutiveInsights();renderTable();renderAnalysis();});
     $("occurrences-print")?.addEventListener("click",printReport);
     window.addEventListener("afterprint",clearPrintMode);
     document.querySelectorAll("#occurrences-summary article[data-key]").forEach(card=>card.addEventListener("click",()=>selectKey(card.dataset.key)));
