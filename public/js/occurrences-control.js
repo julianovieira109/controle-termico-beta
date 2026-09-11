@@ -648,6 +648,18 @@
   function analysisDayAllowed(day){const ids=new Set(analysisScopedRows().map(r=>String(r.employee_id)));return ids.has(String(day.employee_id));}
   function analysisKpis(items){const box=$("occ-analysis-kpis");if(box)box.innerHTML=items.map(([label,value])=>`<span>${esc(label)}<strong>${esc(String(value))}</strong></span>`).join('');}
   function analysisBars(groups){const box=$("occ-analysis-chart");if(!box)return;const arr=Object.entries(groups).sort((a,b)=>b[1]-a[1]).slice(0,6),max=Math.max(1,...arr.map(x=>x[1]));box.innerHTML=arr.map(([name,value])=>`<div class="occ-analysis-bar"><small>${esc(name)}</small><b>${value}</b><i style="width:${Math.round(value/max*100)}%"></i></div>`).join('');}
+  function renderAnalysisShiftFilter(items,{valueOf=()=>1,totalLabel='total',itemLabel='registros'}={}){
+    const box=$("occ-analysis-chart");if(!box)return;
+    const groups=new Map();
+    items.forEach(item=>{const row=item?.r||item;const name=row?.shift_name||item?.day?.shift_name||item?.emp?.shift_name||'Sem turno';const value=Number(valueOf(item)||0);groups.set(name,(groups.get(name)||0)+value);});
+    const arr=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+    if(analysisShiftFilter&&!groups.has(analysisShiftFilter))analysisShiftFilter='';
+    const total=arr.reduce((sum,[,value])=>sum+value,0);
+    const buttons=[["",'Todos os turnos',total,totalLabel],...arr.map(([name,count])=>[name,name,count,itemLabel])];
+    box.classList.add('occ-analysis-shift-filter');
+    box.innerHTML=buttons.map(([value,label,count,caption])=>`<button type="button" class="occ-analysis-shift-btn ${analysisShiftFilter===value?'active':''}" data-analysis-shift="${esc(value)}"><small>${esc(label)}</small><strong>${count}</strong><span>${esc(caption)}</span></button>`).join('');
+  }
+  function filterAnalysisByShift(items){if(!analysisShiftFilter)return items;return items.filter(item=>{const row=item?.r||item;return (row?.shift_name||item?.day?.shift_name||item?.emp?.shift_name||'Sem turno')===analysisShiftFilter;});}
   function renderIntervalShiftFilter(items){
     const box=$("occ-analysis-chart");if(!box)return;
     const groups=new Map();
@@ -700,14 +712,20 @@
     document.body.classList.add('occ-analysis-specialized');$("occ-analysis-panel").hidden=false;$("occ-analysis-chart")?.classList.remove('occ-analysis-shift-filter');const meta=analysisMeta[analysisTab];$("occ-analysis-title").textContent=meta.title;$("occ-analysis-subtitle").textContent=meta.subtitle;$("occ-analysis-tbody").innerHTML='<tr><td class="occ-analysis-empty">Carregando análise...</td></tr>';
     const scoped=analysisScopedRows();
     if(analysisTab==='absences'){
-      const list=scoped.filter(r=>number(r,'absences')>0).sort((a,b)=>number(b,'absences')-number(a,'absences'));const total=list.reduce((a,r)=>a+number(r,'absences'),0),groups={};list.forEach(r=>groups[r.shift_name||'Sem turno']=(groups[r.shift_name||'Sem turno']||0)+number(r,'absences'));analysisKpis([["Faltas",total],["Colaboradores",list.length],["Reincidentes",list.filter(r=>number(r,'absences')>1).length]]);analysisBars(groups);setAnalysisTable(['Colaborador','Turno / Coordenador','Faltas','Situação'],list.map(r=>`<tr><td><strong>${esc(r.full_name)}</strong><small>${esc(r.registration||'Sem matrícula')}</small></td><td>${esc(r.shift_name||'Sem turno')}<small>${esc(r.coordinator?.name||'Sem coordenador')}</small></td><td><strong>${number(r,'absences')}</strong></td><td><span class="occ-analysis-alert ${number(r,'absences')>1?'red':'yellow'}">${number(r,'absences')>1?'Reincidente':'Acompanhar'}</span></td></tr>`));return;
+      const all=scoped.filter(r=>number(r,'absences')>0).sort((a,b)=>number(b,'absences')-number(a,'absences'));
+      renderAnalysisShiftFilter(all,{valueOf:r=>number(r,'absences'),totalLabel:'faltas',itemLabel:'faltas'});
+      const list=filterAnalysisByShift(all),total=list.reduce((a,r)=>a+number(r,'absences'),0);
+      analysisKpis([["Faltas",total],["Colaboradores",list.length],["Reincidentes",list.filter(r=>number(r,'absences')>1).length]]);
+      setAnalysisTable(['Colaborador','Turno / Coordenador','Faltas','Situação'],list.map(r=>`<tr><td><strong>${esc(r.full_name)}</strong><small>${esc(r.registration||'Sem matrícula')}</small></td><td>${esc(r.shift_name||'Sem turno')}<small>${esc(r.coordinator?.name||'Sem coordenador')}</small></td><td><strong>${number(r,'absences')}</strong></td><td><span class="occ-analysis-alert ${number(r,'absences')>1?'red':'yellow'}">${number(r,'absences')>1?'Reincidente':'Acompanhar'}</span></td></tr>`));return;
     }
     if(analysisTab==='bh-positive'||analysisTab==='bh-negative'){
       const positive=analysisTab==='bh-positive',key=positive?'bh_positive_minutes':'bh_negative_minutes',label=positive?'BH+':'BH-';
-      const list=scoped.filter(r=>number(r,key)>0).sort((a,b)=>number(b,key)-number(a,key));
+      const all=scoped.filter(r=>number(r,key)>0).sort((a,b)=>number(b,key)-number(a,key));
+      const selectedEmployee=currentFilters().employeeId;
+      if(!selectedEmployee)renderAnalysisShiftFilter(all,{valueOf:r=>Math.max(1,Math.round(number(r,key)/60)),totalLabel:'horas',itemLabel:'horas'});
+      const list=selectedEmployee?all:filterAnalysisByShift(all);
       const total=list.reduce((a,r)=>a+number(r,key),0),groups={};
       list.forEach(r=>groups[r.shift_name||'Sem turno']=(groups[r.shift_name||'Sem turno']||0)+number(r,key));
-      const selectedEmployee=currentFilters().employeeId;
       let bhDays=[];
       try{bhDays=(await ensureAnalysisJourneys()).filter(day=>analysisDayAllowed(day)&&Number(day[key]||0)>0);}catch(_){bhDays=[];}
       const occurrenceCount=new Map();
@@ -721,16 +739,23 @@
         if(box)box.innerHTML=`<div class="occ-employee-journey-summary"><div class="occ-employee-summary-head"><div><small>${label} individual</small><strong>${esc(employee.full_name||days[0]?.full_name||'Colaborador')}</strong><span>Matrícula ${esc(employee.registration||days[0]?.registration||'-')} · ${esc(employee.shift_name||days[0]?.shift_name||'Sem turno')}</span></div><button type="button" class="btn secondary occ-back-all-employees" data-back-all-bh="1">← Voltar para todos os colaboradores</button></div><div class="occ-employee-summary-metrics occ-bh-summary-metrics"><span><small>Ocorrências ${label}</small><strong>${days.length}</strong></span><span><small>Total ${label}</small><strong class="${positive?'occ-analysis-bh-plus':'occ-analysis-bh-minus'}">${positive?'+':'-'}${formatDuration(employeeTotal,{signed:false})}</strong></span><span><small>Saldo BH</small><strong>${esc(employee.bh_net||'00:00')}</strong></span></div></div>`;
         setAnalysisTable(['Data','Hor','Ocorrência','Trabalho',label,'Situação'],days.map(day=>{const marks=Array.isArray(day.markings)?day.markings:[];const work=workedMinutes(marks);const minutes=Number(day[key]||0);return `<tr><td>${formatDate(day.work_date)}</td><td>${esc(day.schedule_code||'-')}</td><td><strong>${esc(day.occurrence||label)}</strong><small>${esc(marks.join(' ')||'Sem marcações')}</small></td><td>${work==null?'-':formatDuration(work,{signed:false})}</td><td class="${positive?'occ-analysis-bh-plus':'occ-analysis-bh-minus'}"><strong>${positive?'+':'-'}${formatDuration(minutes,{signed:false})}</strong></td><td><span class="occ-analysis-alert ${positive?(minutes>=600?'red':'yellow'):(minutes>=240?'red':'yellow')}">${positive?(minutes>=600?'Crítico':'Acompanhar'):(minutes>=240?'Crítico':'Acompanhar')}</span></td></tr>`;}));
       }else{
-        analysisBars(Object.fromEntries(Object.entries(groups).map(([k,v])=>[k,Math.round(v/60)])));
         setAnalysisTable(['Colaborador','Turno','Coordenador',`Ocorrências ${label}`,label,'Saldo BH','Situação'],list.map(r=>{const minutes=number(r,key),critical=positive?minutes>=600:minutes>=240;return `<tr><td><button type="button" class="occ-interval-employee-link" data-bh-employee="${esc(String(r.employee_id||''))}"><strong>${esc(r.full_name)}</strong><small>${esc(r.registration||'Sem matrícula')} · Clique para detalhar ${label}</small></button></td><td>${esc(r.shift_name||'Sem turno')}</td><td>${esc(r.coordinator?.name||'Sem coordenador')}</td><td><strong>${occurrenceCount.get(String(r.employee_id||''))||0}</strong></td><td class="${positive?'occ-analysis-bh-plus':'occ-analysis-bh-minus'}"><strong>${positive?'+':'-'}${formatDuration(minutes,{signed:false})}</strong></td><td>${esc(r.bh_net||'00:00')}</td><td><span class="occ-analysis-alert ${critical?'red':'yellow'}">${critical?'Crítico':'Acompanhar'}</span></td></tr>`;}));
       }
       return;
     }
     if(analysisTab==='justifications'){
-      const defs=[['medical','Atestado'],['vacations','Férias'],['dsr','DSR'],['licenses','Licença'],['leaves','Afastamento'],['compensated','Compensado'],['courses','Curso'],['bereavement','Óbito']];const out=[];const groups={};scoped.forEach(r=>defs.forEach(([k,label])=>{const n=number(r,k);if(n){groups[label]=(groups[label]||0)+n;out.push({r,label,n});}}));out.sort((a,b)=>b.n-a.n);analysisKpis([["Registros",out.reduce((a,x)=>a+x.n,0)],["Colaboradores",new Set(out.map(x=>x.r.employee_id)).size],["Tipos",Object.keys(groups).length]]);analysisBars(groups);setAnalysisTable(['Colaborador','Turno / Coordenador','Justificativa','Dias'],out.map(x=>`<tr><td><strong>${esc(x.r.full_name)}</strong><small>${esc(x.r.registration||'Sem matrícula')}</small></td><td>${esc(x.r.shift_name||'Sem turno')}<small>${esc(x.r.coordinator?.name||'Sem coordenador')}</small></td><td><strong>${esc(x.label)}</strong></td><td>${x.n}</td></tr>`));return;
+      const defs=[['medical','Atestado'],['vacations','Férias'],['dsr','DSR'],['licenses','Licença'],['leaves','Afastamento'],['compensated','Compensado'],['courses','Curso'],['bereavement','Óbito']];const all=[];scoped.forEach(r=>defs.forEach(([k,label])=>{const n=number(r,k);if(n)all.push({r,label,n});}));all.sort((a,b)=>b.n-a.n);
+      renderAnalysisShiftFilter(all,{valueOf:x=>x.n,totalLabel:'registros',itemLabel:'registros'});
+      const out=filterAnalysisByShift(all),groups={};out.forEach(x=>groups[x.label]=(groups[x.label]||0)+x.n);
+      analysisKpis([["Registros",out.reduce((a,x)=>a+x.n,0)],["Colaboradores",new Set(out.map(x=>x.r.employee_id)).size],["Tipos",Object.keys(groups).length]]);
+      setAnalysisTable(['Colaborador','Turno / Coordenador','Justificativa','Dias'],out.map(x=>`<tr><td><strong>${esc(x.r.full_name)}</strong><small>${esc(x.r.registration||'Sem matrícula')}</small></td><td>${esc(x.r.shift_name||'Sem turno')}<small>${esc(x.r.coordinator?.name||'Sem coordenador')}</small></td><td><strong>${esc(x.label)}</strong></td><td>${x.n}</td></tr>`));return;
     }
     if(analysisTab==='reviews'){
-      const list=scoped.filter(r=>number(r,'review_days')>0||number(r,'incomplete_days')>0).sort((a,b)=>(number(b,'review_days')+number(b,'incomplete_days'))-(number(a,'review_days')+number(a,'incomplete_days')));analysisKpis([["Para revisão",list.reduce((a,r)=>a+number(r,'review_days'),0)],["Jornadas incompletas",list.reduce((a,r)=>a+number(r,'incomplete_days'),0)],["Colaboradores",list.length]]);const groups={};list.forEach(r=>groups[r.shift_name||'Sem turno']=(groups[r.shift_name||'Sem turno']||0)+number(r,'review_days')+number(r,'incomplete_days'));analysisBars(groups);setAnalysisTable(['Colaborador','Turno / Coordenador','Revisão','Incompletas','Prioridade'],list.map(r=>`<tr><td><strong>${esc(r.full_name)}</strong><small>${esc(r.registration||'Sem matrícula')}</small></td><td>${esc(r.shift_name||'Sem turno')}<small>${esc(r.coordinator?.name||'Sem coordenador')}</small></td><td>${number(r,'review_days')}</td><td>${number(r,'incomplete_days')}</td><td><span class="occ-analysis-alert ${(number(r,'review_days')+number(r,'incomplete_days'))>=3?'red':'yellow'}">${(number(r,'review_days')+number(r,'incomplete_days'))>=3?'Prioritário':'Conferir'}</span></td></tr>`));return;
+      const all=scoped.filter(r=>number(r,'review_days')>0||number(r,'incomplete_days')>0).sort((a,b)=>(number(b,'review_days')+number(b,'incomplete_days'))-(number(a,'review_days')+number(a,'incomplete_days')));
+      renderAnalysisShiftFilter(all,{valueOf:r=>number(r,'review_days')+number(r,'incomplete_days'),totalLabel:'pendências',itemLabel:'pendências'});
+      const list=filterAnalysisByShift(all);
+      analysisKpis([["Para revisão",list.reduce((a,r)=>a+number(r,'review_days'),0)],["Jornadas incompletas",list.reduce((a,r)=>a+number(r,'incomplete_days'),0)],["Colaboradores",list.length]]);
+      setAnalysisTable(['Colaborador','Turno / Coordenador','Revisão','Incompletas','Prioridade'],list.map(r=>`<tr><td><strong>${esc(r.full_name)}</strong><small>${esc(r.registration||'Sem matrícula')}</small></td><td>${esc(r.shift_name||'Sem turno')}<small>${esc(r.coordinator?.name||'Sem coordenador')}</small></td><td>${number(r,'review_days')}</td><td>${number(r,'incomplete_days')}</td><td><span class="occ-analysis-alert ${(number(r,'review_days')+number(r,'incomplete_days'))>=3?'red':'yellow'}">${(number(r,'review_days')+number(r,'incomplete_days'))>=3?'Prioritário':'Conferir'}</span></td></tr>`));return;
     }
     if(analysisTab==='intervals'){
       try{
@@ -791,7 +816,7 @@
       }catch(error){analysisKpis([]);analysisBars({});setAnalysisTable(['Intervalos'],[],error.message||'Não foi possível carregar os intervalos.');}return;
     }
   }
-  function selectAnalysisTab(tab){analysisTab=tab||'overview';document.querySelectorAll('#occ-analysis-tabs [data-occ-tab]').forEach(b=>b.classList.toggle('active',b.dataset.occTab===analysisTab));renderAnalysis();}
+  function selectAnalysisTab(tab){const next=tab||'overview';if(next!==analysisTab)analysisShiftFilter='';analysisTab=next;document.querySelectorAll('#occ-analysis-tabs [data-occ-tab]').forEach(b=>b.classList.toggle('active',b.dataset.occTab===analysisTab));renderAnalysis();}
 
   function init(){
     const month=$("occurrences-month");
@@ -834,7 +859,7 @@
     });
     document.addEventListener("fullscreenchange",()=>{if(!document.fullscreenElement&&document.body.classList.contains("occurrences-presentation-mode")){document.body.classList.remove("occurrences-presentation-mode");if($("occurrences-presentation"))$("occurrences-presentation").textContent="▣ Modo Apresentação";}});
     $("occ-analysis-tabs")?.addEventListener("click",event=>{const button=event.target.closest("[data-occ-tab]");if(button)selectAnalysisTab(button.dataset.occTab);});
-    $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-analysis-shift]");if(!button||analysisTab!=="intervals")return;analysisShiftFilter=button.dataset.analysisShift||"";renderAnalysis();});
+    $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-analysis-shift]");if(!button||analysisTab==="overview")return;analysisShiftFilter=button.dataset.analysisShift||"";renderAnalysis();});
     $("occ-analysis-tbody")?.addEventListener("click",event=>{const button=event.target.closest("[data-interval-employee]");if(!button||analysisTab!=="intervals")return;focusIntervalEmployee(button.dataset.intervalEmployee);});
     $("occ-analysis-tbody")?.addEventListener("click",event=>{const button=event.target.closest("[data-bh-employee]");if(!button||!(analysisTab==="bh-positive"||analysisTab==="bh-negative"))return;const select=$("occurrences-employee");if(!select)return;select.value=button.dataset.bhEmployee||"";renderStatusSummary();renderExecutiveInsights();renderTable();renderAnalysis();});
     $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-back-all-bh]");if(!button||!(analysisTab==="bh-positive"||analysisTab==="bh-negative"))return;const select=$("occurrences-employee");if(!select)return;select.value="";renderStatusSummary();renderExecutiveInsights();renderTable();renderAnalysis();});
