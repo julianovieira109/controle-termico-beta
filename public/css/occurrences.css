@@ -539,7 +539,7 @@ body.occ-analysis-specialized .occ-overview-block{display:none!important}body.oc
 #occurrences .occ-analysis-table .occ-interval-mark{font-weight:900;text-decoration-line:underline;text-decoration-thickness:2px;text-underline-offset:3px;border-radius:4px;padding:1px 2px}
 #occurrences .occ-analysis-table .occ-interval-mark.attention{text-decoration-color:#d49300;background:#fff7df;color:#8a5b00}
 #occurrences .occ-analysis-table .occ-interval-mark.critical{text-decoration-color:#c92a2a;background:#fff0f0;color:#b42318}
-#occurrences .occ-analysis-table .occ-interval-occurrence{margin-left:5px;font-weight:700;color:var(--muted)}
+#occurrences .occ-analysis-table .occ-interval-occurrence{min-width:170px;max-width:260px;white-space:normal;font-weight:750;color:var(--muted);line-height:1.25}
 #occurrences .occ-analysis-table tr.occ-interval-row-attention td:first-child{box-shadow:inset 3px 0 0 #d49300}
 #occurrences .occ-analysis-table tr.occ-interval-row-critical td:first-child{box-shadow:inset 3px 0 0 #c92a2a}
 .theme-dark #app #occurrences .occ-analysis-table .occ-interval-mark.attention{background:#3b3218;color:#ffd66b}.theme-dark #app #occurrences .occ-analysis-table .occ-interval-mark.critical{background:#3d2023;color:#ff9b9b}
