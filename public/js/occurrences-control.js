@@ -741,14 +741,32 @@
         const attention=filteredIntervals.filter(x=>x.abnormal&&!x.critical).length;
         const critical=filteredIntervals.filter(x=>x.critical).length;
         analysisKpis([["Jornadas",filteredIntervals.length],["Fora do padrão",irregular],["Atenção",attention],["Críticos",critical]]);
-        const rowHtml=filteredIntervals.map(x=>{
-          const registration=x.emp?.registration||x.day.registration||'-',employeeName=x.emp?.full_name||x.day.full_name||'Colaborador não identificado',employeeId=x.day.employee_id||x.emp?.employee_id;
-          const common=`<td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td>`;
-          if(selectedEmployee)return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}">${common}</tr>`;
-          const employeeCell=`<button type="button" class="occ-interval-employee-link" data-interval-employee="${esc(employeeId||'')}"><strong>${esc(employeeName)}</strong><small>Ver jornada completa</small></button>`;
-          return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee">${employeeCell}</td>${common}</tr>`;
-        });
-        setAnalysisTable(selectedEmployee?['Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação']:['Matrícula','Colaborador','Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'],rowHtml);
+        let rowHtml,headers;
+        if(selectedEmployee){
+          rowHtml=filteredIntervals.map(x=>{
+            const common=`<td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td>`;
+            return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}">${common}</tr>`;
+          });
+          headers=['Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'];
+        }else{
+          const byEmployee=new Map();
+          filteredIntervals.forEach(x=>{
+            const employeeId=String(x.day.employee_id||x.emp?.employee_id||'');
+            if(!employeeId)return;
+            if(!byEmployee.has(employeeId))byEmployee.set(employeeId,{employeeId,emp:x.emp||{},day:x.day,items:[],work:0,bhPos:0,bhNeg:0,attention:0,critical:0});
+            const g=byEmployee.get(employeeId);g.items.push(x);g.work+=Number.isFinite(x.work)?x.work:0;g.bhPos+=x.bhPos||0;g.bhNeg+=x.bhNeg||0;if(x.critical)g.critical++;else if(x.abnormal)g.attention++;
+          });
+          const summaries=[...byEmployee.values()].sort((a,b)=>String(a.emp?.full_name||a.day.full_name||'').localeCompare(String(b.emp?.full_name||b.day.full_name||''),'pt-BR'));
+          rowHtml=summaries.map(g=>{
+            const registration=g.emp?.registration||g.day.registration||'-',employeeName=g.emp?.full_name||g.day.full_name||'Colaborador não identificado',shift=g.emp?.shift_name||g.day.shift_name||'Sem turno';
+            const abnormal=g.attention+g.critical;
+            const situation=g.critical?`<span class="occ-analysis-alert red">${g.critical} crítico${g.critical===1?'':'s'}</span>`:g.attention?`<span class="occ-analysis-alert yellow">${g.attention} atenção</span>`:'<span class="occ-analysis-alert green">Normal</span>';
+            const employeeCell=`<button type="button" class="occ-interval-employee-link" data-interval-employee="${esc(g.employeeId)}"><strong>${esc(employeeName)}</strong><small>Clique para abrir a jornada completa</small></button>`;
+            return `<tr class="${g.critical?'occ-interval-row-critical':g.attention?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee">${employeeCell}</td><td>${esc(shift)}</td><td><strong>${g.items.length}</strong></td><td>${formatDuration(g.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${g.bhNeg?`-${formatDuration(g.bhNeg,{signed:false})}`:'00:00'}</td><td class="occ-analysis-bh-plus">${g.bhPos?`+${formatDuration(g.bhPos,{signed:false})}`:'00:00'}</td><td>${abnormal}</td><td>${g.attention}</td><td>${g.critical}</td><td>${situation}</td></tr>`;
+          });
+          headers=['Matrícula','Colaborador','Turno','Jornadas','Horas trabalhadas','BH -','BH +','Fora do padrão','Atenção','Críticos','Situação'];
+        }
+        setAnalysisTable(headers,rowHtml);
       }catch(error){analysisKpis([]);analysisBars({});setAnalysisTable(['Intervalos'],[],error.message||'Não foi possível carregar os intervalos.');}return;
     }
   }
