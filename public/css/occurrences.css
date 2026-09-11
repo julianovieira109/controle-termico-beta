@@ -543,3 +543,9 @@ body.occ-analysis-specialized .occ-overview-block{display:none!important}body.oc
 #occurrences .occ-analysis-table tr.occ-interval-row-attention td:first-child{box-shadow:inset 3px 0 0 #d49300}
 #occurrences .occ-analysis-table tr.occ-interval-row-critical td:first-child{box-shadow:inset 3px 0 0 #c92a2a}
 .theme-dark #app #occurrences .occ-analysis-table .occ-interval-mark.attention{background:#3b3218;color:#ffd66b}.theme-dark #app #occurrences .occ-analysis-table .occ-interval-mark.critical{background:#3d2023;color:#ff9b9b}
+
+/* Beta.45 — identificação do colaborador na análise de intervalos */
+#occ-analysis-panel .occ-interval-registration{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700;}
+#occ-analysis-panel .occ-interval-employee{min-width:220px;max-width:320px;white-space:normal;line-height:1.25;}
+#occ-analysis-panel .occ-interval-employee strong{display:block;color:var(--text,#132238);font-weight:750;}
+@media (max-width:900px){#occ-analysis-panel .occ-interval-employee{min-width:190px;}}
