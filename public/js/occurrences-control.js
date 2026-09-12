@@ -655,7 +655,14 @@
   function analysisKpis(items){const box=$("occ-analysis-kpis");if(box)box.innerHTML=items.map(([label,value])=>`<span>${esc(label)}<strong>${esc(String(value))}</strong></span>`).join('');}
   function analysisBars(groups){const box=$("occ-analysis-chart");if(!box)return;const arr=Object.entries(groups).sort((a,b)=>b[1]-a[1]).slice(0,6),max=Math.max(1,...arr.map(x=>x[1]));box.innerHTML=arr.map(([name,value])=>`<div class="occ-analysis-bar"><small>${esc(name)}</small><b>${value}</b><i style="width:${Math.round(value/max*100)}%"></i></div>`).join('');}
   function analysisShiftNames(){
-    const names=[...new Set(branchManagementRows().map(r=>String(r.shift_name||'').trim()).filter(Boolean))];
+    // Beta.56 — usa a relação oficial de turnos ativos da filial retornada pelo backend.
+    // Assim BH+, BH-, Faltas e demais abas exibem inclusive turnos com indicador zero.
+    const backend=Array.isArray(lastData?.available_shifts)?lastData.available_shifts:[];
+    const names=[...new Set([
+      ...backend.map(item=>String(item?.name||'').trim()),
+      ...branchManagementRows().map(r=>String(r.shift_name||'').trim()),
+      ...rows.map(r=>String(r.shift_name||'').trim())
+    ].filter(Boolean))];
     return names.sort((a,b)=>a.localeCompare(b,'pt-BR'));
   }
   function renderAnalysisShiftFilter(items,{valueOf=()=>1,totalLabel='total',itemLabel='registros',formatValue=value=>String(value)}={}){

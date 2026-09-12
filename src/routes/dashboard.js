@@ -415,6 +415,23 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
     summary.bh_negative=(summary.bh_negative_minutes||0)?`-${formatBhMinutes(summary.bh_negative_minutes).replace(/^[-+]/,'')}`:'00:00';
     summary.bh_net=formatBhMinutes(summary.bh_net_minutes||0);
 
+    // Beta.56 — relação oficial de turnos ativos no escopo selecionado.
+    // Não depende de existir BH+/BH-/outra ocorrência na competência.
+    const shiftParams=[]; const shiftFilters=["UPPER(TRIM(COALESCE(e.status,'')))='ATIVO'","e.shift_id IS NOT NULL"];
+    if(!req.scope.isAdmin){
+      shiftParams.push(req.scope.companyId); shiftFilters.push(`e.company_id=$${shiftParams.length}::uuid`);
+      shiftParams.push(req.scope.branchIds); shiftFilters.push(`e.branch_id=ANY($${shiftParams.length}::uuid[])`);
+    }
+    if(companyId){shiftParams.push(companyId);shiftFilters.push(`e.company_id=$${shiftParams.length}::uuid`);}
+    if(branchId){shiftParams.push(branchId);shiftFilters.push(`e.branch_id=$${shiftParams.length}::uuid`);}
+    const {rows:availableShifts}=await pool.query(`
+      SELECT DISTINCT s.id,s.name
+      FROM employees e
+      JOIN shifts s ON s.id=e.shift_id
+      WHERE ${shiftFilters.join(' AND ')}
+      ORDER BY s.name
+    `,shiftParams);
+
     const importParams=[month]; const importFilters=[];
     if(!req.scope.isAdmin){importParams.push(req.scope.companyId);importFilters.push(`i.company_id=$${importParams.length}`);importParams.push(req.scope.branchIds);importFilters.push(`i.branch_id=ANY($${importParams.length}::uuid[])`);}
     if(companyId){importParams.push(companyId);importFilters.push(`i.company_id=$${importParams.length}::uuid`);}
@@ -430,7 +447,7 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
         AND LEFT(i.details->'period'->>'end',7)=$1
         ${importFilter} ORDER BY company_name,branch_name
     `,importParams);
-    res.json({month,companyId:companyId||null,branchId:branchId||null,summary,employees:rows,imports});
+    res.json({month,companyId:companyId||null,branchId:branchId||null,summary,employees:rows,available_shifts:availableShifts,imports});
   }catch(error){next(error);}
 });
 
