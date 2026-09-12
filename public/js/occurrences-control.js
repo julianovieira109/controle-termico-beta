@@ -648,9 +648,14 @@
   function analysisDayAllowed(day){const ids=new Set(analysisScopedRows().map(r=>String(r.employee_id)));return ids.has(String(day.employee_id));}
   function analysisKpis(items){const box=$("occ-analysis-kpis");if(box)box.innerHTML=items.map(([label,value])=>`<span>${esc(label)}<strong>${esc(String(value))}</strong></span>`).join('');}
   function analysisBars(groups){const box=$("occ-analysis-chart");if(!box)return;const arr=Object.entries(groups).sort((a,b)=>b[1]-a[1]).slice(0,6),max=Math.max(1,...arr.map(x=>x[1]));box.innerHTML=arr.map(([name,value])=>`<div class="occ-analysis-bar"><small>${esc(name)}</small><b>${value}</b><i style="width:${Math.round(value/max*100)}%"></i></div>`).join('');}
+  function analysisShiftNames(){
+    const names=[...new Set(branchManagementRows().map(r=>String(r.shift_name||'').trim()).filter(Boolean))];
+    return names.sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  }
   function renderAnalysisShiftFilter(items,{valueOf=()=>1,totalLabel='total',itemLabel='registros',formatValue=value=>String(value)}={}){
     const box=$("occ-analysis-chart");if(!box)return;
-    const groups=new Map();
+    // Beta.54 — mantém visíveis todos os turnos existentes na filial, mesmo quando o indicador da aba é zero.
+    const groups=new Map(analysisShiftNames().map(name=>[name,0]));
     items.forEach(item=>{const row=item?.r||item;const name=row?.shift_name||item?.day?.shift_name||item?.emp?.shift_name||'Sem turno';const value=Number(valueOf(item)||0);groups.set(name,(groups.get(name)||0)+value);});
     const arr=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
     if(analysisShiftFilter&&!groups.has(analysisShiftFilter))analysisShiftFilter='';
