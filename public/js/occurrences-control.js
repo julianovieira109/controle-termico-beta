@@ -22,6 +22,7 @@
   let branches=[];
   let lastData={summary:{},imports:[]};
   let management={shiftCoordinators:{},employeeCoordinators:{}};
+  let loadRequestId=0;
 
   function esc(value){
     return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -440,7 +441,8 @@
     const f=currentFilters();
     if(!f.month)return;
     const key=requestKey();
-    if(!force&&loadedKey===key&&rows.length){renderTable();return;}
+    if(!force&&loadedKey===key&&rows.length){renderTable();renderAnalysis();return;}
+    const requestId=++loadRequestId;
     setLoading();
     try{
       await loadScopeOptions();
@@ -449,11 +451,13 @@
       if(f.branchId)query.set("branchId",f.branchId);
       query.set("_",String(Date.now()));
       const data=await api(`/api/dashboard/occurrences?${query.toString()}`);
+      if(requestId!==loadRequestId)return;
       loadedKey=key;
       lastData=data;
       rows=Array.isArray(data.employees)?data.employees:[];
       analysisJourneyDays=[];analysisJourneyKey="";
       await loadManagement();
+      if(requestId!==loadRequestId)return;
       fillOperationalFilters();
       activeKey="";
       renderSummary(data.summary||{});
@@ -462,9 +466,11 @@
       renderExecutiveInsights();
       renderFilter();
       renderTable();
+      renderAnalysis();
       renderImportStatus(Array.isArray(data.imports)?data.imports:[]);
       updatePrintHeader();
     }catch(error){
+      if(requestId!==loadRequestId)return;
       rows=[];
       lastData={summary:{},imports:[]};
       renderSummary({});
@@ -832,12 +838,24 @@
     const month=$("occurrences-month");
     if(month&&!month.value)month.value=new Date().toISOString().slice(0,7);
 
+    function resetScopeDependentFilters(){
+      ["occurrences-shift","occurrences-coordinator","occurrences-employee","occurrences-status"].forEach(id=>{if($(id))$(id).value="";});
+      analysisShiftFilter="";
+      analysisJourneyDays=[];analysisJourneyKey="";
+      activeKey="";
+      if($("occurrences-journey-panel"))$("occurrences-journey-panel").hidden=true;
+    }
     $("occurrences-company")?.addEventListener("change",()=>{
       fillBranches();
+      resetScopeDependentFilters();
       loadedKey="";
       load(true);
     });
-    $("occurrences-branch")?.addEventListener("change",()=>{loadedKey="";load(true);});
+    $("occurrences-branch")?.addEventListener("change",()=>{
+      resetScopeDependentFilters();
+      loadedKey="";
+      load(true);
+    });
     month?.addEventListener("change",()=>{loadedKey="";load(true);});
     $("occurrences-search")?.addEventListener("input",renderTable);
     ["occurrences-shift","occurrences-coordinator","occurrences-employee"].forEach(id=>$(id)?.addEventListener("change",()=>{renderStatusSummary();renderExecutiveInsights();renderTable();renderAnalysis();}));
