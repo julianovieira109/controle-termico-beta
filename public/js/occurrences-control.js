@@ -648,7 +648,7 @@
   function analysisDayAllowed(day){const ids=new Set(analysisScopedRows().map(r=>String(r.employee_id)));return ids.has(String(day.employee_id));}
   function analysisKpis(items){const box=$("occ-analysis-kpis");if(box)box.innerHTML=items.map(([label,value])=>`<span>${esc(label)}<strong>${esc(String(value))}</strong></span>`).join('');}
   function analysisBars(groups){const box=$("occ-analysis-chart");if(!box)return;const arr=Object.entries(groups).sort((a,b)=>b[1]-a[1]).slice(0,6),max=Math.max(1,...arr.map(x=>x[1]));box.innerHTML=arr.map(([name,value])=>`<div class="occ-analysis-bar"><small>${esc(name)}</small><b>${value}</b><i style="width:${Math.round(value/max*100)}%"></i></div>`).join('');}
-  function renderAnalysisShiftFilter(items,{valueOf=()=>1,totalLabel='total',itemLabel='registros'}={}){
+  function renderAnalysisShiftFilter(items,{valueOf=()=>1,totalLabel='total',itemLabel='registros',formatValue=value=>String(value)}={}){
     const box=$("occ-analysis-chart");if(!box)return;
     const groups=new Map();
     items.forEach(item=>{const row=item?.r||item;const name=row?.shift_name||item?.day?.shift_name||item?.emp?.shift_name||'Sem turno';const value=Number(valueOf(item)||0);groups.set(name,(groups.get(name)||0)+value);});
@@ -657,7 +657,7 @@
     const total=arr.reduce((sum,[,value])=>sum+value,0);
     const buttons=[["",'Todos os turnos',total,totalLabel],...arr.map(([name,count])=>[name,name,count,itemLabel])];
     box.classList.add('occ-analysis-shift-filter');
-    box.innerHTML=buttons.map(([value,label,count,caption])=>`<button type="button" class="occ-analysis-shift-btn ${analysisShiftFilter===value?'active':''}" data-analysis-shift="${esc(value)}"><small>${esc(label)}</small><strong>${count}</strong><span>${esc(caption)}</span></button>`).join('');
+    box.innerHTML=buttons.map(([value,label,count,caption])=>`<button type="button" class="occ-analysis-shift-btn ${analysisShiftFilter===value?'active':''}" data-analysis-shift="${esc(value)}"><small>${esc(label)}</small><strong>${esc(formatValue(count,value))}</strong><span>${esc(caption)}</span></button>`).join('');
   }
   function filterAnalysisByShift(items){if(!analysisShiftFilter)return items;return items.filter(item=>{const row=item?.r||item;return (row?.shift_name||item?.day?.shift_name||item?.emp?.shift_name||'Sem turno')===analysisShiftFilter;});}
   function renderIntervalShiftFilter(items){
@@ -722,7 +722,12 @@
       const positive=analysisTab==='bh-positive',key=positive?'bh_positive_minutes':'bh_negative_minutes',label=positive?'BH+':'BH-';
       const all=scoped.filter(r=>number(r,key)>0).sort((a,b)=>number(b,key)-number(a,key));
       const selectedEmployee=currentFilters().employeeId;
-      if(!selectedEmployee)renderAnalysisShiftFilter(all,{valueOf:r=>Math.max(1,Math.round(number(r,key)/60)),totalLabel:'horas',itemLabel:'horas'});
+      if(!selectedEmployee)renderAnalysisShiftFilter(all,{
+        valueOf:r=>number(r,key),
+        totalLabel:label,
+        itemLabel:label,
+        formatValue:value=>`${positive?'+':'-'}${formatDuration(value,{signed:false})}`
+      });
       const list=selectedEmployee?all:filterAnalysisByShift(all);
       const total=list.reduce((a,r)=>a+number(r,key),0),groups={};
       list.forEach(r=>groups[r.shift_name||'Sem turno']=(groups[r.shift_name||'Sem turno']||0)+number(r,key));
