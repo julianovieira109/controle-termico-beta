@@ -8,7 +8,7 @@ const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
 const {parseSeniorTimecard}=require("../importers/timecard-reader");
-const {detectSeniorColumnAnchors,groupPdf2JsonRows,splitSeniorRowByAnchors}=require("../importers/senior-column-layout");
+const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors}=require("../importers/senior-column-layout");
 
 const router=express.Router();
 
@@ -103,14 +103,19 @@ function pdf2JsonDataToSeniorText(data){
     })).filter(item=>item.text);
     const ordered=groupPdf2JsonRows(decoded,0.12).map(row=>row.items);
 
-    let anchors=null;
-    for(const items of ordered){
-      const joined=items.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
-      if(/Data\s+Sem\s+Hor\s+Marca/i.test(joined)&&/Trabalho/i.test(joined)){
-        const detected=detectSeniorColumnAnchors(items);
-        if(detected){anchors=detected;safePages++;break;}
+    let anchors=detectSeniorColumnAnchorsFromPage(decoded);
+    if(!anchors){
+      // Compatibilidade com layouts antigos em que todo o cabeçalho realmente
+      // vinha na mesma linha do pdf2json.
+      for(const items of ordered){
+        const joined=items.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
+        if(/Data\s+Sem\s+Hor\s+Marca/i.test(joined)&&/Trabalho/i.test(joined)){
+          const detected=detectSeniorColumnAnchors(items);
+          if(detected){anchors=detected;break;}
+        }
       }
     }
+    if(anchors)safePages++;
 
     const lines=[];
     for(const items of ordered){

@@ -13,8 +13,16 @@ function orderedItems(items){
     .sort((a,b)=>a.x-b.x);
 }
 
-function isToken(item,pattern){
-  return Boolean(item&&pattern.test(upper(item.text)));
+function validAnchorOrder(found){
+  if(found.W==null||found.BM==null||found.BP==null)return false;
+  if(!(found.W<found.BM&&found.BM<found.BP))return false;
+  const optional=["HE","F","AN","V"].filter(k=>found[k]!=null);
+  let previous=found.BP;
+  for(const key of optional){
+    if(found[key]<=previous)return false;
+    previous=found[key];
+  }
+  return true;
 }
 
 function detectSeniorColumnAnchors(items){
@@ -43,11 +51,59 @@ function detectSeniorColumnAnchors(items){
     if(found.BP==null&&/^BH\s*\+$/.test(text))found.BP=item.x;
   }
 
-  // Alguns PDFs quebram "HE 100%" e "Ad. Not" em tokens separados. O X do
-  // primeiro token é a âncora da coluna, então as detecções acima continuam
-  // válidas. Exigimos apenas as três colunas essenciais para confiar no BH.
-  if(found.W==null||found.BM==null||found.BP==null)return null;
-  return found;
+  // Fallback seguro para PDFs que separam o cabeçalho em fluxos/linhas e
+  // omitem o sinal como item independente. Entre Trabalho e HE/Falta existem
+  // exatamente duas colunas BH no layout oficial da Senior: BH- e BH+.
+  if(found.W!=null&&(found.BM==null||found.BP==null)){
+    const bhItems=list.filter(item=>/^BH$/.test(upper(item.text))&&item.x>found.W);
+    if(bhItems.length>=2){
+      if(found.BM==null)found.BM=bhItems[0].x;
+      if(found.BP==null)found.BP=bhItems[1].x;
+    }
+  }
+
+  return validAnchorOrder(found)?found:null;
+}
+
+function detectSeniorColumnAnchorsFromPage(items,{yTolerance=0.85}={}){
+  const list=(items||[])
+    .map(item=>({x:Number(item.x||0),y:Number(item.y||0),text:clean(item.text)}))
+    .filter(item=>item.text);
+  if(!list.length)return null;
+
+  const workItems=list.filter(item=>/^TRABALHO:?$/i.test(item.text));
+  for(const work of workItems){
+    // pdf2json pode colocar Data/Sem/Hor/Marcações e Trabalho/BH em grupos de
+    // Y ligeiramente diferentes. Trabalhamos com uma faixa vertical estreita
+    // em torno de "Trabalho" sem misturar linhas de dados.
+    const band=list.filter(item=>Math.abs(item.y-work.y)<=yTolerance);
+    const detected=detectSeniorColumnAnchors(band);
+    if(!detected)continue;
+
+    // Confirma que estamos no cabeçalho oficial, não em texto aleatório da
+    // página. É suficiente haver "Marcações" ou o conjunto Data/Sem/Hor na
+    // mesma faixa vertical expandida.
+    const headerBand=list.filter(item=>Math.abs(item.y-work.y)<=Math.max(1.2,yTolerance));
+    const words=headerBand.map(item=>upper(item.text));
+    const hasMarkings=words.some(text=>/^MARCA/.test(text));
+    const hasDate=words.some(text=>/^DATA$/.test(text));
+    const hasSem=words.some(text=>/^SEM$/.test(text));
+    const hasHor=words.some(text=>/^HOR$/.test(text));
+    if(hasMarkings||(hasDate&&hasSem&&hasHor))return detected;
+  }
+
+  // Último fallback: alguns PDFs deslocam o bloco da esquerda mais de uma
+  // unidade de Y. Ainda assim exigimos a sequência física Trabalho < BH- < BH+
+  // e a presença de Marcações/Data/Sem/Hor em uma faixa próxima.
+  for(const work of workItems){
+    const band=list.filter(item=>Math.abs(item.y-work.y)<=1.8);
+    const detected=detectSeniorColumnAnchors(band);
+    if(!detected)continue;
+    const words=band.map(item=>upper(item.text));
+    if(words.some(text=>/^MARCA/.test(text))||words.some(text=>/^DATA$/.test(text)))return detected;
+  }
+
+  return null;
 }
 
 function groupPdf2JsonRows(textItems,tolerance=0.10){
@@ -77,9 +133,6 @@ function splitSeniorRowByAnchors(items,anchors){
     .sort((a,b)=>anchors[a]-anchors[b]);
   const cols={W:"",BM:"",BP:"",HE:"",F:"",AN:"",V:""};
 
-  // O valor de Trabalho aparece à direita do rótulo "Trabalho". Mantemos uma
-  // pequena margem para que o texto da ocorrência (BH 50%, DSR etc.) permaneça
-  // no lado esquerdo e nunca seja confundido com uma coluna numérica.
   const firstX=anchors.W;
   const left=list.filter(item=>item.x<firstX-0.20).map(item=>item.text).join(" ").replace(/\s+/g," ").trim();
 
@@ -107,4 +160,9 @@ function splitSeniorRowByAnchors(items,anchors){
   };
 }
 
-module.exports={detectSeniorColumnAnchors,groupPdf2JsonRows,splitSeniorRowByAnchors};
+module.exports={
+  detectSeniorColumnAnchors,
+  detectSeniorColumnAnchorsFromPage,
+  groupPdf2JsonRows,
+  splitSeniorRowByAnchors
+};
