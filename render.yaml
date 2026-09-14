@@ -2,7 +2,6 @@ services:
   - type: web
     name: controle-termico
     runtime: node
-    plan: free
     buildCommand: npm ci && npm run migrate
     startCommand: npm start
     healthCheckPath: /api/health
@@ -29,3 +28,9 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: DB_CONNECTION_TIMEOUT_MS
+        value: "5000"
+      - key: DB_STATEMENT_TIMEOUT_MS
+        value: "15000"
+      - key: HEALTH_DB_TIMEOUT_MS
+        value: "2500"
