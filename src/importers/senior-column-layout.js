@@ -103,6 +103,50 @@ function detectSeniorColumnAnchorsFromPage(items,{yTolerance=0.85}={}){
     if(words.some(text=>/^MARCA/.test(text))||words.some(text=>/^DATA$/.test(text)))return detected;
   }
 
+  // Fallback Beta.61: alguns PDFs Senior entregam os tokens do mesmo
+  // cabeçalho com coordenadas Y muito diferentes. Nesse caso, detectamos a
+  // estrutura pela ordem horizontal, mas somente quando a página contém a
+  // assinatura completa do cabeçalho Senior. A conciliação posterior com o
+  // rodapé do colaborador continua obrigatória, portanto este fallback não
+  // transforma uma leitura ambígua em importação válida.
+  const headerWords=list.map(item=>upper(item.text));
+  const hasHeaderSignature=
+    headerWords.some(text=>/^TRABALHO:?$/.test(text)) &&
+    headerWords.some(text=>/^MARCA/.test(text)) &&
+    headerWords.some(text=>/^DATA$/.test(text)) &&
+    headerWords.some(text=>/^SEM$/.test(text)) &&
+    headerWords.some(text=>/^HOR$/.test(text));
+
+  if(hasHeaderSignature){
+    for(const work of workItems){
+      const right=list
+        .filter(item=>item.x>work.x)
+        .sort((a,b)=>a.x-b.x);
+      const bh=right.filter(item=>/^BH(?:\s*[+-])?$/.test(upper(item.text)));
+      if(bh.length<2)continue;
+
+      const found={W:work.x,BM:bh[0].x,BP:bh[1].x};
+      const afterBp=right.filter(item=>item.x>found.BP);
+      const firstX=(pattern)=>{
+        const item=afterBp.find(candidate=>pattern.test(upper(candidate.text)));
+        return item?item.x:null;
+      };
+      found.HE=firstX(/^HE(?:\s*100%)?:?$/);
+      found.F=firstX(/^FALTA(S)?:?$/);
+      found.AN=firstX(/^AD\.?\s*NOT|^AD\.?$/);
+      found.V=firstX(/^VIAGEM(NS)?:?$/);
+
+      // Remove opcionais que tenham sido encontrados fora da ordem esperada.
+      let previous=found.BP;
+      for(const key of ["HE","F","AN","V"]){
+        if(found[key]==null)continue;
+        if(found[key]<=previous){delete found[key];continue;}
+        previous=found[key];
+      }
+      if(validAnchorOrder(found))return found;
+    }
+  }
+
   return null;
 }
 
