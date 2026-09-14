@@ -8,6 +8,7 @@ const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
 const {parseSeniorTimecard}=require("../importers/timecard-reader");
+const {detectSeniorColumnAnchors,groupPdf2JsonRows,splitSeniorRowByAnchors}=require("../importers/senior-column-layout");
 
 const router=express.Router();
 
@@ -90,60 +91,40 @@ function pdf2JsonDataToText(data){
 }
 
 
-function seniorColumnKey(text){
-  const value=String(text||"").replace(/\s+/g," ").trim().toUpperCase();
-  if(value==="TRABALHO")return "W";
-  if(/^BH\s*-$/i.test(value))return "BM";
-  if(/^BH\s*\+$/i.test(value))return "BP";
-  if(/^HE\s*100%/i.test(value))return "HE";
-  if(/^FALTA/i.test(value))return "F";
-  if(/^AD\.?\s*NOT/i.test(value))return "AN";
-  if(/^VIAGEM/i.test(value))return "V";
-  return null;
-}
-
 function pdf2JsonDataToSeniorText(data){
   const pages=data?.Pages||data?.pages||[];
   const pageTexts=[];
   let safePages=0;
   for(const page of pages){
-    const rows=new Map();
-    for(const item of (page.Texts||[])){
-      const y=Number(item.y||0), key=y.toFixed(2);
-      const text=(item.R||[]).map(run=>decodePdf2JsonText(run.T)).join("").replace(/\s+/g," ").trim();
-      if(!text)continue;
-      if(!rows.has(key))rows.set(key,[]);
-      rows.get(key).push({x:Number(item.x||0),text});
-    }
-    const ordered=[...rows.entries()].sort((a,b)=>Number(a[0])-Number(b[0])).map(([,items])=>items.sort((a,b)=>a.x-b.x));
+    const decoded=(page.Texts||[]).map(item=>({
+      x:Number(item.x||0),
+      y:Number(item.y||0),
+      text:(item.R||[]).map(run=>decodePdf2JsonText(run.T)).join("").replace(/\s+/g," ").trim()
+    })).filter(item=>item.text);
+    const ordered=groupPdf2JsonRows(decoded,0.12).map(row=>row.items);
+
     let anchors=null;
     for(const items of ordered){
-      const joined=items.map(i=>i.text).join(" ");
+      const joined=items.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
       if(/Data\s+Sem\s+Hor\s+Marca/i.test(joined)&&/Trabalho/i.test(joined)){
-        const found={};
-        for(const item of items){const k=seniorColumnKey(item.text);if(k)found[k]=item.x;}
-        if(found.W!=null&&found.BM!=null&&found.BP!=null){anchors=found;safePages++;break;}
+        const detected=detectSeniorColumnAnchors(items);
+        if(detected){anchors=detected;safePages++;break;}
       }
     }
+
     const lines=[];
     for(const items of ordered){
       const joined=items.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
       if(!joined)continue;
       if(anchors&&/^\d{2}\/\d{2}\b/.test(joined)){
-        const keys=["W","BM","BP","HE","F","AN","V"].filter(k=>anchors[k]!=null).sort((a,b)=>anchors[a]-anchors[b]);
-        const firstX=anchors.W;
-        const left=items.filter(i=>i.x<firstX-0.25).map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
-        const cols={W:"",BM:"",BP:"",HE:"",F:"",AN:"",V:""};
-        for(const item of items.filter(i=>i.x>=firstX-0.25)){
-          let best=keys[0],bestDist=Infinity;
-          for(const k of keys){const d=Math.abs(item.x-anchors[k]);if(d<bestDist){best=k;bestDist=d;}}
-          cols[best]=`${cols[best]} ${item.text}`.trim();
+        const split=splitSeniorRowByAnchors(items,anchors);
+        if(split){
+          const c=split.cols;
+          lines.push(`${split.left} ||SENIOR_COLS|| W=${c.W};BM=${c.BM};BP=${c.BP};HE=${c.HE};F=${c.F};AN=${c.AN};V=${c.V}`);
+          continue;
         }
-        const time=v=>(String(v||"").match(/\d{1,3}:\d{2}/)||[])[0]||"";
-        lines.push(`${left} ||SENIOR_COLS|| W=${time(cols.W)};BM=${time(cols.BM)};BP=${time(cols.BP)};HE=${time(cols.HE)};F=${time(cols.F)};AN=${time(cols.AN)};V=${time(cols.V)}`);
-      }else{
-        lines.push(joined);
       }
+      lines.push(joined);
     }
     pageTexts.push(lines.join("\n"));
   }

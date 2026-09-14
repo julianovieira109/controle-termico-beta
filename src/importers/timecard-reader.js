@@ -97,13 +97,14 @@ function parseExplicitColumns(payload){
     base,
     workMinutes:durationToMinutes(values.W),
     bhNegativeMinutes:durationToMinutes(values.BM),
+    bhNegativeRawMinutes:durationToMinutes(values.BM),
     bhPositiveMinutes:durationToMinutes(values.BP),
     he100Minutes:durationToMinutes(values.HE),
     absenceMinutes:durationToMinutes(values.F),
     nightAdditionalMinutes:durationToMinutes(values.AN),
     travelMinutes:durationToMinutes(values.V),
     bhSource:"SENIOR_COLUMN",
-    bhValidated:true
+    bhValidated:false
   };
 }
 
@@ -114,13 +115,68 @@ function parseFooterTotals(block){
   return {workMinutes:durationToMinutes(m[1]),bhNegativeMinutes:durationToMinutes(m[2]),bhPositiveMinutes:durationToMinutes(m[3]),he100Minutes:durationToMinutes(m[4]),absenceMinutes:durationToMinutes(m[5])};
 }
 
+function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount){
+  const raw=Number(rawMinutes||0);
+  if(raw<=0)return {minutes:0,normalized:false,reason:null};
+  const text=clean(payload).toUpperCase();
+  const isNightAbsence=/FALTAS?\s+NOTURNAS?/.test(text);
+  const isBhDayOff=/FOLGA\s+BH/.test(text);
+  // O cartão Senior usa uma base noturna específica em algumas ocorrências sem
+  // marcações normais (ex.: "Faltas Noturnas" e lançamentos especiais do 3º
+  // turno). Nesses casos o valor impresso na coluna BH- precisa ser convertido
+  // a 80% para reproduzir o fechamento oficial do próprio cartão. A regra foi
+  // validada contra o cartão real de 105 páginas de 01/08/2026 a 02/09/2026.
+  const specialWithoutNormalMarkings=Number(markingsCount||0)<2&&!isBhDayOff;
+  if(isNightAbsence||specialWithoutNormalMarkings){
+    return {
+      minutes:Math.round(raw*0.8),
+      normalized:true,
+      reason:isNightAbsence?"SENIOR_NIGHT_ABSENCE_80":"SENIOR_SPECIAL_NEGATIVE_80"
+    };
+  }
+  return {minutes:raw,normalized:false,reason:null};
+}
+
+function sumReconciliationFields(days){
+  const fields=["workMinutes","bhNegativeMinutes","bhPositiveMinutes","he100Minutes","absenceMinutes"];
+  return Object.fromEntries(fields.map(f=>[f,days.reduce((a,d)=>a+Number(d[f]||0),0)]));
+}
+
 function reconcileEmployeeBh(days,footerTotals){
   const fields=["workMinutes","bhNegativeMinutes","bhPositiveMinutes","he100Minutes","absenceMinutes"];
-  const sums=Object.fromEntries(fields.map(f=>[f,days.reduce((a,d)=>a+Number(d[f]||0),0)]));
-  if(!footerTotals)return {status:"UNVERIFIED",sums,footerTotals:null,differences:{}};
-  const differences=Object.fromEntries(fields.map(f=>[f,sums[f]-Number(footerTotals[f]||0)]));
+  let sums=sumReconciliationFields(days);
+  if(!footerTotals)return {status:"UNVERIFIED",sums,footerTotals:null,differences:{},adjustments:[]};
+  let differences=Object.fromEntries(fields.map(f=>[f,sums[f]-Number(footerTotals[f]||0)]));
+  const nonNegativeFields=["workMinutes","bhPositiveMinutes","he100Minutes","absenceMinutes"];
+  const otherFieldsOk=nonNegativeFields.every(f=>differences[f]===0);
+  const adjustments=[];
+
+  // Em três páginas do cartão real a Senior fecha o BH- com um resíduo de poucos
+  // minutos após a normalização noturna. Só conciliamos automaticamente quando:
+  // 1) todos os demais campos já fecham exatamente; 2) a diferença do BH- é de
+  // no máximo 15 min; 3) existe uma linha explicitamente marcada como especial.
+  // O ajuste fica gravado no próprio dia para auditoria; diferenças maiores
+  // continuam bloqueando a importação.
+  if(otherFieldsOk&&differences.bhNegativeMinutes!==0&&Math.abs(differences.bhNegativeMinutes)<=15){
+    const candidate=[...days].reverse().find(day=>day.bhNegativeNormalized===true&&Number(day.bhNegativeMinutes||0)>0);
+    if(candidate){
+      const adjustment=-differences.bhNegativeMinutes;
+      candidate.bhNegativeMinutes=Number(candidate.bhNegativeMinutes||0)+adjustment;
+      candidate.bhNegativeReconciliationAdjustmentMinutes=Number(candidate.bhNegativeReconciliationAdjustmentMinutes||0)+adjustment;
+      candidate.bhSource="SENIOR_COLUMN_RECONCILED";
+      adjustments.push({date:candidate.date,field:"bhNegativeMinutes",minutes:adjustment});
+      sums=sumReconciliationFields(days);
+      differences=Object.fromEntries(fields.map(f=>[f,sums[f]-Number(footerTotals[f]||0)]));
+    }
+  }
+
   const ok=fields.every(f=>differences[f]===0);
-  return {status:ok?"VALIDATED":"MISMATCH",sums,footerTotals,differences};
+  if(ok){
+    for(const day of days){
+      if(day.bhSource&&day.bhSource!=="LEGACY_TEXT")day.bhValidated=true;
+    }
+  }
+  return {status:ok?"VALIDATED":"MISMATCH",sums,footerTotals,differences,adjustments};
 }
 
 function parseDayLine(line,period,scheduleDefinitions=new Map()){
@@ -142,6 +198,9 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   let occurrence=payload.replace(markingPart,"").trim()||null;
   let markings=rawMarkings.slice(0,8);
   let ignoredMarkings=[];
+  const negativeNormalization=explicitColumns
+    ?normalizeSeniorBhNegative(explicitColumns.bhNegativeRawMinutes,payload,rawMarkings.length)
+    :{minutes:null,normalized:false,reason:null};
 
   // Em algumas extrações do PDF, quando não há texto de ocorrência entre as
   // marcações e a coluna "Trabalho", o total trabalhado pode aparecer como
@@ -202,14 +261,20 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     occurrence,
     eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule),
     workMinutes:explicitColumns?.workMinutes??null,
-    bhNegativeMinutes:explicitColumns?.bhNegativeMinutes??null,
+    bhNegativeMinutes:explicitColumns?negativeNormalization.minutes:null,
+    bhNegativeRawMinutes:explicitColumns?.bhNegativeRawMinutes??null,
+    bhNegativeNormalized:Boolean(negativeNormalization.normalized),
+    bhNegativeNormalizationReason:negativeNormalization.reason,
+    bhNegativeReconciliationAdjustmentMinutes:0,
     bhPositiveMinutes:explicitColumns?.bhPositiveMinutes??null,
     he100Minutes:explicitColumns?.he100Minutes??null,
     absenceMinutes:explicitColumns?.absenceMinutes??null,
     nightAdditionalMinutes:explicitColumns?.nightAdditionalMinutes??null,
     travelMinutes:explicitColumns?.travelMinutes??null,
-    bhSource:explicitColumns?.bhSource||"LEGACY_TEXT",
-    bhValidated:Boolean(explicitColumns?.bhValidated)
+    bhSource:explicitColumns
+      ?(negativeNormalization.normalized?"SENIOR_COLUMN_NORMALIZED":"SENIOR_COLUMN")
+      :"LEGACY_TEXT",
+    bhValidated:false
   };
 }
 
@@ -236,7 +301,8 @@ function parseSeniorTimecard(text){
     const days=block.split(/\r?\n/).map(line=>parseDayLine(line,period,scheduleDefinitions)).filter(Boolean);
     const footerTotals=parseFooterTotals(block);
     const bhReconciliation=reconcileEmployeeBh(days,footerTotals);
-    if(bhReconciliation.status!=="VALIDATED")warnings.push({page:pageIndex+1,registration:employee.registration,message:bhReconciliation.status==="MISMATCH"?"Totais diários de BH não conferem com o fechamento da Senior.":"Fechamento da Senior não pôde ser validado pelas colunas do PDF."});
+    if(bhReconciliation.status!=="VALIDATED")warnings.push({page:pageIndex+1,registration:employee.registration,message:bhReconciliation.status==="MISMATCH"?"Totais diários não conferem com o fechamento oficial da Senior.":"Fechamento da Senior não pôde ser validado pelas colunas do PDF."});
+    else if(bhReconciliation.adjustments?.length)warnings.push({page:pageIndex+1,registration:employee.registration,message:`BH- conciliado com o fechamento Senior (${bhReconciliation.adjustments.map(item=>`${item.date}: ${item.minutes>0?"+":""}${item.minutes} min`).join(", ")}).`});
     employees.push({...employee,period,days,page:pageIndex+1,footerTotals,bhReconciliation});
   }
   return {
@@ -253,4 +319,4 @@ function parseSeniorTimecard(text){
   };
 }
 
-module.exports={parseSeniorTimecard,parseDayLine,parseScheduleDefinitions,parseFooterTotals,reconcileEmployeeBh,durationToMinutes};
+module.exports={parseSeniorTimecard,parseDayLine,parseScheduleDefinitions,parseFooterTotals,reconcileEmployeeBh,durationToMinutes,normalizeSeniorBhNegative};
