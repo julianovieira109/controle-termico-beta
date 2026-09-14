@@ -12,6 +12,11 @@ const NON_WORK_PATTERNS=[
   ["AFASTAMENTO",/\bAFASTAMENTO\b/i]
 ];
 
+const OCCURRENCE_ONLY_PATTERNS=[
+  /\bADICIONAL\s+NOTURNO\b/i,
+  /\bSA[ÍI]DA\s+INTERMEDI[ÁA]RIA(?:\s+NOTURNA)?\b/i
+];
+
 function clean(value){
   return String(value||"").replace(/\s+/g," ").trim();
 }
@@ -185,14 +190,16 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   const rawTail=head[3];
   const explicitColumns=parseExplicitColumns(rawTail);
   const tail=explicitColumns?explicitColumns.base:rawTail;
-  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST))(.*)$/i);
+  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
   if(!codeMatch)return null;
   const scheduleCode=codeMatch[1];
   const payload=clean(codeMatch[2]);
   const statusMatch=NON_WORK_PATTERNS.find(([,pattern])=>pattern.test(payload));
-  const firstEventIndex=[...NON_WORK_PATTERNS.map(([,pattern])=>payload.search(pattern)),payload.search(/\bBH\b/i)]
-    .filter(index=>index>=0)
-    .sort((a,b)=>a-b)[0];
+  const firstEventIndex=[
+    ...NON_WORK_PATTERNS.map(([,pattern])=>payload.search(pattern)),
+    ...OCCURRENCE_ONLY_PATTERNS.map(pattern=>payload.search(pattern)),
+    payload.search(/\bBH\b/i)
+  ].filter(index=>index>=0).sort((a,b)=>a-b)[0];
   const markingPart=firstEventIndex===undefined?payload:payload.slice(0,firstEventIndex);
   const rawMarkings=markingPart.match(/(?:[01]\d|2[0-3]):[0-5]\d/g)||[];
   let occurrence=payload.replace(markingPart,"").trim()||null;

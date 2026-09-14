@@ -204,9 +204,43 @@ function splitSeniorRowByAnchors(items,anchors){
   };
 }
 
+function reconstructSeniorDailyRows(items,anchors){
+  const list=(items||[])
+    .map(item=>({x:Number(item.x||0),y:Number(item.y||0),text:clean(item.text)}))
+    .filter(item=>item.text);
+  if(!anchors||anchors.W==null)return [];
+
+  const dates=list
+    .filter(item=>/^\d{2}\/\d{2}$/.test(item.text)&&item.x<anchors.W)
+    .sort((a,b)=>a.y-b.y||a.x-b.x);
+  if(!dates.length)return [];
+
+  const unique=[];
+  for(const item of dates){
+    const last=unique[unique.length-1];
+    if(last&&last.text===item.text&&Math.abs(last.y-item.y)<0.08)continue;
+    unique.push(item);
+  }
+
+  return unique.map((date,index)=>{
+    const prev=unique[index-1];
+    const next=unique[index+1];
+    const prevGap=prev?Math.max(0.18,date.y-prev.y):(next?Math.max(0.18,next.y-date.y):0.70);
+    const nextGap=next?Math.max(0.18,next.y-date.y):(prev?Math.max(0.18,date.y-prev.y):0.70);
+    const top=date.y-prevGap*0.48;
+    const bottom=date.y+nextGap*0.48;
+    const rowItems=list
+      .filter(item=>item.y>=top&&item.y<bottom)
+      .sort((a,b)=>a.x-b.x||a.y-b.y);
+    const split=splitSeniorRowByAnchors(rowItems,anchors);
+    return {date:date.text,y:date.y,items:rowItems,split};
+  }).filter(row=>row.split&&/^\d{2}\/\d{2}\b/.test(row.split.left));
+}
+
 module.exports={
   detectSeniorColumnAnchors,
   detectSeniorColumnAnchorsFromPage,
   groupPdf2JsonRows,
-  splitSeniorRowByAnchors
+  splitSeniorRowByAnchors,
+  reconstructSeniorDailyRows
 };

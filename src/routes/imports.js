@@ -8,7 +8,7 @@ const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
 const {parseSeniorTimecard}=require("../importers/timecard-reader");
-const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors}=require("../importers/senior-column-layout");
+const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors,reconstructSeniorDailyRows}=require("../importers/senior-column-layout");
 
 const router=express.Router();
 
@@ -95,6 +95,8 @@ function pdf2JsonDataToSeniorText(data){
   const pages=data?.Pages||data?.pages||[];
   const pageTexts=[];
   let safePages=0;
+  let dateRows=0;
+  let structuredRows=0;
   for(const page of pages){
     const decoded=(page.Texts||[]).map(item=>({
       x:Number(item.x||0),
@@ -105,8 +107,6 @@ function pdf2JsonDataToSeniorText(data){
 
     let anchors=detectSeniorColumnAnchorsFromPage(decoded);
     if(!anchors){
-      // Compatibilidade com layouts antigos em que todo o cabeçalho realmente
-      // vinha na mesma linha do pdf2json.
       for(const items of ordered){
         const joined=items.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
         if(/Data\s+Sem\s+Hor\s+Marca/i.test(joined)&&/Trabalho/i.test(joined)){
@@ -117,23 +117,32 @@ function pdf2JsonDataToSeniorText(data){
     }
     if(anchors)safePages++;
 
+    // Beta.62: as linhas diárias são reconstruídas pela faixa vertical entre
+    // duas datas consecutivas. Isso evita perder Trabalho/BH-/BH+ quando o
+    // pdf2json entrega a metade esquerda e as colunas numéricas com Y levemente
+    // diferentes. A coluna continua sendo determinada exclusivamente pelo X.
+    const rebuilt=anchors?reconstructSeniorDailyRows(decoded,anchors):[];
+    const rebuiltByDate=new Map(rebuilt.map(row=>[`${row.date}@${row.y.toFixed(3)}`,row]));
+    dateRows+=decoded.filter(item=>/^\d{2}\/\d{2}$/.test(item.text)&&(anchors?item.x<anchors.W:true)).length;
+    structuredRows+=rebuilt.length;
+
     const lines=[];
     for(const items of ordered){
       const joined=items.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
       if(!joined)continue;
-      if(anchors&&/^\d{2}\/\d{2}\b/.test(joined)){
-        const split=splitSeniorRowByAnchors(items,anchors);
-        if(split){
-          const c=split.cols;
-          lines.push(`${split.left} ||SENIOR_COLS|| W=${c.W};BM=${c.BM};BP=${c.BP};HE=${c.HE};F=${c.F};AN=${c.AN};V=${c.V}`);
-          continue;
-        }
-      }
+      // Linhas que já contêm uma data são substituídas abaixo pela versão
+      // reconstruída. Fragmentos numéricos sem data permanecem inofensivos,
+      // pois o parser diário exige DD/MM no início da linha.
+      if(items.some(item=>/^\d{2}\/\d{2}$/.test(item.text)&&(anchors?item.x<anchors.W:true)))continue;
       lines.push(joined);
+    }
+    for(const row of rebuilt){
+      const c=row.split.cols;
+      lines.push(`${row.split.left} ||SENIOR_COLS|| W=${c.W};BM=${c.BM};BP=${c.BP};HE=${c.HE};F=${c.F};AN=${c.AN};V=${c.V}`);
     }
     pageTexts.push(lines.join("\n"));
   }
-  return {text:pageTexts.join("\n\f\n"),safePages,totalPages:pages.length};
+  return {text:pageTexts.join("\n\f\n"),safePages,totalPages:pages.length,dateRows,structuredRows};
 }
 
 function extractSeniorWithPdf2Json(buffer){
@@ -146,6 +155,8 @@ function extractSeniorWithPdf2Json(buffer){
       try{
         const result=pdf2JsonDataToSeniorText(data);
         if(!result.text.trim()||!result.safePages)throw new Error("Não foi possível identificar com segurança as colunas Trabalho/BH-/BH+ do cartão Senior.");
+        const coverage=result.dateRows?result.structuredRows/result.dateRows:0;
+        if(!result.dateRows||coverage<0.95)throw new Error(`Leitura estrutural incompleta das linhas do cartão Senior (${result.structuredRows}/${result.dateRows} linhas reconstruídas).`);
         resolve(result);
       }catch(error){reject(error);}
     });
@@ -3903,6 +3914,23 @@ function normalizePointRegistration(value){
   return String(value||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");
 }
 
+function formatBhDifference(item){
+  const diff=item?.bhReconciliation?.differences||{};
+  const fmt=(minutes)=>{
+    const n=Number(minutes||0);
+    const sign=n>0?"+":n<0?"-":"";
+    const abs=Math.abs(n);
+    return `${sign}${String(Math.floor(abs/60)).padStart(2,"0")}:${String(abs%60).padStart(2,"0")}`;
+  };
+  const parts=[];
+  if(Number(diff.workMinutes||0))parts.push(`Trabalho ${fmt(diff.workMinutes)}`);
+  if(Number(diff.bhNegativeMinutes||0))parts.push(`BH- ${fmt(diff.bhNegativeMinutes)}`);
+  if(Number(diff.bhPositiveMinutes||0))parts.push(`BH+ ${fmt(diff.bhPositiveMinutes)}`);
+  if(Number(diff.he100Minutes||0))parts.push(`HE100 ${fmt(diff.he100Minutes)}`);
+  if(Number(diff.absenceMinutes||0))parts.push(`Faltas ${fmt(diff.absenceMinutes)}`);
+  return parts.length?parts.join(", "):item?.bhReconciliation?.status||"UNVERIFIED";
+}
+
 async function readAndMatchTimecard(req){
   if(!req.file)throw Object.assign(new Error("Selecione o cartão de ponto em PDF."),{status:400});
   const companyId=String(req.body.companyId||"").trim();
@@ -3923,7 +3951,7 @@ async function readAndMatchTimecard(req){
   if(!parsed.employees.length)throw Object.assign(new Error("O arquivo não foi reconhecido como Cartão Ponto da Senior."),{status:400});
   const invalidBh=parsed.employees.filter(item=>item.bhReconciliation?.status!=="VALIDATED");
   if(invalidBh.length){
-    const sample=invalidBh.slice(0,5).map(item=>`${item.registration}: ${item.bhReconciliation?.status||"UNVERIFIED"}`).join(", ");
+    const sample=invalidBh.slice(0,5).map(item=>`${item.registration}: ${formatBhDifference(item)}`).join(" | ");
     throw Object.assign(new Error(`Importação bloqueada: ${invalidBh.length} colaborador(es) não fecharam os totais de BH com a Senior (${sample}). Nenhum ponto foi gravado.`),{status:422});
   }
 
