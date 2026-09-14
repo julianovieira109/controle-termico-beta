@@ -16,3 +16,10 @@ A partir da V1.0.31 Beta.9, recursos novos devem preferencialmente ficar em mód
 3. Novas telas devem ter JS/CSS próprios quando possível.
 4. Não alterar banco apenas para reorganizar arquivos.
 5. Rodar `npm test` e `node --check` antes de empacotar.
+
+
+## Beta.57 — BH Senior validado por coluna
+- BH+ e BH- deixam de depender de heurística do texto da ocorrência.
+- A importação usa leitura estrutural das colunas Senior e grava os minutos em campos próprios.
+- O fechamento por colaborador é conciliado com os totais do cartão; divergência bloqueia a importação.
+- Dados legados permanecem não validados até nova importação segura do cartão.

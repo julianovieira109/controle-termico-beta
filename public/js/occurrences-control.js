@@ -753,7 +753,8 @@
       try{bhDays=(await ensureAnalysisJourneys()).filter(day=>analysisDayAllowed(day)&&Number(day[key]||0)>0);}catch(_){bhDays=[];}
       const occurrenceCount=new Map();
       bhDays.forEach(day=>{const id=String(day.employee_id||'');occurrenceCount.set(id,(occurrenceCount.get(id)||0)+1);});
-      analysisKpis([[label,formatDuration(total,{signed:false})],["Colaboradores",list.length],["Ocorrências",bhDays.length],["Maior saldo",list.length?formatDuration(number(list[0],key),{signed:false}):'00:00']]);
+      const bhValidated=scoped.every(r=>r.bh_validated!==false);
+      analysisKpis([[label,formatDuration(total,{signed:false})],["Colaboradores",list.length],["Ocorrências",bhDays.length],["Maior saldo",list.length?formatDuration(number(list[0],key),{signed:false}):'00:00'],["Validação",bhValidated?'Senior ✓':'Reimportar ponto']]);
       if(selectedEmployee){
         const employee=list.find(r=>String(r.employee_id)===String(selectedEmployee))||employeeById(selectedEmployee)||{};
         const days=bhDays.filter(day=>String(day.employee_id)===String(selectedEmployee)).sort((a,b)=>String(a.work_date||'').localeCompare(String(b.work_date||'')));

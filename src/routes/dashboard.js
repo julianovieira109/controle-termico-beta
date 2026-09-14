@@ -331,8 +331,10 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
         s.name shift_name,s.senior_code shift_senior_code,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='FOLGA')::int days_off,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FALTA','ABSENT'))::int absences,
-        COUNT(*) FILTER(WHERE UPPER(COALESCE(p.occurrence,'')) ~ '(^|[^A-Z])BH([^A-Z]|$)')::int bank_hours,
-        COALESCE(jsonb_agg(p.occurrence) FILTER(WHERE UPPER(COALESCE(p.occurrence,'')) ~ '(^|[^A-Z])BH([^A-Z]|$)'), '[]'::jsonb) bh_occurrences,
+        COUNT(*) FILTER(WHERE COALESCE(p.bh_positive_minutes,0)>0 OR COALESCE(p.bh_negative_minutes,0)>0)::int bank_hours,
+        COALESCE(SUM(CASE WHEN p.bh_validated THEN COALESCE(p.bh_positive_minutes,0) ELSE 0 END),0)::int bh_positive_minutes,
+        COALESCE(SUM(CASE WHEN p.bh_validated THEN COALESCE(p.bh_negative_minutes,0) ELSE 0 END),0)::int bh_negative_minutes,
+        COUNT(*) FILTER(WHERE p.bh_validated=FALSE)::int bh_unvalidated_days,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('ATESTADO','MEDICAL'))::int medical,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,'')) IN ('FERIAS','FÉRIAS','VACATION'))::int vacations,
         COUNT(*) FILTER(WHERE UPPER(COALESCE(p.point_state,''))='DSR')::int dsr,
@@ -368,11 +370,10 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
       row.coordinator_source=employeeCoordinator?"COLABORADOR":shiftCoordinator?"TURNO":null;
       const absences=Number(row.absences||0);
       const bankHours=Number(row.bank_hours||0);
-      const bhEntries=Array.isArray(row.bh_occurrences)?row.bh_occurrences:[];
-      const bhBreakdowns=bhEntries.map(parseBhBreakdown);
-      const bhPositiveMinutes=bhBreakdowns.reduce((sum,item)=>sum+item.positive,0);
-      const bhNegativeMinutes=bhBreakdowns.reduce((sum,item)=>sum+item.negative,0);
+      const bhPositiveMinutes=Number(row.bh_positive_minutes||0);
+      const bhNegativeMinutes=Number(row.bh_negative_minutes||0);
       const bhNetMinutes=bhPositiveMinutes-bhNegativeMinutes;
+      row.bh_validated=Number(row.bh_unvalidated_days||0)===0;
       row.bh_net_minutes=bhNetMinutes;
       row.bh_positive_minutes=bhPositiveMinutes;
       row.bh_negative_minutes=bhNegativeMinutes;
@@ -460,19 +461,23 @@ router.get("/occurrences/journey",requireOccurrencesAccess,async(req,res,next)=>
     if(!req.scope.isAdmin){params.push(req.scope.companyId,req.scope.branchIds);scope=` AND p.company_id=$3 AND p.branch_id=ANY($4::uuid[])`;}
     const {rows}=await pool.query(`
       SELECT p.work_date,p.schedule_code,p.markings,p.point_state,p.occurrence,p.eligible_for_automatic_rest,
+             p.work_minutes,p.bh_positive_minutes,p.bh_negative_minutes,p.he_100_minutes,p.absence_minutes,p.night_additional_minutes,p.travel_minutes,p.bh_source,p.bh_validated,
              e.full_name,e.registration,s.name shift_name,s.description shift_description
       FROM employee_point_days p JOIN employees e ON e.id=p.employee_id LEFT JOIN shifts s ON s.id=e.shift_id
       WHERE p.employee_id=$1::uuid AND p.work_date >= $2::date AND p.work_date < ($2::date + INTERVAL '1 month') ${scope}
       ORDER BY p.work_date
     `,params);
     for(const row of rows){
-      const bh=parseBhBreakdown(row.occurrence);
-      row.bh_positive_minutes=bh.positive;
-      row.bh_negative_minutes=bh.negative;
-      row.bh_net_minutes=bh.net;
-      row.bh_positive=formatBhMinutes(bh.positive);
-      row.bh_negative=bh.negative?`-${formatBhMinutes(bh.negative).replace(/^[-+]/,'')}`:'00:00';
-      row.bh_net=formatBhMinutes(bh.net);
+      const positive=row.bh_validated?Number(row.bh_positive_minutes||0):0;
+      const negative=row.bh_validated?Number(row.bh_negative_minutes||0):0;
+      const net=positive-negative;
+      row.bh_positive_minutes=positive;
+      row.bh_negative_minutes=negative;
+      row.bh_net_minutes=net;
+      row.bh_positive=formatBhMinutes(positive);
+      row.bh_negative=negative?`-${formatBhMinutes(negative).replace(/^[-+]/,'')}`:'00:00';
+      row.bh_net=formatBhMinutes(net);
+      row.bh_confidence=row.bh_validated?'VALIDATED':'UNVERIFIED';
     }
     res.json({month,employeeId,days:rows});
   }catch(error){next(error);}
@@ -495,6 +500,7 @@ router.get("/occurrences/journeys",requireOccurrencesAccess,async(req,res,next)=
     const scope=filters.length?` AND ${filters.join(" AND ")}`:"";
     const {rows}=await pool.query(`
       SELECT p.employee_id,p.work_date,p.schedule_code,p.markings,p.point_state,p.occurrence,p.eligible_for_automatic_rest,
+             p.work_minutes,p.bh_positive_minutes,p.bh_negative_minutes,p.he_100_minutes,p.absence_minutes,p.night_additional_minutes,p.travel_minutes,p.bh_source,p.bh_validated,
              e.full_name,e.registration,e.shift_id,s.name shift_name,s.description shift_description
       FROM employee_point_days p
       JOIN employees e ON e.id=p.employee_id
@@ -503,13 +509,16 @@ router.get("/occurrences/journeys",requireOccurrencesAccess,async(req,res,next)=
       ORDER BY e.full_name,p.work_date
     `,params);
     for(const row of rows){
-      const bh=parseBhBreakdown(row.occurrence);
-      row.bh_positive_minutes=bh.positive;
-      row.bh_negative_minutes=bh.negative;
-      row.bh_net_minutes=bh.net;
-      row.bh_positive=formatBhMinutes(bh.positive);
-      row.bh_negative=bh.negative?`-${formatBhMinutes(bh.negative).replace(/^[-+]/,'')}`:'00:00';
-      row.bh_net=formatBhMinutes(bh.net);
+      const positive=row.bh_validated?Number(row.bh_positive_minutes||0):0;
+      const negative=row.bh_validated?Number(row.bh_negative_minutes||0):0;
+      const net=positive-negative;
+      row.bh_positive_minutes=positive;
+      row.bh_negative_minutes=negative;
+      row.bh_net_minutes=net;
+      row.bh_positive=formatBhMinutes(positive);
+      row.bh_negative=negative?`-${formatBhMinutes(negative).replace(/^[-+]/,'')}`:'00:00';
+      row.bh_net=formatBhMinutes(net);
+      row.bh_confidence=row.bh_validated?'VALIDATED':'UNVERIFIED';
     }
     res.json({month,days:rows});
   }catch(error){next(error);}

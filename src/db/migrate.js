@@ -281,6 +281,15 @@ CREATE TABLE IF NOT EXISTS employee_point_days (
   occurrence TEXT,
   eligible_for_automatic_rest BOOLEAN NOT NULL DEFAULT FALSE,
   source_file VARCHAR(255),
+  work_minutes INTEGER,
+  bh_negative_minutes INTEGER,
+  bh_positive_minutes INTEGER,
+  he_100_minutes INTEGER,
+  absence_minutes INTEGER,
+  night_additional_minutes INTEGER,
+  travel_minutes INTEGER,
+  bh_source VARCHAR(40),
+  bh_validated BOOLEAN NOT NULL DEFAULT FALSE,
   imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(employee_id,work_date)
 );
@@ -627,6 +636,16 @@ CREATE INDEX IF NOT EXISTS idx_employee_days_off_date ON employee_days_off(off_d
 CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_recovery_codes_user ON user_recovery_codes(user_id,used_at);
 CREATE INDEX IF NOT EXISTS idx_employee_imports_created ON employee_imports(created_at DESC);
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS work_minutes INTEGER;
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS bh_negative_minutes INTEGER;
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS bh_positive_minutes INTEGER;
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS he_100_minutes INTEGER;
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS absence_minutes INTEGER;
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS night_additional_minutes INTEGER;
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS travel_minutes INTEGER;
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS bh_source VARCHAR(40);
+ALTER TABLE employee_point_days ADD COLUMN IF NOT EXISTS bh_validated BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE INDEX IF NOT EXISTS idx_employee_point_days_date ON employee_point_days(work_date);
 CREATE INDEX IF NOT EXISTS idx_employee_point_days_employee_date ON employee_point_days(employee_id,work_date);
 CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_logs(created_at DESC);

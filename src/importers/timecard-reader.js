@@ -75,10 +75,60 @@ function hhmmDuration(minutes){
   return `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
 }
 
+
+function durationToMinutes(value){
+  const match=String(value||"").trim().match(/^(\d{1,3}):(\d{2})$/);
+  if(!match)return 0;
+  return Number(match[1])*60+Number(match[2]);
+}
+
+function parseExplicitColumns(payload){
+  const marker="||SENIOR_COLS||";
+  const index=String(payload||"").indexOf(marker);
+  if(index<0)return null;
+  const base=String(payload).slice(0,index).trim();
+  const encoded=String(payload).slice(index+marker.length).trim();
+  const values={};
+  for(const part of encoded.split(";")){
+    const [key,...rest]=part.split("=");
+    if(key)values[key.trim()]=rest.join("=").trim();
+  }
+  return {
+    base,
+    workMinutes:durationToMinutes(values.W),
+    bhNegativeMinutes:durationToMinutes(values.BM),
+    bhPositiveMinutes:durationToMinutes(values.BP),
+    he100Minutes:durationToMinutes(values.HE),
+    absenceMinutes:durationToMinutes(values.F),
+    nightAdditionalMinutes:durationToMinutes(values.AN),
+    travelMinutes:durationToMinutes(values.V),
+    bhSource:"SENIOR_COLUMN",
+    bhValidated:true
+  };
+}
+
+function parseFooterTotals(block){
+  const text=String(block||"").replace(/\s+/g," ");
+  const m=text.match(/Trabalho:\s*(\d{1,3}:\d{2})\s+BH\s*-\s*(\d{1,3}:\d{2})\s+BH\s*\+\s*(\d{1,3}:\d{2})\s+HE\s*100%:\s*(\d{1,3}:\d{2})\s+Faltas:\s*(\d{1,3}:\d{2})/i);
+  if(!m)return null;
+  return {workMinutes:durationToMinutes(m[1]),bhNegativeMinutes:durationToMinutes(m[2]),bhPositiveMinutes:durationToMinutes(m[3]),he100Minutes:durationToMinutes(m[4]),absenceMinutes:durationToMinutes(m[5])};
+}
+
+function reconcileEmployeeBh(days,footerTotals){
+  const fields=["workMinutes","bhNegativeMinutes","bhPositiveMinutes","he100Minutes","absenceMinutes"];
+  const sums=Object.fromEntries(fields.map(f=>[f,days.reduce((a,d)=>a+Number(d[f]||0),0)]));
+  if(!footerTotals)return {status:"UNVERIFIED",sums,footerTotals:null,differences:{}};
+  const differences=Object.fromEntries(fields.map(f=>[f,sums[f]-Number(footerTotals[f]||0)]));
+  const ok=fields.every(f=>differences[f]===0);
+  return {status:ok?"VALIDATED":"MISMATCH",sums,footerTotals,differences};
+}
+
 function parseDayLine(line,period,scheduleDefinitions=new Map()){
   const head=String(line).match(/^\s*(\d{2}\/\d{2})\s*([A-Z]{3})\s*(.*)$/i);
   if(!head)return null;
-  const tail=head[3];
+  const rawTail=head[3];
+  const explicitColumns=parseExplicitColumns(rawTail);
+  const tail=explicitColumns?explicitColumns.base:rawTail;
   const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST))(.*)$/i);
   if(!codeMatch)return null;
   const scheduleCode=codeMatch[1];
@@ -150,7 +200,16 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     ignoredMarkings,
     state,
     occurrence,
-    eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule)
+    eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule),
+    workMinutes:explicitColumns?.workMinutes??null,
+    bhNegativeMinutes:explicitColumns?.bhNegativeMinutes??null,
+    bhPositiveMinutes:explicitColumns?.bhPositiveMinutes??null,
+    he100Minutes:explicitColumns?.he100Minutes??null,
+    absenceMinutes:explicitColumns?.absenceMinutes??null,
+    nightAdditionalMinutes:explicitColumns?.nightAdditionalMinutes??null,
+    travelMinutes:explicitColumns?.travelMinutes??null,
+    bhSource:explicitColumns?.bhSource||"LEGACY_TEXT",
+    bhValidated:Boolean(explicitColumns?.bhValidated)
   };
 }
 
@@ -175,7 +234,10 @@ function parseSeniorTimecard(text){
     }
     const scheduleDefinitions=parseScheduleDefinitions(block);
     const days=block.split(/\r?\n/).map(line=>parseDayLine(line,period,scheduleDefinitions)).filter(Boolean);
-    employees.push({...employee,period,days,page:pageIndex+1});
+    const footerTotals=parseFooterTotals(block);
+    const bhReconciliation=reconcileEmployeeBh(days,footerTotals);
+    if(bhReconciliation.status!=="VALIDATED")warnings.push({page:pageIndex+1,registration:employee.registration,message:bhReconciliation.status==="MISMATCH"?"Totais diários de BH não conferem com o fechamento da Senior.":"Fechamento da Senior não pôde ser validado pelas colunas do PDF."});
+    employees.push({...employee,period,days,page:pageIndex+1,footerTotals,bhReconciliation});
   }
   return {
     reportType:"SENIOR_TIMECARD",
@@ -191,4 +253,4 @@ function parseSeniorTimecard(text){
   };
 }
 
-module.exports={parseSeniorTimecard,parseDayLine,parseScheduleDefinitions};
+module.exports={parseSeniorTimecard,parseDayLine,parseScheduleDefinitions,parseFooterTotals,reconcileEmployeeBh,durationToMinutes};

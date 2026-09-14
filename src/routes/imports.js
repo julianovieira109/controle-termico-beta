@@ -89,6 +89,84 @@ function pdf2JsonDataToText(data){
   return output.join("\n");
 }
 
+
+function seniorColumnKey(text){
+  const value=String(text||"").replace(/\s+/g," ").trim().toUpperCase();
+  if(value==="TRABALHO")return "W";
+  if(/^BH\s*-$/i.test(value))return "BM";
+  if(/^BH\s*\+$/i.test(value))return "BP";
+  if(/^HE\s*100%/i.test(value))return "HE";
+  if(/^FALTA/i.test(value))return "F";
+  if(/^AD\.?\s*NOT/i.test(value))return "AN";
+  if(/^VIAGEM/i.test(value))return "V";
+  return null;
+}
+
+function pdf2JsonDataToSeniorText(data){
+  const pages=data?.Pages||data?.pages||[];
+  const pageTexts=[];
+  let safePages=0;
+  for(const page of pages){
+    const rows=new Map();
+    for(const item of (page.Texts||[])){
+      const y=Number(item.y||0), key=y.toFixed(2);
+      const text=(item.R||[]).map(run=>decodePdf2JsonText(run.T)).join("").replace(/\s+/g," ").trim();
+      if(!text)continue;
+      if(!rows.has(key))rows.set(key,[]);
+      rows.get(key).push({x:Number(item.x||0),text});
+    }
+    const ordered=[...rows.entries()].sort((a,b)=>Number(a[0])-Number(b[0])).map(([,items])=>items.sort((a,b)=>a.x-b.x));
+    let anchors=null;
+    for(const items of ordered){
+      const joined=items.map(i=>i.text).join(" ");
+      if(/Data\s+Sem\s+Hor\s+Marca/i.test(joined)&&/Trabalho/i.test(joined)){
+        const found={};
+        for(const item of items){const k=seniorColumnKey(item.text);if(k)found[k]=item.x;}
+        if(found.W!=null&&found.BM!=null&&found.BP!=null){anchors=found;safePages++;break;}
+      }
+    }
+    const lines=[];
+    for(const items of ordered){
+      const joined=items.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
+      if(!joined)continue;
+      if(anchors&&/^\d{2}\/\d{2}\b/.test(joined)){
+        const keys=["W","BM","BP","HE","F","AN","V"].filter(k=>anchors[k]!=null).sort((a,b)=>anchors[a]-anchors[b]);
+        const firstX=anchors.W;
+        const left=items.filter(i=>i.x<firstX-0.25).map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
+        const cols={W:"",BM:"",BP:"",HE:"",F:"",AN:"",V:""};
+        for(const item of items.filter(i=>i.x>=firstX-0.25)){
+          let best=keys[0],bestDist=Infinity;
+          for(const k of keys){const d=Math.abs(item.x-anchors[k]);if(d<bestDist){best=k;bestDist=d;}}
+          cols[best]=`${cols[best]} ${item.text}`.trim();
+        }
+        const time=v=>(String(v||"").match(/\d{1,3}:\d{2}/)||[])[0]||"";
+        lines.push(`${left} ||SENIOR_COLS|| W=${time(cols.W)};BM=${time(cols.BM)};BP=${time(cols.BP)};HE=${time(cols.HE)};F=${time(cols.F)};AN=${time(cols.AN)};V=${time(cols.V)}`);
+      }else{
+        lines.push(joined);
+      }
+    }
+    pageTexts.push(lines.join("\n"));
+  }
+  return {text:pageTexts.join("\n\f\n"),safePages,totalPages:pages.length};
+}
+
+function extractSeniorWithPdf2Json(buffer){
+  return new Promise((resolve,reject)=>{
+    const parser=new PDFParser(null,1);
+    const cleanup=()=>{parser.removeAllListeners("pdfParser_dataError");parser.removeAllListeners("pdfParser_dataReady");};
+    parser.on("pdfParser_dataError",error=>{cleanup();reject(new Error(String(error?.parserError?.message||error?.parserError||error?.message||"Falha no leitor estrutural da Senior.")));});
+    parser.on("pdfParser_dataReady",data=>{
+      cleanup();
+      try{
+        const result=pdf2JsonDataToSeniorText(data);
+        if(!result.text.trim()||!result.safePages)throw new Error("Não foi possível identificar com segurança as colunas Trabalho/BH-/BH+ do cartão Senior.");
+        resolve(result);
+      }catch(error){reject(error);}
+    });
+    try{parser.parseBuffer(buffer);}catch(error){cleanup();reject(error);}
+  });
+}
+
 function extractWithPdf2Json(buffer){
   return new Promise((resolve,reject)=>{
     const parser=new PDFParser(null,1);
@@ -3848,9 +3926,20 @@ async function readAndMatchTimecard(req){
   const branchResult=await pool.query(`SELECT id FROM branches WHERE id=$1 AND company_id=$2 AND active=TRUE`,[branchId,companyId]);
   if(!branchResult.rows[0])throw Object.assign(new Error("A filial selecionada não pertence à empresa ou está inativa."),{status:409});
 
-  const extraction=await extractPdfText(req.file.buffer,{skipPdf2Json:true});
+  let extraction;
+  try{
+    const structured=await extractSeniorWithPdf2Json(req.file.buffer);
+    extraction={text:structured.text,readerUsed:"pdf2json-senior-columns",attempts:[{reader:"pdf2json-senior-columns",success:true}],safePages:structured.safePages,totalPages:structured.totalPages};
+  }catch(error){
+    throw Object.assign(new Error(`Leitura segura do BH bloqueada: ${error.message||error}. O cartão não será importado para evitar valores incorretos.`),{status:422});
+  }
   const parsed=parseSeniorTimecard(extraction.text);
   if(!parsed.employees.length)throw Object.assign(new Error("O arquivo não foi reconhecido como Cartão Ponto da Senior."),{status:400});
+  const invalidBh=parsed.employees.filter(item=>item.bhReconciliation?.status!=="VALIDATED");
+  if(invalidBh.length){
+    const sample=invalidBh.slice(0,5).map(item=>`${item.registration}: ${item.bhReconciliation?.status||"UNVERIFIED"}`).join(", ");
+    throw Object.assign(new Error(`Importação bloqueada: ${invalidBh.length} colaborador(es) não fecharam os totais de BH com a Senior (${sample}). Nenhum ponto foi gravado.`),{status:422});
+  }
 
   const current=await pool.query(`
     SELECT id,registration,full_name
@@ -3967,7 +4056,8 @@ router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
       companyId:result.companyId,
       branchId:result.branchId,
       period:result.parsed.employees[0]?.period||null,
-      totals:{...result.parsed.totals,located,notFound:result.rows.length-located},
+      totals:{...result.parsed.totals,located,notFound:result.rows.length-located,bhValidation:"VALIDATED"},
+      bhValidation:{status:"VALIDATED",method:"SENIOR_COLUMN_RECONCILIATION",employees:result.parsed.employees.length},
       warnings:result.parsed.warnings,
       rows:result.rows.map(({days,...row})=>row)
     });
@@ -3989,7 +4079,7 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
         user_id,company_id,branch_id,import_type,file_name,total_found,total_created,total_updated,total_not_found,details
       ) VALUES($1,$2,$3,'PONTO_SENIOR',$4,$5,0,$6,$7,$8::jsonb)
       RETURNING id,created_at
-    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays})]);
+    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays,bhValidation:"VALIDATED",bhValidationMethod:"SENIOR_COLUMN_RECONCILIATION"})]);
     const importId=importResult.rows[0].id;
     const importedPeriod=result.parsed.employees[0]?.period||null;
 
@@ -4015,14 +4105,14 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
         await client.query(`
           INSERT INTO employee_point_days(
             employee_id,import_id,company_id,branch_id,work_date,schedule_code,markings,point_state,occurrence,
-            eligible_for_automatic_rest,source_file,imported_at
-          ) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,NOW())
+            eligible_for_automatic_rest,source_file,work_minutes,bh_negative_minutes,bh_positive_minutes,he_100_minutes,absence_minutes,night_additional_minutes,travel_minutes,bh_source,bh_validated,imported_at
+          ) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,NOW())
           ON CONFLICT(employee_id,work_date) DO UPDATE SET
             import_id=EXCLUDED.import_id,company_id=EXCLUDED.company_id,branch_id=EXCLUDED.branch_id,
             schedule_code=EXCLUDED.schedule_code,markings=EXCLUDED.markings,point_state=EXCLUDED.point_state,
             occurrence=EXCLUDED.occurrence,eligible_for_automatic_rest=EXCLUDED.eligible_for_automatic_rest,
-            source_file=EXCLUDED.source_file,imported_at=NOW()
-        `,[row.employeeId,importId,result.companyId,result.branchId,day.date,day.scheduleCode,JSON.stringify(day.markings),day.state,day.occurrence,day.eligibleForAutomaticRest,req.file.originalname]);
+            source_file=EXCLUDED.source_file,work_minutes=EXCLUDED.work_minutes,bh_negative_minutes=EXCLUDED.bh_negative_minutes,bh_positive_minutes=EXCLUDED.bh_positive_minutes,he_100_minutes=EXCLUDED.he_100_minutes,absence_minutes=EXCLUDED.absence_minutes,night_additional_minutes=EXCLUDED.night_additional_minutes,travel_minutes=EXCLUDED.travel_minutes,bh_source=EXCLUDED.bh_source,bh_validated=EXCLUDED.bh_validated,imported_at=NOW()
+        `,[row.employeeId,importId,result.companyId,result.branchId,day.date,day.scheduleCode,JSON.stringify(day.markings),day.state,day.occurrence,day.eligibleForAutomaticRest,req.file.originalname,day.workMinutes,day.bhNegativeMinutes,day.bhPositiveMinutes,day.he100Minutes,day.absenceMinutes,day.nightAdditionalMinutes,day.travelMinutes,day.bhSource,day.bhValidated]);
         savedDays++;
       }
     }
