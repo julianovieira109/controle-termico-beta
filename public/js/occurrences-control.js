@@ -428,6 +428,17 @@
     }
   }
 
+  const printCategoryDefs={
+    absences:{label:'Faltas',short:'Faltas'},
+    'bh-positive':{label:'BH positivo',short:'BH+'},
+    'bh-negative':{label:'BH negativo',short:'BH-'},
+    intervals:{label:'Intervalos fora do padrão',short:'Intervalos'}
+  };
+  function allPrintCategories(){return new Set(Object.keys(printCategoryDefs));}
+  function selectedPrintCategories(){return new Set([...document.querySelectorAll('#occurrences-print-selector input[type="checkbox"]:checked')].map(input=>input.value).filter(value=>printCategoryDefs[value]));}
+  function openPrintSelector(){const modal=$("occurrences-print-selector");if(!modal)return;modal.hidden=false;modal.setAttribute('aria-hidden','false');document.body.classList.add('occ-print-selector-open');if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;}
+  function closePrintSelector(){const modal=$("occurrences-print-selector");if(!modal)return;modal.hidden=true;modal.setAttribute('aria-hidden','true');document.body.classList.remove('occ-print-selector-open');}
+
   function updatePrintHeader(){
     const f=currentFilters();
     const period=importPeriod(Array.isArray(lastData.imports)?lastData.imports:[]);
@@ -520,17 +531,19 @@
     }).join('');
   }
 
-  function relevantJourneyPrintDay(day){
+  function journeyDayMatchesPrintCategory(day,category){
     const state=String(day.point_state||'').toUpperCase(),analysis=journeyDayAnalysis(day),occurrence=String(day.occurrence||'');
-    if(state&&state!=='WORKED')return true;
-    if(Number(day.bh_positive_minutes||0)>0||Number(day.bh_negative_minutes||0)>0)return true;
-    if(analysis.level==='yellow'||analysis.level==='red')return true;
-    return /SA[ÍI]DA|FALTA|F[ÉE]RIAS|ATEST|LICEN|AFAST|DSR|FOLGA|REVIS|COMPENS|CURSO|[ÓO]BITO/i.test(occurrence);
+    if(category==='absences')return state==='FALTA'||state==='ABSENT'||/\bFALTAS?\b/i.test(occurrence);
+    if(category==='bh-positive')return Number(day.bh_positive_minutes||0)>0;
+    if(category==='bh-negative')return Number(day.bh_negative_minutes||0)>0;
+    if(category==='intervals')return (analysis.level==='yellow'||analysis.level==='red')&&String(analysis.label||'').startsWith('Intervalo fora do padrão');
+    return false;
   }
+  function relevantJourneyPrintDay(day,categories){return [...categories].some(category=>journeyDayMatchesPrintCategory(day,category));}
 
-  function buildJourneyPrintAppendix(journeyDays=[]){
+  function buildJourneyPrintAppendix(journeyDays=[],categories=allPrintCategories()){
     const byEmployee=new Map();
-    (journeyDays||[]).filter(relevantJourneyPrintDay).forEach(day=>{
+    (journeyDays||[]).filter(day=>relevantJourneyPrintDay(day,categories)).forEach(day=>{
       const key=String(day.employee_id||'');
       if(!key)return;
       const list=byEmployee.get(key)||[]; list.push(day); byEmployee.set(key,list);
@@ -560,7 +573,7 @@
     return section;
   }
 
-  function buildPrintDocument(journeyDays=[]){
+  function buildPrintDocument(journeyDays=[],categories=allPrintCategories()){
     updatePrintHeader();
     const holder=$("occurrences-print-document");
     if(!holder)return false;
@@ -575,30 +588,33 @@
       root.querySelectorAll("[id]").forEach(el=>el.removeAttribute("id"));
     });
 
-    const reportRows=rows.filter(row=>config.some(([key])=>number(row,key)>0));
+    const scopeRows=dashboardRows(),scopeIds=new Set(scopeRows.map(row=>String(row.employee_id)));
+    const scopedDays=(journeyDays||[]).filter(day=>scopeIds.has(String(day.employee_id)));
+    const intervalCountByEmployee=new Map();
+    scopedDays.filter(day=>journeyDayMatchesPrintCategory(day,'intervals')).forEach(day=>{const id=String(day.employee_id);intervalCountByEmployee.set(id,(intervalCountByEmployee.get(id)||0)+1);});
+    const rowMatches=(row,category)=>category==='absences'?number(row,'absences')>0:category==='bh-positive'?Number(row.bh_positive_minutes||0)>0:category==='bh-negative'?Number(row.bh_negative_minutes||0)>0:category==='intervals'?(intervalCountByEmployee.get(String(row.employee_id))||0)>0:false;
+    const reportRows=scopeRows.filter(row=>[...categories].some(category=>rowMatches(row,category)));
+    const selectedDefs=[...categories].map(key=>[key,printCategoryDefs[key]]).filter(([,def])=>def);
+    const valueCell=(row,key)=>key==='absences'?String(number(row,'absences')):key==='bh-positive'?`<span class="bh-positive-cell">+${formatDuration(row.bh_positive_minutes||0,{signed:false})}</span>`:key==='bh-negative'?`<span class="bh-negative-cell">-${formatDuration(row.bh_negative_minutes||0,{signed:false})}</span>`:String(intervalCountByEmployee.get(String(row.employee_id))||0);
     const tableRows=reportRows.length
       ?reportRows.map((row,index)=>`
         <tr>
           <td class="occurrence-rank">${index+1}</td>
           <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
           <td class="occurrence-registration">${esc(row.registration||"-")}</td>
-          <td>${number(row,"days_off")}</td><td>${number(row,"absences")}</td>
-          <td class="bh-positive-cell">+${formatDuration(row.bh_positive_minutes||0,{signed:false})}</td>
-          <td class="bh-negative-cell">-${formatDuration(row.bh_negative_minutes||0,{signed:false})}</td>
-          <td>${number(row,"medical")}</td><td>${number(row,"vacations")}</td><td>${number(row,"dsr")}</td>
-          <td>${number(row,"licenses")}</td><td>${number(row,"leaves")}</td><td>${number(row,"review_days")}</td>
+          ${selectedDefs.map(([key])=>`<td>${valueCell(row,key)}</td>`).join('')}
         </tr>`).join("")
-      :'<tr><td colspan="13">Nenhum registro encontrado para o filtro selecionado.</td></tr>';
+      :`<tr><td colspan="${3+selectedDefs.length}">Nenhum registro encontrado nas categorias selecionadas.</td></tr>`;
 
     const detail=document.createElement("section");
     detail.className="panel occurrences-detail-panel";
     detail.innerHTML=`
       <div class="panel-head occurrences-detail-head">
-        <div><span class="eyebrow">Detalhamento</span><h3>Ocorrências por colaborador</h3><p class="hint">Resumo gerencial da competência selecionada.</p></div>
+        <div><span class="eyebrow">Detalhamento</span><h3>Ocorrências por colaborador</h3><p class="hint">Categorias selecionadas: ${selectedDefs.map(([,def])=>esc(def.label)).join(', ')}.</p></div>
       </div>
       <div class="table-wrap occurrences-table-wrap">
         <table class="occurrences-table">
-          <thead><tr><th>#</th><th>Colaborador</th><th>Matrícula</th><th>Folgas</th><th>Faltas</th><th>BH+</th><th>BH-</th><th>Atest.</th><th>Férias</th><th>DSR</th><th>Lic.</th><th>Afast.</th><th>Revisão</th></tr></thead>
+          <thead><tr><th>#</th><th>Colaborador</th><th>Matrícula</th>${selectedDefs.map(([,def])=>`<th>${esc(def.short)}</th>`).join('')}</tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
       </div>
@@ -607,7 +623,13 @@
     const f=currentFilters();
     const period=importPeriod(Array.isArray(lastData.imports)?lastData.imports:[]);
     const coverage=printCoverage(f.month,Array.isArray(lastData.imports)?lastData.imports:[]);
-    const totalOccurrences=config.reduce((sum,[key])=>sum+Number(lastData.summary?.[key]||0),0);
+    const categoryStats={
+      absences:{count:scopedDays.filter(day=>journeyDayMatchesPrintCategory(day,'absences')).length,display:String(reportRows.reduce((sum,row)=>sum+number(row,'absences'),0)),caption:'faltas'},
+      'bh-positive':{count:scopedDays.filter(day=>journeyDayMatchesPrintCategory(day,'bh-positive')).length,display:`+${formatDuration(reportRows.reduce((sum,row)=>sum+Number(row.bh_positive_minutes||0),0),{signed:false})}`,caption:'horas acumuladas'},
+      'bh-negative':{count:scopedDays.filter(day=>journeyDayMatchesPrintCategory(day,'bh-negative')).length,display:`-${formatDuration(reportRows.reduce((sum,row)=>sum+Number(row.bh_negative_minutes||0),0),{signed:false})}`,caption:'horas acumuladas'},
+      intervals:{count:scopedDays.filter(day=>journeyDayMatchesPrintCategory(day,'intervals')).length,display:String([...intervalCountByEmployee.values()].reduce((sum,value)=>sum+value,0)),caption:'fora do padrão'}
+    };
+    const totalOccurrences=selectedDefs.reduce((sum,[key])=>sum+categoryStats[key].count,0);
     const context=document.createElement("section");
     context.className="occurrences-print-context";
     context.innerHTML=`
@@ -623,25 +645,28 @@
       :`<strong>RELATÓRIO PARCIAL - não representa o fechamento mensal</strong><span>${coverage?.days||0} de ${coverage?.totalDays||0} dias cobertos${coverage?.start?`: ${formatDate(coverage.start)} a ${formatDate(coverage.end)}`:''}. Totais limitados ao período importado.</span>`;
 
     summary.classList.add('compact');
-    summary.querySelectorAll('article').forEach(card=>{const value=Number(String(card.querySelector('strong')?.textContent||'0').replace(/\D/g,''));if(!value)card.remove();});
+    summary.innerHTML=selectedDefs.map(([key,def])=>`<article><span>${esc(def.label)}</span><strong class="${key==='bh-positive'?'positive':key==='bh-negative'?'negative':''}">${esc(categoryStats[key].display)}</strong><small>${esc(categoryStats[key].caption)}</small></article>`).join('');
     charts.querySelector('.occurrences-charts-head h3')?.replaceChildren(document.createTextNode('Análise do período importado'));
-    charts.querySelector('.occurrences-charts-head p')?.replaceChildren(document.createTextNode('Distribuição das ocorrências efetivamente reconhecidas no período coberto.'));
-    charts.querySelectorAll('.occurrences-bar-row').forEach(item=>{const value=Number(item.querySelector('b')?.textContent||0);if(!value)item.remove();});
-    charts.querySelectorAll('.occurrences-donut-legend span').forEach(item=>{const value=Number((item.textContent.match(/(\d+)\s*$/)||[])[1]||0);if(!value)item.remove();});
+    charts.querySelector('.occurrences-charts-head p')?.replaceChildren(document.createTextNode('Distribuição somente das categorias escolhidas para esta impressão.'));
+    const maxCount=Math.max(1,...selectedDefs.map(([key])=>categoryStats[key].count));
+    const barBox=charts.querySelector('.occurrences-bar-chart');if(barBox)barBox.innerHTML=selectedDefs.map(([key,def])=>`<div class="occurrences-bar-row"><div class="occurrences-bar-label"><span>${esc(def.label)}</span><b>${categoryStats[key].count}</b></div><div class="occurrences-bar-track"><i style="width:${Math.max(categoryStats[key].count?4:0,Math.round(categoryStats[key].count/maxCount*100))}%"></i></div></div>`).join('');
+    const donutCard=charts.querySelector('.occurrences-chart-card + .occurrences-chart-card');if(donutCard)donutCard.remove();
 
-    const journeyAppendix=buildJourneyPrintAppendix(journeyDays);
+    const journeyAppendix=buildJourneyPrintAppendix(scopedDays,categories);
     holder.replaceChildren(header,context,periodNotice,summary,charts,detail,...(journeyAppendix?[journeyAppendix]:[]));
     holder.setAttribute("aria-hidden","false");
     return true;
   }
 
-  function printWindowHtml(journeyDays=[]){
-    if(!buildPrintDocument(journeyDays))return "";
+  function printWindowHtml(journeyDays=[],categories=allPrintCategories()){
+    if(!buildPrintDocument(journeyDays,categories))return "";
     const content=$("occurrences-print-document")?.innerHTML||"";
     return global.OccurrencesPrintTemplate?.document(content)||"";
   }
 
-  async function printReport(){
+  async function printReport(categories=selectedPrintCategories()){
+    if(!categories.size){if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=false;return;}
+    closePrintSelector();
     const f=currentFilters();
     let journeyDays=[];
     try{
@@ -655,7 +680,7 @@
       if(typeof toast==="function")toast(error.message||"Não foi possível carregar as jornadas para impressão.","error");
       return;
     }
-    const html=printWindowHtml(journeyDays);
+    const html=printWindowHtml(journeyDays,categories);
     if(!html){if(typeof toast==="function")toast("Não foi possível preparar o relatório para impressão.","error");return;}
     const printWindow=window.open("","_blank","width=1200,height=850");
     if(!printWindow){if(typeof toast==="function")toast("O navegador bloqueou a janela de impressão. Permita pop-ups para este sistema.","error");return;}
@@ -998,7 +1023,11 @@
     $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-interval-status]");if(!button||analysisTab!=="intervals")return;intervalStatusFilter=button.dataset.intervalStatus||"";renderAnalysis();});
     $("occ-analysis-chart")?.addEventListener("change",event=>{const select=event.target.closest("[data-interval-sort]");if(!select||analysisTab!=="intervals")return;intervalSort=select.value||"date";renderAnalysis();});
     $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-print-interval-employee]");if(!button||analysisTab!=="intervals")return;$("occurrences-print")?.click();});
-    $("occurrences-print")?.addEventListener("click",printReport);
+    $("occurrences-print")?.addEventListener("click",openPrintSelector);
+    document.querySelectorAll('[data-close-occ-print-selector]').forEach(element=>element.addEventListener('click',closePrintSelector));
+    $("occ-print-select-all")?.addEventListener("click",()=>{document.querySelectorAll('#occurrences-print-selector input[type="checkbox"]').forEach(input=>input.checked=true);if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;});
+    $("occ-print-confirm")?.addEventListener("click",()=>printReport(selectedPrintCategories()));
+    $("occurrences-print-selector")?.addEventListener("change",()=>{if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;});
     window.addEventListener("afterprint",clearPrintMode);
     document.querySelectorAll("#occurrences-summary article[data-key]").forEach(card=>card.addEventListener("click",()=>selectKey(card.dataset.key)));
     loadScopeOptions().then(()=>load(true)).catch(error=>{

@@ -1528,6 +1528,21 @@
         </section>
       </div>
 
+      <div class="occ-print-selector-modal" id="occurrences-print-selector" hidden aria-hidden="true">
+        <div class="occ-print-selector-backdrop" data-close-occ-print-selector></div>
+        <section class="occ-print-selector-dialog" role="dialog" aria-modal="true" aria-labelledby="occ-print-selector-title">
+          <header><div><span class="eyebrow">Configurar impressão</span><h3 id="occ-print-selector-title">O que deseja incluir?</h3><p>Marque uma ou várias categorias. O relatório mostrará somente os dados selecionados.</p></div><button type="button" class="secondary" data-close-occ-print-selector>Fechar</button></header>
+          <div class="occ-print-selector-options">
+            <label><input type="checkbox" value="absences" checked><span><strong>Faltas</strong><small>Ausências não justificadas</small></span></label>
+            <label><input type="checkbox" value="bh-positive" checked><span><strong>BH positivo</strong><small>Créditos e dias que geraram saldo</small></span></label>
+            <label><input type="checkbox" value="bh-negative" checked><span><strong>BH negativo</strong><small>Débitos e dias que geraram saldo</small></span></label>
+            <label><input type="checkbox" value="intervals" checked><span><strong>Intervalos</strong><small>Somente intervalos fora do padrão</small></span></label>
+          </div>
+          <p class="occ-print-selector-error" id="occ-print-selector-error" hidden>Selecione pelo menos uma categoria.</p>
+          <footer><button type="button" class="secondary" id="occ-print-select-all">Selecionar todos</button><button type="button" class="primary" id="occ-print-confirm">Gerar relatório selecionado</button></footer>
+        </section>
+      </div>
+
       <details class="occurrences-analysis-more panel">
         <summary><strong>Ver análise completa da competência</strong><span>Ocorrências detalhadas e gráficos técnicos</span></summary>
         <div class="occurrences-analysis-more-body">

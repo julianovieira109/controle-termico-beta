@@ -14,6 +14,7 @@ body:after{content:"CONTROLE TÉRMICO  •  Gestão de Pessoas com Informação,
 .occurrences-summary.compact{grid-template-columns:repeat(auto-fit,minmax(31mm,1fr))}
 .occurrences-journey-appendix{break-before:page}.journey-employee-section{margin-bottom:3mm;break-inside:avoid}.journey-page-break{break-before:auto}
 .journey-appendix-note{margin:0 0 3mm;padding:2mm 3mm;border:1px solid #cbd9e3;border-radius:2mm;background:#f5f9fc;color:#52697c;font-size:6pt}
+.occurrences-charts-grid:has(>article:only-child){grid-template-columns:1fr}.occurrences-charts-grid:has(>article:only-child) .occurrences-chart-card{border-left:0}
 @media print{.occurrences-print-header,.occurrences-print-context,.occurrences-summary,.occurrences-charts{break-inside:avoid}.occurrences-detail-panel{break-before:auto}}`;
   global.OccurrencesPrintTemplate={
     document(content){return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório de Controle de Ocorrências</title><style>${PRINT_CSS}</style></head><body>${content}<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},350);});window.addEventListener("afterprint",function(){window.close();});<\/script></body></html>`;}
