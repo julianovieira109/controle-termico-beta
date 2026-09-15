@@ -1393,7 +1393,7 @@
     
     <section id="occurrences" class="view">
       <div class="occurrences-print-header">
-        <div><span class="eyebrow">Controle Térmico</span><h2>Relatório de Controle de Ocorrências</h2><p id="occurrences-print-reference">Competência e escopo selecionados</p></div>
+        <div><span class="eyebrow">Controle Térmico</span><h2>Relatório de Controle de Ocorrências</h2><p id="occurrences-print-reference">Período e escopo selecionados</p></div>
         <div class="occurrences-print-meta"><strong id="occurrences-print-company">Todas as empresas</strong><span id="occurrences-print-branch">Todas as filiais</span><small id="occurrences-print-generated"></small></div>
       </div>
 
@@ -1404,12 +1404,12 @@
             <div>
               <span class="eyebrow">Departamento Pessoal</span>
               <h2>Controle de Ocorrências</h2>
-              <p>Painel gerencial do Departamento Pessoal · acompanhamento por competência<br><small>Disciplina · Presença · Ocorrências · Resultados</small></p>
+              <p>Painel gerencial do Departamento Pessoal · acompanhamento por período<br><small>Disciplina · Presença · Ocorrências · Resultados</small></p>
             </div>
           </div>
         </div>
         <div class="occ-dash-filters">
-          <label>Competência<input type="month" id="occurrences-month"></label>
+          <label>Período de referência<input type="month" id="occurrences-month"></label>
           <label>Turno<select id="occurrences-shift"><option value="">Todos</option></select></label>
           <label>Coordenador<select id="occurrences-coordinator"><option value="">Todos</option></select></label>
           <button type="button" class="secondary occ-team-management-button" id="occurrences-management-open"><span aria-hidden="true">⚙</span><span>Gerenciar Equipes</span></button>
@@ -1432,7 +1432,7 @@
           <span class="occ-analysis-scope-note">Empresa · Filial · Turno · Coordenador · Colaborador</span>
         </div>
         <nav class="occ-analysis-tabs" id="occ-analysis-tabs" aria-label="Análises do controle de ocorrências">
-          <button type="button" class="active" data-occ-tab="overview"><span class="occ-tab-icon">▦</span><span><strong>Visão Geral</strong><small>Resumo da competência</small></span></button>
+          <button type="button" class="active" data-occ-tab="overview"><span class="occ-tab-icon">▦</span><span><strong>Visão Geral</strong><small>Resumo do período</small></span></button>
           <button type="button" data-occ-tab="intervals"><span class="occ-tab-icon">◷</span><span><strong>Intervalos</strong><small>Realizado × previsto</small></span></button>
           <button type="button" data-occ-tab="absences"><span class="occ-tab-icon">!</span><span><strong>Faltas</strong><small>Ausências e reincidências</small></span></button>
           <button type="button" data-occ-tab="bh-positive"><span class="occ-tab-icon">+</span><span><strong>BH Positivo</strong><small>Créditos acumulados</small></span></button>
@@ -1450,9 +1450,9 @@
         <div class="occurrences-footer"><span id="occ-analysis-count">0 registros</span><small>Os filtros de empresa, filial, turno, coordenador e colaborador permanecem ativos.</small></div>
       </section>
 
-      <div class="occ-overview-heading occ-overview-block"><div><span class="eyebrow">Resumo executivo</span><h3>Visão geral da competência</h3></div><small>Os cartões de situação podem ser usados como filtros</small></div>
+      <div class="occ-overview-heading occ-overview-block"><div><span class="eyebrow">Resumo executivo</span><h3>Visão geral do período</h3></div><small>Os cartões de situação podem ser usados como filtros</small></div>
       <div class="occ-dash-kpis occ-overview-block" id="occurrences-primary-kpis">
-        <article class="occ-kpi total"><span>Colaboradores</span><strong id="occ-kpi-total-employees">—</strong><small>na competência</small></article>
+        <article class="occ-kpi total"><span>Colaboradores</span><strong id="occ-kpi-total-employees">—</strong><small>no período</small></article>
         <button type="button" class="occ-kpi green" data-status="GREEN"><span>🟢 Regulares</span><strong id="occ-status-green">—</strong><small id="occ-status-green-pct">Dentro do padrão</small></button>
         <button type="button" class="occ-kpi yellow" data-status="YELLOW"><span>🟡 Em atenção</span><strong id="occ-status-yellow">—</strong><small id="occ-status-yellow-pct">Requer acompanhamento</small></button>
         <button type="button" class="occ-kpi red" data-status="RED"><span>🔴 Críticos</span><strong id="occ-status-red">—</strong><small id="occ-status-red-pct">Ação prioritária</small></button>
@@ -1466,7 +1466,7 @@
 
       <section class="occ-executive-grid occ-overview-block">
         <article class="panel occ-exec-card">
-          <div class="occ-exec-head"><h3>Distribuição da Equipe</h3><small>Semáforo da competência</small></div>
+          <div class="occ-exec-head"><h3>Distribuição da Equipe</h3><small>Semáforo do período</small></div>
           <div class="occ-team-distribution">
             <div class="occ-team-chart-zone">
               <div class="occ-team-donut" id="occ-team-donut"><div><strong id="occ-team-total">0</strong><span>colaboradores</span></div></div>
@@ -1493,7 +1493,7 @@
           </div>
           <div id="occurrences-active-filter" class="occurrences-active-filter" hidden></div>
           <div class="table-wrap occurrences-table-wrap">
-            <table class="occurrences-table"><thead><tr><th>Colaborador</th><th>Turno / Coordenador</th><th>Indicador</th><th>Faltas</th><th>BH (+ / -)</th><th>Revisão</th><th>Jornada</th></tr></thead><tbody id="occurrences-table-body"><tr><td colspan="7" class="muted">Selecione uma competência.</td></tr></tbody></table>
+            <table class="occurrences-table"><thead><tr><th>Colaborador</th><th>Turno / Coordenador</th><th>Indicador</th><th>Faltas</th><th>BH (+ / -)</th><th>Revisão</th><th>Jornada</th></tr></thead><tbody id="occurrences-table-body"><tr><td colspan="7" class="muted">Selecione um período.</td></tr></tbody></table>
           </div>
           <div class="occurrences-footer"><span id="occurrences-visible-count">0 colaboradores exibidos</span><small>Fonte: Cartão de Ponto Senior confirmado.</small></div>
         </article>
@@ -1544,7 +1544,7 @@
       </div>
 
       <details class="occurrences-analysis-more panel">
-        <summary><strong>Ver análise completa da competência</strong><span>Ocorrências detalhadas e gráficos técnicos</span></summary>
+        <summary><strong>Ver análise completa do período</strong><span>Ocorrências detalhadas e gráficos técnicos</span></summary>
         <div class="occurrences-analysis-more-body">
           <div class="occurrences-summary" id="occurrences-summary">
             <article data-key="days_off"><span>Folgas</span><strong id="occ-sum-days-off">—</strong><small>registros</small></article>
@@ -1560,7 +1560,7 @@
             <article data-key="bereavement"><span>Óbito</span><strong id="occ-sum-bereavement">—</strong><small>registros</small></article>
             <article class="review-card" data-key="review_days"><span>Dias para revisão</span><strong id="occ-sum-review-days">—</strong><small>conferir ponto</small></article>
           </div>
-          <section class="occurrences-charts"><div class="occurrences-charts-head"><div><span class="eyebrow">Indicadores gráficos</span><h3>Análise da competência</h3><p>Distribuição técnica das ocorrências reconhecidas.</p></div><div class="occurrences-kpi-line"><span>Colaboradores com ocorrência <strong id="occurrences-kpi-employees">0</strong></span><span>Total de ocorrências <strong id="occurrences-kpi-total">0</strong></span></div></div>
+          <section class="occurrences-charts"><div class="occurrences-charts-head"><div><span class="eyebrow">Indicadores gráficos</span><h3>Análise do período</h3><p>Distribuição técnica das ocorrências reconhecidas.</p></div><div class="occurrences-kpi-line"><span>Colaboradores com ocorrência <strong id="occurrences-kpi-employees">0</strong></span><span>Total de ocorrências <strong id="occurrences-kpi-total">0</strong></span></div></div>
             <div class="occurrences-charts-grid"><article class="occurrences-chart-card"><div class="occurrences-chart-title"><div><strong>Ocorrências por tipo</strong></div></div><div id="occurrences-bar-chart" class="occurrences-bar-chart"></div></article><article class="occurrences-chart-card"><div class="occurrences-chart-title"><div><strong>Composição</strong></div></div><div class="occurrences-donut-wrap"><div id="occurrences-donut" class="occurrences-donut"><div><strong id="occurrences-donut-total">0</strong><span>registros</span></div></div><div id="occurrences-donut-legend" class="occurrences-donut-legend"></div></div></article></div>
           </section>
         </div>

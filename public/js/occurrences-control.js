@@ -103,7 +103,7 @@
 
   function setLoading(){
     for(const [, ,id] of config)if($(id))$(id).textContent="—";
-    if($("occurrences-import-status"))$("occurrences-import-status").textContent="Consultando competência...";
+    if($("occurrences-import-status"))$("occurrences-import-status").textContent="Consultando período...";
     if($("occurrences-table-body"))$("occurrences-table-body").innerHTML='<tr><td colspan="7" class="muted">Carregando ocorrências...</td></tr>';
     if($("occurrences-bar-chart"))$("occurrences-bar-chart").innerHTML='<div class="occurrences-chart-loading">Carregando indicadores...</div>';
   }
@@ -268,7 +268,7 @@
       const incomplete=analyses.filter(item=>item.level==='red'&&/Jornada|Intervalo/.test(item.label)).length;
       const additional=analyses.filter((item,index)=>/BH|HORA\s*EXTRA/i.test(days[index]?.occurrence||'')).length;
       const early=analyses.filter((item,index)=>/SA[ÍI]DA\s+ANTECIPADA/i.test(days[index]?.occurrence||'')).length;
-      if($("occurrences-journey-summary"))$("occurrences-journey-summary").innerHTML=`<strong>Resumo da competência</strong><span>${days.length} dias encontrados · ${irregular} intervalo${irregular===1?'':'s'} fora do padrão · ${additional} dia${additional===1?'':'s'} com BH/hora adicional · ${early} saída${early===1?'':'s'} antecipada${early===1?'':'s'} · ${incomplete} pendência${incomplete===1?'':'s'} de jornada</span>`;
+      if($("occurrences-journey-summary"))$("occurrences-journey-summary").innerHTML=`<strong>Resumo do período</strong><span>${days.length} dias encontrados · ${irregular} intervalo${irregular===1?'':'s'} fora do padrão · ${additional} dia${additional===1?'':'s'} com BH/hora adicional · ${early} saída${early===1?'':'s'} antecipada${early===1?'':'s'} · ${incomplete} pendência${incomplete===1?'':'s'} de jornada</span>`;
       const actions=[];
       if(irregular)actions.push('Reforçar e acompanhar o cumprimento do intervalo previsto.');
       if(additional)actions.push('Verificar necessidade e autorização das horas adicionais/BH.');
@@ -276,7 +276,7 @@
       if(incomplete)actions.push('Regularizar as marcações incompletas antes da análise definitiva.');
       if(!actions.length)actions.push('Manter o acompanhamento da jornada e do intervalo no padrão atual.');
       if($("occurrences-journey-suggestion"))$("occurrences-journey-suggestion").innerHTML=`<strong>Sugestão de melhoria</strong><span>${esc(actions.join(' '))}</span>`;
-      if(body)body.innerHTML=days.length?days.map((day,index)=>{const marks=Array.isArray(day.markings)?day.markings:[];const a=analyses[index];return `<tr class="occ-journey-${a.level}"><td>${formatDate(day.work_date)}</td><td>${esc(day.shift_description||day.schedule_code||"-")}</td><td>${esc(marks[0]||"-")}</td><td>${esc(marks[1]||"-")}</td><td>${esc(marks[2]||"-")}</td><td>${esc(marks[3]||"-")}</td><td>${a.actual==null?"-":`${a.actual} min${a.planned!=null?` / ${a.planned} prev.`:''}`}</td><td><strong>${a.level==='red'?'🔴':a.level==='yellow'?'🟡':a.level==='green'?'🟢':'⚪'} ${esc(a.label)}</strong><small class="occurrence-subline">${esc(day.occurrence||"")}</small></td></tr>`;}).join(""):'<tr><td colspan="8" class="muted">Nenhuma jornada encontrada nesta competência.</td></tr>';
+      if(body)body.innerHTML=days.length?days.map((day,index)=>{const marks=Array.isArray(day.markings)?day.markings:[];const a=analyses[index];return `<tr class="occ-journey-${a.level}"><td>${formatDate(day.work_date)}</td><td>${esc(day.shift_description||day.schedule_code||"-")}</td><td>${esc(marks[0]||"-")}</td><td>${esc(marks[1]||"-")}</td><td>${esc(marks[2]||"-")}</td><td>${esc(marks[3]||"-")}</td><td>${a.actual==null?"-":`${a.actual} min${a.planned!=null?` / ${a.planned} prev.`:''}`}</td><td><strong>${a.level==='red'?'🔴':a.level==='yellow'?'🟡':a.level==='green'?'🟢':'⚪'} ${esc(a.label)}</strong><small class="occurrence-subline">${esc(day.occurrence||"")}</small></td></tr>`;}).join(""):'<tr><td colspan="8" class="muted">Nenhuma jornada encontrada neste período.</td></tr>';
       panel?.scrollIntoView({behavior:"smooth",block:"start"});
     }catch(error){if(body)body.innerHTML=`<tr><td colspan="8" class="muted">${esc(error.message||"Não foi possível carregar a jornada.")}</td></tr>`;}
   }
@@ -402,7 +402,7 @@
     const regularPct=total?Math.round(counts.GREEN/total*100):0;
     positives.push(`${counts.GREEN} colaborador${counts.GREEN===1?'':'es'} dentro do padrão (${regularPct}%).`);
     const noAbs=base.filter(r=>number(r,'absences')===0).length;
-    positives.push(`${noAbs} colaborador${noAbs===1?'':'es'} sem faltas na competência.`);
+    positives.push(`${noAbs} colaborador${noAbs===1?'':'es'} sem faltas no período.`);
     if(shifts.length){const best=shifts.map(([name,g])=>({name,pct:g.total?g.GREEN/g.total*100:0})).sort((a,b)=>b.pct-a.pct)[0];positives.push(`${best.name} apresenta ${Math.round(best.pct)}% de colaboradores regulares.`);}
     if($('occ-positive-list'))$('occ-positive-list').innerHTML=positives.map(text=>`<div class="occ-positive-item"><i>●</i><span>${esc(text)}</span></div>`).join('');
 
@@ -420,7 +420,7 @@
     if(imports.length){
       const branchNames=[...new Set(imports.map(item=>item.branch_name).filter(Boolean))];
       const period=importPeriod(imports);
-      status.textContent=`Confirmado · Competência ${monthLabel(currentFilters().month)}${period?` · Período Senior ${formatDate(period.start)} a ${formatDate(period.end)}`:""} · ${imports.length} filial${imports.length===1?"":"is"}${branchNames.length&&branchNames.length<=4?` · ${branchNames.join(", ")}`:""}`;
+      status.textContent=`Confirmado · Referência ${monthLabel(currentFilters().month)}${period?` · Cartão Senior ${formatDate(period.start)} a ${formatDate(period.end)}`:""} · ${imports.length} filial${imports.length===1?"":"is"}${branchNames.length&&branchNames.length<=4?` · ${branchNames.join(", ")}`:""}`;
       status.closest(".occurrences-source-status")?.classList.remove("is-missing");
     }else{
       status.textContent="Nenhum Cartão de Ponto confirmado neste filtro";
@@ -443,7 +443,7 @@
   function updatePrintHeader(){
     const f=currentFilters();
     const period=importPeriod(Array.isArray(lastData.imports)?lastData.imports:[]);
-    if($("occurrences-print-reference"))$("occurrences-print-reference").textContent=`Competência: ${monthLabel(f.month)}${period?` · Período do Cartão de Ponto Senior: ${formatDate(period.start)} a ${formatDate(period.end)}`:""}`;
+    if($("occurrences-print-reference"))$("occurrences-print-reference").textContent=period?`Período analisado: ${formatDate(period.start)} a ${formatDate(period.end)} · Referência: ${monthLabel(f.month)}`:`Período de referência: ${monthLabel(f.month)}`;
     if($("occurrences-print-company"))$("occurrences-print-company").textContent=selectedText("occurrences-company","Todas as empresas");
     if($("occurrences-print-branch"))$("occurrences-print-branch").textContent=selectedText("occurrences-branch","Todas as filiais");
     if($("occurrences-print-generated"))$("occurrences-print-generated").textContent=`Emitido em ${new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date())}`;
@@ -567,7 +567,7 @@
           </header>
           <table class="journey-print-table">
             <thead><tr><th>Data</th><th>Entrada</th><th>Início int.</th><th>Retorno</th><th>Saída</th><th>Jornada</th><th>Intervalo</th><th>BH+</th><th>BH-</th><th>Situação / ocorrência</th></tr></thead>
-            <tbody>${days.length?journeyPrintRows(days):'<tr><td colspan="10">Nenhuma jornada encontrada nesta competência.</td></tr>'}</tbody>
+            <tbody>${days.length?journeyPrintRows(days):'<tr><td colspan="10">Nenhuma jornada encontrada neste período.</td></tr>'}</tbody>
           </table>
         </article>`;
       }).join('');
@@ -634,7 +634,7 @@
     const context=document.createElement("section");
     context.className="occurrences-print-context";
     context.innerHTML=`
-      <div><span>Competência</span><strong>${esc(monthLabel(f.month))}</strong><small>${period?`${formatDate(period.start)} a ${formatDate(period.end)}`:"Período da competência"}</small></div>
+      <div><span>Período analisado</span><strong>${esc(period?`${formatDate(period.start)} a ${formatDate(period.end)}`:monthLabel(f.month))}</strong><small>Referência mensal: ${esc(monthLabel(f.month))}</small></div>
       <div><span>Empresa</span><strong>${esc(selectedText("occurrences-company","Todas as empresas"))}</strong><small>Escopo do relatório</small></div>
       <div><span>Filial</span><strong>${esc(selectedText("occurrences-branch","Todas as filiais"))}</strong><small>Unidade selecionada</small></div>
       <div><span>Totais do período</span><strong>${reportRows.length} colaboradores com ocorrência</strong><small>${totalOccurrences} ocorrências registradas</small></div>`;
@@ -642,7 +642,7 @@
     const periodNotice=document.createElement("section");
     periodNotice.className=`occurrences-period-warning${coverage?.complete?' complete':''}`;
     periodNotice.innerHTML=coverage?.complete
-      ?`<strong>Competência completa</strong><span>O Cartão Senior cobre os ${coverage.totalDays} dias da competência selecionada.</span>`
+      ?`<strong>Período mensal completo</strong><span>O Cartão Senior cobre os ${coverage.totalDays} dias do período de referência.</span>`
       :`<strong>RELATÓRIO PARCIAL - não representa o fechamento mensal</strong><span>${coverage?.days||0} de ${coverage?.totalDays||0} dias cobertos${coverage?.start?`: ${formatDate(coverage.start)} a ${formatDate(coverage.end)}`:''}. Totais limitados ao período importado.</span>`;
 
     summary.classList.add('compact');
@@ -774,7 +774,7 @@
         <button type="button" class="btn secondary occ-back-all-employees" data-back-all-employees="1">← Voltar para todos os colaboradores</button>
       </div>
       <div class="occ-employee-summary-metrics">
-        <span><small>Registros da competência</small><strong>${items.length}</strong></span>
+        <span><small>Registros do período</small><strong>${items.length}</strong></span>
         <span><small>Jornadas trabalhadas</small><strong>${worked.length}</strong></span>
         <span><small>Horas trabalhadas</small><strong>${formatDuration(totalWork,{signed:false})}</strong></span>
         <span><small>BH +</small><strong class="occ-analysis-bh-plus">${totalBhPos?`+${formatDuration(totalBhPos,{signed:false})}`:'00:00'}</strong></span>
@@ -785,7 +785,7 @@
       <div class="occ-interval-toolbar">
         <div class="occ-interval-reading"><strong>${normal} normais</strong><span>e</span><strong>${abnormal} irregulares</strong></div>
         <div class="occ-interval-actions" aria-label="Filtros dos intervalos">
-          <button type="button" class="secondary ${intervalStatusFilter===''?'active':''}" data-interval-status="">Toda a competência</button>
+          <button type="button" class="secondary ${intervalStatusFilter===''?'active':''}" data-interval-status="">Todo o período</button>
           <button type="button" class="secondary ${intervalStatusFilter==='irregular'?'active':''}" data-interval-status="irregular">Somente irregulares</button>
           <button type="button" class="secondary ${intervalStatusFilter==='attention'?'active':''}" data-interval-status="attention">Atenção</button>
           <button type="button" class="secondary ${intervalStatusFilter==='critical'?'active':''}" data-interval-status="critical">Críticos</button>
