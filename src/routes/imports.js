@@ -123,7 +123,7 @@ function pdf2JsonDataToSeniorText(data){
     // diferentes. A coluna continua sendo determinada exclusivamente pelo X.
     const rebuilt=anchors?reconstructSeniorDailyRows(decoded,anchors):[];
     const rebuiltByDate=new Map(rebuilt.map(row=>[`${row.date}@${row.y.toFixed(3)}`,row]));
-    dateRows+=decoded.filter(item=>/\d{2}\/\d{2}/.test(item.text)&&(anchors?item.x<anchors.W:true)).length;
+    dateRows+=decoded.filter(item=>/^\s*\d{2}\/\d{2}(?:\s|$)/.test(item.text)&&(anchors?item.x<anchors.W:true)).length;
     structuredRows+=rebuilt.length;
 
     const lines=[];
@@ -133,12 +133,17 @@ function pdf2JsonDataToSeniorText(data){
       // Linhas que já contêm uma data são substituídas abaixo pela versão
       // reconstruída. Fragmentos numéricos sem data permanecem inofensivos,
       // pois o parser diário exige DD/MM no início da linha.
-      if(items.some(item=>/\d{2}\/\d{2}/.test(item.text)&&(anchors?item.x<anchors.W:true)))continue;
+      const dateItem=items.find(item=>/^\s*\d{2}\/\d{2}(?:\s|$)/.test(item.text)&&(anchors?item.x<anchors.W:true));
+      if(dateItem){
+        const date=(dateItem.text.match(/\d{2}\/\d{2}/)||[])[0];
+        const rebuiltRow=rebuiltByDate.get(`${date}@${dateItem.y.toFixed(3)}`);
+        if(rebuiltRow){
+          const c=rebuiltRow.split.cols;
+          lines.push(`${rebuiltRow.split.left} ||SENIOR_COLS|| W=${c.W};BM=${c.BM};BP=${c.BP};HE=${c.HE};F=${c.F};AN=${c.AN};V=${c.V}`);
+        }
+        continue;
+      }
       lines.push(joined);
-    }
-    for(const row of rebuilt){
-      const c=row.split.cols;
-      lines.push(`${row.split.left} ||SENIOR_COLS|| W=${c.W};BM=${c.BM};BP=${c.BP};HE=${c.HE};F=${c.F};AN=${c.AN};V=${c.V}`);
     }
     pageTexts.push(lines.join("\n"));
   }

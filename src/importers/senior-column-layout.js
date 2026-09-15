@@ -72,6 +72,35 @@ function detectSeniorColumnAnchorsFromPage(items,{yTolerance=0.85}={}){
   if(!list.length)return null;
 
   const workItems=list.filter(item=>/^TRABALHO:?$/i.test(item.text));
+
+  // Beta.65: o PDFium pode entregar todo o cabeçalho num único Text,
+  // embora os valores diários continuem posicionados nas colunas oficiais.
+  // Nesse layout, a coordenada X do item composto marca o início de Trabalho;
+  // os demais inícios mantêm distâncias fixas no relatório A4 da Senior.
+  // A conciliação posterior com os totais do rodapé permanece obrigatória.
+  const compositeHeader=list.find(item=>
+    /^TRABALHO\s+BH\s*-\s+BH\s*\+\s+HE\s*100%\s+FALTA(?:S)?\s+AD\.?\s*NOT\s+VIAGEM(?:NS)?$/i.test(item.text)
+  );
+  if(compositeHeader){
+    const base=compositeHeader.x;
+    const found={
+      W:base,
+      BM:base+2.05,
+      BP:base+4.00,
+      HE:base+6.20,
+      F:base+8.60,
+      AN:base+10.70,
+      V:base+13.60
+    };
+    const headerBand=list.filter(item=>Math.abs(item.y-compositeHeader.y)<=1.2);
+    const words=headerBand.map(item=>upper(item.text));
+    const hasMarkings=words.some(text=>/^MARCA/.test(text));
+    const hasDate=words.some(text=>/^DATA$/.test(text));
+    const hasSem=words.some(text=>/^SEM$/.test(text));
+    const hasHor=words.some(text=>/^HOR$/.test(text));
+    if(validAnchorOrder(found)&&(hasMarkings||(hasDate&&hasSem&&hasHor)))return found;
+  }
+
   for(const work of workItems){
     // pdf2json pode colocar Data/Sem/Hor/Marcações e Trabalho/BH em grupos de
     // Y ligeiramente diferentes. Trabalhamos com uma faixa vertical estreita
@@ -216,7 +245,7 @@ function reconstructSeniorDailyRows(items,anchors){
   // item à esquerda de Trabalho, preservando X/Y para reconstruir a faixa da
   // jornada sem depender do agrupamento textual do PDF.
   const dates=list
-    .filter(item=>item.x<anchors.W&&/\d{2}\/\d{2}/.test(item.text))
+    .filter(item=>item.x<anchors.W&&/^\s*\d{2}\/\d{2}(?:\s|$)/.test(item.text))
     .map(item=>({ ...item, text:(item.text.match(/\d{2}\/\d{2}/)||[])[0]||item.text }))
     .filter(item=>/^\d{2}\/\d{2}$/.test(item.text))
     .sort((a,b)=>a.y-b.y||a.x-b.x);
