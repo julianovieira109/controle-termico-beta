@@ -437,6 +437,21 @@
     if($("occurrences-print-generated"))$("occurrences-print-generated").textContent=`Emitido em ${new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date())}`;
   }
 
+  function printCoverage(month,imports=[]){
+    const match=String(month||'').match(/^(\d{4})-(\d{2})$/);if(!match)return null;
+    const year=Number(match[1]),monthNumber=Number(match[2]),lastDay=new Date(Date.UTC(year,monthNumber,0)).getUTCDate();
+    const monthStart=`${match[1]}-${match[2]}-01`,monthEnd=`${match[1]}-${match[2]}-${String(lastDay).padStart(2,'0')}`;
+    const covered=new Set();
+    (imports||[]).forEach(item=>{
+      const rawStart=String(item.period_start||'').slice(0,10),rawEnd=String(item.period_end||'').slice(0,10);
+      const start=rawStart>monthStart?rawStart:monthStart,end=rawEnd<monthEnd?rawEnd:monthEnd;
+      if(!start||!end||start>end)return;
+      for(let cursor=Date.parse(`${start}T00:00:00Z`),limit=Date.parse(`${end}T00:00:00Z`);cursor<=limit;cursor+=86400000)covered.add(new Date(cursor).toISOString().slice(0,10));
+    });
+    const dates=[...covered].sort();
+    return {complete:dates.length===lastDay,days:dates.length,totalDays:lastDay,start:dates[0]||null,end:dates[dates.length-1]||null};
+  }
+
   async function load(force=false){
     const f=currentFilters();
     if(!f.month)return;
@@ -505,25 +520,33 @@
     }).join('');
   }
 
+  function relevantJourneyPrintDay(day){
+    const state=String(day.point_state||'').toUpperCase(),analysis=journeyDayAnalysis(day),occurrence=String(day.occurrence||'');
+    if(state&&state!=='WORKED')return true;
+    if(Number(day.bh_positive_minutes||0)>0||Number(day.bh_negative_minutes||0)>0)return true;
+    if(analysis.level==='yellow'||analysis.level==='red')return true;
+    return /SA[ÍI]DA|FALTA|F[ÉE]RIAS|ATEST|LICEN|AFAST|DSR|FOLGA|REVIS|COMPENS|CURSO|[ÓO]BITO/i.test(occurrence);
+  }
+
   function buildJourneyPrintAppendix(journeyDays=[]){
     const byEmployee=new Map();
-    (journeyDays||[]).forEach(day=>{
+    (journeyDays||[]).filter(relevantJourneyPrintDay).forEach(day=>{
       const key=String(day.employee_id||'');
       if(!key)return;
       const list=byEmployee.get(key)||[]; list.push(day); byEmployee.set(key,list);
     });
-    const reportRows=rows;
+    const reportRows=rows.filter(row=>byEmployee.has(String(row.employee_id)));
     if(!reportRows.length)return null;
     const section=document.createElement('section');
     section.className='occurrences-journey-appendix';
-    section.innerHTML=`<div class="journey-appendix-title"><span class="eyebrow">Jornadas</span><h2>Jornada, Banco de Horas e Intervalos</h2><p>Marcações do Cartão Senior com destaque para BH positivo, BH negativo e intervalos fora do padrão.</p></div>`+
+    section.innerHTML=`<div class="journey-appendix-title"><span class="eyebrow">Detalhamento auditável</span><h2>Dias com ocorrência, BH ou intervalo irregular</h2><p>Exibe somente registros que exigem conhecimento ou ação do Departamento Pessoal.</p></div><div class="journey-appendix-note">Dias inteiramente normais permanecem disponíveis na tela do colaborador e não são repetidos neste relatório gerencial.</div>`+
       reportRows.map((row,index)=>{
         const days=byEmployee.get(String(row.employee_id))||[];
         const bhPositive=days.reduce((sum,d)=>sum+Number(d.bh_positive_minutes||0),0);
         const bhNegative=days.reduce((sum,d)=>sum+Number(d.bh_negative_minutes||0),0);
         const intervalIssues=days.filter(day=>{const a=journeyDayAnalysis(day);return (a.level==='yellow'||a.level==='red')&&String(a.label||'').startsWith('Intervalo fora do padrão');}).length;
         const coordinator=row.coordinator?.name||'Não definido';
-        return `<article class="journey-employee-section${index?' journey-page-break':''}">
+        return `<article class="journey-employee-section">
           <header class="journey-employee-head">
             <div><span class="employee-index">${index+1}</span><strong>${esc(row.full_name)}</strong><small>Matrícula ${esc(row.registration||'-')} · ${esc(row.shift_name||'Sem turno')} · Coordenador: ${esc(coordinator)}</small></div>
             <div class="journey-employee-kpis"><span>BH+ <b class="positive">+${formatDuration(bhPositive,{signed:false})}</b></span><span>BH- <b class="negative">-${formatDuration(bhNegative,{signed:false})}</b></span><span>Intervalos fora do padrão <b>${intervalIssues}</b></span></div>
@@ -552,9 +575,9 @@
       root.querySelectorAll("[id]").forEach(el=>el.removeAttribute("id"));
     });
 
-    const reportRows=rows;
-    const tableRows=rows.length
-      ?rows.map((row,index)=>`
+    const reportRows=rows.filter(row=>config.some(([key])=>number(row,key)>0));
+    const tableRows=reportRows.length
+      ?reportRows.map((row,index)=>`
         <tr>
           <td class="occurrence-rank">${index+1}</td>
           <td class="occurrence-employee"><strong>${esc(row.full_name)}</strong><small>${esc(row.company_name||"-")} / ${esc(row.branch_name||"-")}</small></td>
@@ -583,6 +606,7 @@
 
     const f=currentFilters();
     const period=importPeriod(Array.isArray(lastData.imports)?lastData.imports:[]);
+    const coverage=printCoverage(f.month,Array.isArray(lastData.imports)?lastData.imports:[]);
     const totalOccurrences=config.reduce((sum,[key])=>sum+Number(lastData.summary?.[key]||0),0);
     const context=document.createElement("section");
     context.className="occurrences-print-context";
@@ -590,10 +614,23 @@
       <div><span>Competência</span><strong>${esc(monthLabel(f.month))}</strong><small>${period?`${formatDate(period.start)} a ${formatDate(period.end)}`:"Período da competência"}</small></div>
       <div><span>Empresa</span><strong>${esc(selectedText("occurrences-company","Todas as empresas"))}</strong><small>Escopo do relatório</small></div>
       <div><span>Filial</span><strong>${esc(selectedText("occurrences-branch","Todas as filiais"))}</strong><small>Unidade selecionada</small></div>
-      <div><span>Totais gerais</span><strong>${reportRows.length} colaboradores</strong><small>${totalOccurrences} ocorrências registradas</small></div>`;
+      <div><span>Totais do período</span><strong>${reportRows.length} colaboradores com ocorrência</strong><small>${totalOccurrences} ocorrências registradas</small></div>`;
+
+    const periodNotice=document.createElement("section");
+    periodNotice.className=`occurrences-period-warning${coverage?.complete?' complete':''}`;
+    periodNotice.innerHTML=coverage?.complete
+      ?`<strong>Competência completa</strong><span>O Cartão Senior cobre os ${coverage.totalDays} dias da competência selecionada.</span>`
+      :`<strong>RELATÓRIO PARCIAL - não representa o fechamento mensal</strong><span>${coverage?.days||0} de ${coverage?.totalDays||0} dias cobertos${coverage?.start?`: ${formatDate(coverage.start)} a ${formatDate(coverage.end)}`:''}. Totais limitados ao período importado.</span>`;
+
+    summary.classList.add('compact');
+    summary.querySelectorAll('article').forEach(card=>{const value=Number(String(card.querySelector('strong')?.textContent||'0').replace(/\D/g,''));if(!value)card.remove();});
+    charts.querySelector('.occurrences-charts-head h3')?.replaceChildren(document.createTextNode('Análise do período importado'));
+    charts.querySelector('.occurrences-charts-head p')?.replaceChildren(document.createTextNode('Distribuição das ocorrências efetivamente reconhecidas no período coberto.'));
+    charts.querySelectorAll('.occurrences-bar-row').forEach(item=>{const value=Number(item.querySelector('b')?.textContent||0);if(!value)item.remove();});
+    charts.querySelectorAll('.occurrences-donut-legend span').forEach(item=>{const value=Number((item.textContent.match(/(\d+)\s*$/)||[])[1]||0);if(!value)item.remove();});
 
     const journeyAppendix=buildJourneyPrintAppendix(journeyDays);
-    holder.replaceChildren(header,context,summary,charts,detail,...(journeyAppendix?[journeyAppendix]:[]));
+    holder.replaceChildren(header,context,periodNotice,summary,charts,detail,...(journeyAppendix?[journeyAppendix]:[]));
     holder.setAttribute("aria-hidden","false");
     return true;
   }
