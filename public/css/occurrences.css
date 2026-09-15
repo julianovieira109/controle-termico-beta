@@ -534,6 +534,39 @@ body.occ-analysis-specialized .occ-overview-block{display:none!important}body.oc
 @media(max-width:1250px){.occ-analysis-tabs{grid-template-columns:repeat(4,minmax(150px,1fr))}}
 @media(max-width:800px){.occ-analysis-center-head{display:block}.occ-analysis-scope-note{display:inline-block;margin-top:10px}.occ-analysis-tabs{display:flex;overflow-x:auto}.occ-analysis-tabs button{min-width:165px}.occ-analysis-center{padding:12px}}
 
+/* Beta.66 — Visão Geral executiva, legível e com hierarquia visual */
+#occurrences .occ-dash-title .eyebrow{color:#39779f}
+#occurrences .occ-dash-title h2{color:#153a56;font-size:1.5rem}
+#occurrences .occ-dash-title p{color:#60798c;letter-spacing:.045em}
+#occurrences .occ-dash-title p small{color:#8093a1}
+#occurrences .occ-overview-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:18px 2px 9px}
+#occurrences .occ-overview-heading .eyebrow{color:#39779f;font-size:.62rem;letter-spacing:.14em}
+#occurrences .occ-overview-heading h3{margin:3px 0 0;color:#173b58;font-size:1.08rem}
+#occurrences .occ-overview-heading>small{color:#788c9b;font-size:.68rem}
+#occurrences .occ-dash-kpis{grid-template-columns:repeat(12,minmax(0,1fr));gap:10px;margin:0 0 14px}
+#occurrences .occ-kpi{min-height:100px;padding:15px 15px 13px}
+#occurrences .occ-kpi:nth-child(-n+4){grid-column:span 3;min-height:116px}
+#occurrences .occ-kpi:nth-child(n+5){grid-column:span 2}
+#occurrences .occ-kpi span{min-height:auto;font-size:.73rem}
+#occurrences .occ-kpi strong{margin-top:8px;font-size:1.62rem}
+#occurrences .occ-kpi:nth-child(-n+4) strong{font-size:2rem}
+#occurrences .occ-kpi small{font-size:.66rem}
+#occurrences .occ-executive-grid{grid-template-columns:1.05fr 1.25fr 1.35fr;gap:14px;margin-bottom:14px}
+#occurrences .occ-exec-head{padding:14px 16px}
+#occurrences .occ-exec-head h3{font-size:.96rem}
+#occurrences .occ-main-grid{grid-template-columns:minmax(0,2.45fr) minmax(320px,.85fr);gap:14px}
+#occurrences .occurrences-detail-head{padding:16px 18px}
+#occurrences .occurrences-table thead th{font-size:.68rem}
+#occurrences .occurrences-table td{font-size:.75rem}
+#occurrences .occ-insight h3{font-size:.86rem}
+#occurrences .occurrences-source-status.is-missing{border-color:#efc3c3;background:#fff5f5;color:#a92727}
+#occurrences .occurrences-source-status.is-missing:before{content:"!";background:#d93838}
+.theme-dark #app #occurrences .occ-dash-title h2,.theme-dark #app #occurrences .occ-overview-heading h3{color:#eaf4fb}
+.theme-dark #app #occurrences .occ-dash-title p,.theme-dark #app #occurrences .occ-overview-heading>small{color:#9fb3c1}
+@media(max-width:1450px){#occurrences .occ-dash-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}#occurrences .occ-kpi:nth-child(-n+4){grid-column:span 3}#occurrences .occ-kpi:nth-child(n+5){grid-column:span 2}#occurrences .occ-executive-grid{grid-template-columns:1fr 1fr}#occurrences .occ-executive-grid .occ-exec-card:last-child{grid-column:1/-1}}
+@media(max-width:900px){#occurrences .occ-dash-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#occurrences .occ-kpi:nth-child(n){grid-column:span 1}#occurrences .occ-executive-grid{grid-template-columns:1fr}#occurrences .occ-executive-grid .occ-exec-card:last-child{grid-column:auto}#occurrences .occ-main-grid{grid-template-columns:1fr}#occurrences .occ-overview-heading{align-items:flex-start;flex-direction:column;gap:4px}}
+@media(max-width:560px){#occurrences .occ-kpi{min-height:90px;padding:12px}#occurrences .occ-kpi:nth-child(-n+4){min-height:98px}#occurrences .occ-kpi strong,#occurrences .occ-kpi:nth-child(-n+4) strong{font-size:1.45rem}}
+
 /* Beta.44 — jornada no padrão Senior dentro da análise de intervalos */
 #occurrences .occ-analysis-table .occ-interval-markings{white-space:nowrap;font-variant-numeric:tabular-nums}
 #occurrences .occ-analysis-table .occ-interval-mark{font-weight:900;text-decoration-line:underline;text-decoration-thickness:2px;text-underline-offset:3px;border-radius:4px;padding:1px 2px}
