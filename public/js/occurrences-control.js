@@ -436,7 +436,8 @@
   };
   function allPrintCategories(){return new Set(Object.keys(printCategoryDefs));}
   function selectedPrintCategories(){return new Set([...document.querySelectorAll('#occurrences-print-selector input[type="checkbox"]:checked')].map(input=>input.value).filter(value=>printCategoryDefs[value]));}
-  function openPrintSelector(){const modal=$("occurrences-print-selector");if(!modal)return;modal.hidden=false;modal.setAttribute('aria-hidden','false');document.body.classList.add('occ-print-selector-open');if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;}
+  function updatePrintSelectedCount(){const count=selectedPrintCategories().size,box=$("occ-print-selected-count");if(box)box.textContent=`${count} categoria${count===1?'':'s'} selecionada${count===1?'':'s'}`;}
+  function openPrintSelector(){const modal=$("occurrences-print-selector");if(!modal)return;modal.hidden=false;modal.setAttribute('aria-hidden','false');document.body.classList.add('occ-print-selector-open');if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;updatePrintSelectedCount();}
   function closePrintSelector(){const modal=$("occurrences-print-selector");if(!modal)return;modal.hidden=true;modal.setAttribute('aria-hidden','true');document.body.classList.remove('occ-print-selector-open');}
 
   function updatePrintHeader(){
@@ -1025,9 +1026,9 @@
     $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-print-interval-employee]");if(!button||analysisTab!=="intervals")return;$("occurrences-print")?.click();});
     $("occurrences-print")?.addEventListener("click",openPrintSelector);
     document.querySelectorAll('[data-close-occ-print-selector]').forEach(element=>element.addEventListener('click',closePrintSelector));
-    $("occ-print-select-all")?.addEventListener("click",()=>{document.querySelectorAll('#occurrences-print-selector input[type="checkbox"]').forEach(input=>input.checked=true);if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;});
+    $("occ-print-select-all")?.addEventListener("click",()=>{document.querySelectorAll('#occurrences-print-selector input[type="checkbox"]').forEach(input=>input.checked=true);if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;updatePrintSelectedCount();});
     $("occ-print-confirm")?.addEventListener("click",()=>printReport(selectedPrintCategories()));
-    $("occurrences-print-selector")?.addEventListener("change",()=>{if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;});
+    $("occurrences-print-selector")?.addEventListener("change",()=>{if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;updatePrintSelectedCount();});
     window.addEventListener("afterprint",clearPrintMode);
     document.querySelectorAll("#occurrences-summary article[data-key]").forEach(card=>card.addEventListener("click",()=>selectKey(card.dataset.key)));
     loadScopeOptions().then(()=>load(true)).catch(error=>{

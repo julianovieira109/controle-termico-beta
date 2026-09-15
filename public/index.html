@@ -1531,15 +1531,15 @@
       <div class="occ-print-selector-modal" id="occurrences-print-selector" hidden aria-hidden="true">
         <div class="occ-print-selector-backdrop" data-close-occ-print-selector></div>
         <section class="occ-print-selector-dialog" role="dialog" aria-modal="true" aria-labelledby="occ-print-selector-title">
-          <header><div><span class="eyebrow">Configurar impressão</span><h3 id="occ-print-selector-title">O que deseja incluir?</h3><p>Marque uma ou várias categorias. O relatório mostrará somente os dados selecionados.</p></div><button type="button" class="secondary" data-close-occ-print-selector>Fechar</button></header>
+          <header><div><span class="eyebrow">Central de impressão</span><h3 id="occ-print-selector-title">Personalize seu relatório</h3><p>Escolha os indicadores que deseja apresentar.</p></div><button type="button" class="occ-print-selector-close" data-close-occ-print-selector aria-label="Fechar">×</button></header>
           <div class="occ-print-selector-options">
-            <label><input type="checkbox" value="absences" checked><span><strong>Faltas</strong><small>Ausências não justificadas</small></span></label>
-            <label><input type="checkbox" value="bh-positive" checked><span><strong>BH positivo</strong><small>Créditos e dias que geraram saldo</small></span></label>
-            <label><input type="checkbox" value="bh-negative" checked><span><strong>BH negativo</strong><small>Débitos e dias que geraram saldo</small></span></label>
-            <label><input type="checkbox" value="intervals" checked><span><strong>Intervalos</strong><small>Somente intervalos fora do padrão</small></span></label>
+            <label><input type="checkbox" value="absences" checked><i aria-hidden="true">F</i><span><strong>Faltas</strong><small>Ausências não justificadas</small></span><b aria-hidden="true">✓</b></label>
+            <label><input type="checkbox" value="bh-positive" checked><i aria-hidden="true">+</i><span><strong>BH positivo</strong><small>Créditos acumulados</small></span><b aria-hidden="true">✓</b></label>
+            <label><input type="checkbox" value="bh-negative" checked><i aria-hidden="true">−</i><span><strong>BH negativo</strong><small>Débitos acumulados</small></span><b aria-hidden="true">✓</b></label>
+            <label><input type="checkbox" value="intervals" checked><i aria-hidden="true">◷</i><span><strong>Intervalos</strong><small>Desvios do horário previsto</small></span><b aria-hidden="true">✓</b></label>
           </div>
           <p class="occ-print-selector-error" id="occ-print-selector-error" hidden>Selecione pelo menos uma categoria.</p>
-          <footer><button type="button" class="secondary" id="occ-print-select-all">Selecionar todos</button><button type="button" class="primary" id="occ-print-confirm">Gerar relatório selecionado</button></footer>
+          <footer><span id="occ-print-selected-count">4 categorias selecionadas</span><div><button type="button" class="occ-print-select-all" id="occ-print-select-all">Selecionar todos</button><button type="button" class="occ-print-confirm" id="occ-print-confirm">Gerar relatório <span aria-hidden="true">→</span></button></div></footer>
         </section>
       </div>
 
