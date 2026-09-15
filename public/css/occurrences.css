@@ -591,6 +591,15 @@ body.occ-analysis-specialized:has(#occ-analysis-tabs [data-occ-tab="intervals"].
 body.occ-analysis-specialized:has(#occ-analysis-tabs [data-occ-tab="intervals"].active) .help-floating-launcher{bottom:76px}
 @media(max-width:900px){#occurrences .occ-interval-toolbar{align-items:flex-start;flex-direction:column}#occurrences .occ-interval-actions{justify-content:flex-start}.help-floating-launcher{bottom:68px}}
 
+/* Beta.69 — contexto completo da competência na jornada individual */
+#occ-analysis-panel .occ-employee-summary-metrics{grid-template-columns:repeat(7,minmax(105px,1fr))}
+#occ-analysis-panel .occ-analysis-alert.neutral{background:#edf2f6;color:#526879;border-color:#d4dfe7}
+#occ-analysis-panel tr.occ-interval-row-context td:first-child{box-shadow:inset 3px 0 0 #9aabb7}
+#occ-analysis-panel tr.occ-interval-row-context{background:color-mix(in srgb,var(--card) 97%,#8295a3 3%)}
+.theme-dark #app #occ-analysis-panel .occ-analysis-alert.neutral{background:#273b47;color:#c3d2dc;border-color:#425b69}
+@media(max-width:1250px){#occ-analysis-panel .occ-employee-summary-metrics{grid-template-columns:repeat(4,minmax(120px,1fr))}}
+@media(max-width:900px){#occ-analysis-panel .occ-employee-summary-metrics{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+
 /* Beta.45 — identificação do colaborador na análise de intervalos */
 #occ-analysis-panel .occ-interval-registration{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700;}
 #occ-analysis-panel .occ-interval-employee{min-width:220px;max-width:320px;white-space:normal;line-height:1.25;}
@@ -633,3 +642,19 @@ body.occ-analysis-specialized:has(#occ-analysis-tabs [data-occ-tab="intervals"].
 #occ-analysis-panel .occ-employee-summary-metrics strong{font-size:16px;color:var(--heading,var(--text));margin-top:2px;font-variant-numeric:tabular-nums}
 .theme-dark #app #occ-analysis-panel .occ-employee-journey-summary{background:#172935}
 @media(max-width:900px){#occ-analysis-panel .occ-employee-summary-head{align-items:flex-start;flex-direction:column}#occ-analysis-panel .occ-employee-summary-metrics{grid-template-columns:repeat(2,minmax(120px,1fr))}.occ-back-all-employees{width:100%}}
+
+/* Beta.70 — padrão visual e orientação operacional das análises */
+#occ-analysis-panel .occ-analysis-head{margin-bottom:11px}
+#occ-analysis-panel .occ-analysis-guide{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:0 0 5px}
+#occ-analysis-panel .occ-analysis-guide>span{min-height:58px;padding:10px 12px;border:1px solid var(--occ-border,var(--line));border-radius:9px;background:var(--occ-soft,var(--surface-soft,#f7f8fa))}
+#occ-analysis-panel .occ-analysis-guide small,#occ-analysis-panel .occ-analysis-guide strong{display:block}
+#occ-analysis-panel .occ-analysis-guide small{margin-bottom:4px;color:var(--p,var(--primary));font-size:8px;font-weight:850;letter-spacing:.07em;text-transform:uppercase}
+#occ-analysis-panel .occ-analysis-guide strong{color:var(--text);font-size:10px;line-height:1.35;font-weight:650}
+#occ-analysis-panel .occ-analysis-kpis span{min-width:118px}
+#occ-analysis-panel .occ-analysis-table tbody tr td:first-child{border-left:3px solid transparent}
+#occ-analysis-panel .occ-analysis-alert{display:inline-flex;align-items:center;min-height:24px;padding:3px 8px;border:1px solid currentColor;border-radius:999px;white-space:nowrap}
+#occ-analysis-panel .occ-employee-summary-metrics{grid-template-columns:repeat(7,minmax(105px,1fr))}
+.theme-dark #app #occ-analysis-panel .occ-analysis-guide>span{background:#172935}
+@media(max-width:1250px){#occ-analysis-panel .occ-employee-summary-metrics{grid-template-columns:repeat(4,minmax(120px,1fr))}}
+@media(max-width:800px){#occ-analysis-panel .occ-analysis-guide{grid-template-columns:1fr}#occ-analysis-panel .occ-analysis-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}#occ-analysis-panel .occ-analysis-kpis span{min-width:0}}
+@media(max-width:560px){#occ-analysis-panel .occ-employee-summary-metrics{grid-template-columns:1fr 1fr}}
