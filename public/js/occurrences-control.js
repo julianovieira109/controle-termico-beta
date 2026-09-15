@@ -637,7 +637,7 @@
   // Beta.41 — análises especializadas sem alterar os cálculos de origem.
   let analysisTab="overview", analysisJourneyDays=[], analysisJourneyKey="", analysisShiftFilter="";
   const analysisMeta={
-    intervals:{title:"Intervalos",subtitle:"Compare o intervalo realizado com o previsto e identifique desvios por colaborador."},
+    intervals:{title:"Intervalos",subtitle:"Somente dias trabalhados com quatro marcações válidas. Total irregular = Atenção + Críticos."},
     absences:{title:"Faltas",subtitle:"Concentre a análise em faltas, reincidências, turno e liderança."},
     "bh-positive":{title:"Banco de Horas Positivo",subtitle:"Veja quem está acumulando BH+, o total e os dias que geraram crédito."},
     "bh-negative":{title:"Banco de Horas Negativo",subtitle:"Veja quem está acumulando BH-, o total e os dias que geraram débito."},
@@ -785,7 +785,15 @@
       try{
         const days=(await ensureAnalysisJourneys()).filter(analysisDayAllowed);
         const weekday=value=>{const d=new Date(`${String(value).slice(0,10)}T12:00:00`);return ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'][d.getDay()]||'-';};
-        const rowsInterval=days.map(day=>{
+        const workedDays=days.filter(day=>String(day.point_state||'').toUpperCase()==='WORKED');
+        const pendingIntervals=workedDays.filter(day=>{
+          const marks=Array.isArray(day.markings)?day.markings:[];
+          return marks.length<4||intervalMinutes(marks)==null||plannedIntervalMinutes(day.shift_description)==null;
+        }).length;
+        const rowsInterval=workedDays.filter(day=>{
+          const marks=Array.isArray(day.markings)?day.markings:[];
+          return marks.length>=4&&intervalMinutes(marks)!=null&&plannedIntervalMinutes(day.shift_description)!=null;
+        }).map(day=>{
           const a=journeyDayAnalysis(day),marks=Array.isArray(day.markings)?day.markings:[],emp=employeeById(day.employee_id);
           const diff=a?.planned==null||a?.actual==null?null:Math.abs(a.actual-a.planned);
           const abnormal=diff!=null&&diff>5;
@@ -795,7 +803,8 @@
             return abnormal&&(index===1||index===2)?`<span class="occ-interval-mark ${critical?'critical':'attention'}">${text}</span>`:text;
           }).join(' ');
           const occurrence=String(day.occurrence||'').trim();
-          const work=workedMinutes(marks);
+          const importedWork=Number(day.work_minutes);
+          const work=day.bh_validated!==false&&Number.isFinite(importedWork)&&importedWork>0?importedWork:workedMinutes(marks);
           const bhPos=Number(day.bh_positive_minutes||0),bhNeg=Number(day.bh_negative_minutes||0);
           return {day,a,emp,diff,abnormal,critical,markHtml,occurrence,work,bhPos,bhNeg};
         });
@@ -803,14 +812,15 @@
         rowsInterval.sort((a,b)=>{
           const aName=String(a.emp?.full_name||a.day.full_name||''),bName=String(b.emp?.full_name||b.day.full_name||'');
           const aDate=String(a.day.work_date||''),bDate=String(b.day.work_date||'');
-          return selectedEmployee?(aDate.localeCompare(bDate)||aName.localeCompare(bName,'pt-BR')):(aName.localeCompare(bName,'pt-BR')||aDate.localeCompare(bDate));
+          const priority=(b.critical?2:b.abnormal?1:0)-(a.critical?2:a.abnormal?1:0);
+          return selectedEmployee?(aDate.localeCompare(bDate)||aName.localeCompare(bName,'pt-BR')):(priority||aName.localeCompare(bName,'pt-BR')||aDate.localeCompare(bDate));
         });
         if(selectedEmployee){analysisShiftFilter="";renderIntervalEmployeeSummary(rowsInterval,selectedEmployee);}else{renderIntervalShiftFilter(rowsInterval);}
         const filteredIntervals=!selectedEmployee&&analysisShiftFilter?rowsInterval.filter(x=>(x.emp?.shift_name||x.day.shift_name||'Sem turno')===analysisShiftFilter):rowsInterval;
         const irregular=filteredIntervals.filter(x=>x.abnormal).length;
         const attention=filteredIntervals.filter(x=>x.abnormal&&!x.critical).length;
         const critical=filteredIntervals.filter(x=>x.critical).length;
-        analysisKpis([["Jornadas",filteredIntervals.length],["Fora do padrão",irregular],["Atenção",attention],["Críticos",critical]]);
+        analysisKpis([["Jornadas analisadas",filteredIntervals.length],["Total irregular",irregular],["Atenção",attention],["Críticos",critical],["Pendentes",pendingIntervals]]);
         let rowHtml,headers;
         if(selectedEmployee){
           rowHtml=filteredIntervals.map(x=>{
@@ -823,8 +833,8 @@
           filteredIntervals.forEach(x=>{
             const employeeId=String(x.day.employee_id||x.emp?.employee_id||'');
             if(!employeeId)return;
-            if(!byEmployee.has(employeeId))byEmployee.set(employeeId,{employeeId,emp:x.emp||{},day:x.day,items:[],work:0,bhPos:0,bhNeg:0,attention:0,critical:0});
-            const g=byEmployee.get(employeeId);g.items.push(x);g.work+=Number.isFinite(x.work)?x.work:0;g.bhPos+=x.bhPos||0;g.bhNeg+=x.bhNeg||0;if(x.critical)g.critical++;else if(x.abnormal)g.attention++;
+            if(!byEmployee.has(employeeId))byEmployee.set(employeeId,{employeeId,emp:x.emp||{},day:x.day,items:[],work:0,attention:0,critical:0});
+            const g=byEmployee.get(employeeId);g.items.push(x);g.work+=Number.isFinite(x.work)?x.work:0;if(x.critical)g.critical++;else if(x.abnormal)g.attention++;
           });
           const summaries=[...byEmployee.values()].sort((a,b)=>String(a.emp?.full_name||a.day.full_name||'').localeCompare(String(b.emp?.full_name||b.day.full_name||''),'pt-BR'));
           rowHtml=summaries.map(g=>{
@@ -832,9 +842,9 @@
             const abnormal=g.attention+g.critical;
             const situation=g.critical?`<span class="occ-analysis-alert red">${g.critical} crítico${g.critical===1?'':'s'}</span>`:g.attention?`<span class="occ-analysis-alert yellow">${g.attention} atenção</span>`:'<span class="occ-analysis-alert green">Normal</span>';
             const employeeCell=`<button type="button" class="occ-interval-employee-link" data-interval-employee="${esc(g.employeeId)}"><strong>${esc(employeeName)}</strong><small>Clique para abrir a jornada completa</small></button>`;
-            return `<tr class="${g.critical?'occ-interval-row-critical':g.attention?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee">${employeeCell}</td><td>${esc(shift)}</td><td><strong>${g.items.length}</strong></td><td>${formatDuration(g.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${g.bhNeg?`-${formatDuration(g.bhNeg,{signed:false})}`:'00:00'}</td><td class="occ-analysis-bh-plus">${g.bhPos?`+${formatDuration(g.bhPos,{signed:false})}`:'00:00'}</td><td>${abnormal}</td><td>${g.attention}</td><td>${g.critical}</td><td>${situation}</td></tr>`;
+            return `<tr class="${g.critical?'occ-interval-row-critical':g.attention?'occ-interval-row-attention':''}"><td class="occ-interval-registration">${esc(registration)}</td><td class="occ-interval-employee">${employeeCell}</td><td>${esc(shift)}</td><td><strong>${g.items.length}</strong></td><td>${formatDuration(g.work,{signed:false})}</td><td><strong>${abnormal}</strong></td><td>${g.attention}</td><td>${g.critical}</td><td>${situation}</td></tr>`;
           });
-          headers=['Matrícula','Colaborador','Turno','Jornadas','Horas trabalhadas','BH -','BH +','Fora do padrão','Atenção','Críticos','Situação'];
+          headers=['Matrícula','Colaborador','Turno','Jornadas analisadas','Horas trabalhadas','Total irregular','Atenção','Críticos','Situação'];
         }
         setAnalysisTable(headers,rowHtml);
       }catch(error){analysisKpis([]);analysisBars({});setAnalysisTable(['Intervalos'],[],error.message||'Não foi possível carregar os intervalos.');}return;
