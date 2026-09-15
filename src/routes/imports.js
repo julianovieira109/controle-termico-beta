@@ -123,7 +123,7 @@ function pdf2JsonDataToSeniorText(data){
     // diferentes. A coluna continua sendo determinada exclusivamente pelo X.
     const rebuilt=anchors?reconstructSeniorDailyRows(decoded,anchors):[];
     const rebuiltByDate=new Map(rebuilt.map(row=>[`${row.date}@${row.y.toFixed(3)}`,row]));
-    dateRows+=decoded.filter(item=>/^\d{2}\/\d{2}$/.test(item.text)&&(anchors?item.x<anchors.W:true)).length;
+    dateRows+=decoded.filter(item=>/\d{2}\/\d{2}/.test(item.text)&&(anchors?item.x<anchors.W:true)).length;
     structuredRows+=rebuilt.length;
 
     const lines=[];
@@ -133,7 +133,7 @@ function pdf2JsonDataToSeniorText(data){
       // Linhas que já contêm uma data são substituídas abaixo pela versão
       // reconstruída. Fragmentos numéricos sem data permanecem inofensivos,
       // pois o parser diário exige DD/MM no início da linha.
-      if(items.some(item=>/^\d{2}\/\d{2}$/.test(item.text)&&(anchors?item.x<anchors.W:true)))continue;
+      if(items.some(item=>/\d{2}\/\d{2}/.test(item.text)&&(anchors?item.x<anchors.W:true)))continue;
       lines.push(joined);
     }
     for(const row of rebuilt){

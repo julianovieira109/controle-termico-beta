@@ -210,8 +210,15 @@ function reconstructSeniorDailyRows(items,anchors){
     .filter(item=>item.text);
   if(!anchors||anchors.W==null)return [];
 
+  // O pdf2json nem sempre entrega a data como um item isolado. Em alguns
+  // arquivos Senior, o mesmo Text pode chegar como "01/08 SAB 0005" ou com
+  // outros campos da esquerda anexados. Por isso extraímos DD/MM de qualquer
+  // item à esquerda de Trabalho, preservando X/Y para reconstruir a faixa da
+  // jornada sem depender do agrupamento textual do PDF.
   const dates=list
-    .filter(item=>/^\d{2}\/\d{2}$/.test(item.text)&&item.x<anchors.W)
+    .filter(item=>item.x<anchors.W&&/\d{2}\/\d{2}/.test(item.text))
+    .map(item=>({ ...item, text:(item.text.match(/\d{2}\/\d{2}/)||[])[0]||item.text }))
+    .filter(item=>/^\d{2}\/\d{2}$/.test(item.text))
     .sort((a,b)=>a.y-b.y||a.x-b.x);
   if(!dates.length)return [];
 
