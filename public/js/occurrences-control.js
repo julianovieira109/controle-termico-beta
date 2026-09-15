@@ -635,7 +635,7 @@
 
 
   // Beta.41 — análises especializadas sem alterar os cálculos de origem.
-  let analysisTab="overview", analysisJourneyDays=[], analysisJourneyKey="", analysisShiftFilter="";
+  let analysisTab="overview", analysisJourneyDays=[], analysisJourneyKey="", analysisShiftFilter="", intervalStatusFilter="", intervalSort="date";
   const analysisMeta={
     intervals:{title:"Intervalos",subtitle:"Somente dias trabalhados com quatro marcações válidas. Total irregular = Atenção + Críticos."},
     absences:{title:"Faltas",subtitle:"Concentre a análise em faltas, reincidências, turno e liderança."},
@@ -699,6 +699,7 @@
     const totalBhPos=items.reduce((sum,x)=>sum+(x.bhPos||0),0);
     const totalBhNeg=items.reduce((sum,x)=>sum+(x.bhNeg||0),0);
     const abnormal=items.filter(x=>x.abnormal).length;
+    const normal=items.length-abnormal;
     box.innerHTML=`<div class="occ-employee-journey-summary">
       <div class="occ-employee-summary-head">
         <div><small>Jornada individual</small><strong>${esc(name)}</strong><span>Matrícula ${esc(registration)} · ${esc(shift)}</span></div>
@@ -710,6 +711,17 @@
         <span><small>BH +</small><strong class="occ-analysis-bh-plus">${totalBhPos?`+${formatDuration(totalBhPos,{signed:false})}`:'00:00'}</strong></span>
         <span><small>BH -</small><strong class="occ-analysis-bh-minus">${totalBhNeg?`-${formatDuration(totalBhNeg,{signed:false})}`:'00:00'}</strong></span>
         <span><small>Intervalos fora do padrão</small><strong>${abnormal}</strong></span>
+      </div>
+      <div class="occ-interval-toolbar">
+        <div class="occ-interval-reading"><strong>${normal} normais</strong><span>e</span><strong>${abnormal} irregulares</strong></div>
+        <div class="occ-interval-actions" aria-label="Filtros dos intervalos">
+          <button type="button" class="secondary ${intervalStatusFilter===''?'active':''}" data-interval-status="">Todos</button>
+          <button type="button" class="secondary ${intervalStatusFilter==='irregular'?'active':''}" data-interval-status="irregular">Somente irregulares</button>
+          <button type="button" class="secondary ${intervalStatusFilter==='attention'?'active':''}" data-interval-status="attention">Atenção</button>
+          <button type="button" class="secondary ${intervalStatusFilter==='critical'?'active':''}" data-interval-status="critical">Críticos</button>
+          <select data-interval-sort aria-label="Ordenar intervalos"><option value="date" ${intervalSort==='date'?'selected':''}>Ordenar por data</option><option value="severity" ${intervalSort==='severity'?'selected':''}>Irregulares primeiro</option><option value="work" ${intervalSort==='work'?'selected':''}>Maior jornada</option></select>
+          <button type="button" class="secondary" data-print-interval-employee="1">▣ Imprimir jornada individual</button>
+        </div>
       </div>
     </div>`;
   }
@@ -816,7 +828,17 @@
           return selectedEmployee?(aDate.localeCompare(bDate)||aName.localeCompare(bName,'pt-BR')):(priority||aName.localeCompare(bName,'pt-BR')||aDate.localeCompare(bDate));
         });
         if(selectedEmployee){analysisShiftFilter="";renderIntervalEmployeeSummary(rowsInterval,selectedEmployee);}else{renderIntervalShiftFilter(rowsInterval);}
-        const filteredIntervals=!selectedEmployee&&analysisShiftFilter?rowsInterval.filter(x=>(x.emp?.shift_name||x.day.shift_name||'Sem turno')===analysisShiftFilter):rowsInterval;
+        let filteredIntervals=!selectedEmployee&&analysisShiftFilter?rowsInterval.filter(x=>(x.emp?.shift_name||x.day.shift_name||'Sem turno')===analysisShiftFilter):rowsInterval;
+        if(selectedEmployee){
+          if(intervalStatusFilter==='irregular')filteredIntervals=filteredIntervals.filter(x=>x.abnormal);
+          else if(intervalStatusFilter==='attention')filteredIntervals=filteredIntervals.filter(x=>x.abnormal&&!x.critical);
+          else if(intervalStatusFilter==='critical')filteredIntervals=filteredIntervals.filter(x=>x.critical);
+          filteredIntervals.sort((a,b)=>intervalSort==='severity'
+            ?((b.critical?2:b.abnormal?1:0)-(a.critical?2:a.abnormal?1:0)||String(a.day.work_date).localeCompare(String(b.day.work_date)))
+            :intervalSort==='work'
+              ?((Number(b.work)||0)-(Number(a.work)||0)||String(a.day.work_date).localeCompare(String(b.day.work_date)))
+              :String(a.day.work_date).localeCompare(String(b.day.work_date)));
+        }
         const irregular=filteredIntervals.filter(x=>x.abnormal).length;
         const attention=filteredIntervals.filter(x=>x.abnormal&&!x.critical).length;
         const critical=filteredIntervals.filter(x=>x.critical).length;
@@ -824,10 +846,12 @@
         let rowHtml,headers;
         if(selectedEmployee){
           rowHtml=filteredIntervals.map(x=>{
-            const common=`<td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td>`;
+            const signedDiff=x.a?.actual==null||x.a?.planned==null?'-':`${x.a.actual-x.a.planned>0?'+':''}${x.a.actual-x.a.planned} min`;
+            const comparison=x.a?.actual==null||x.a?.planned==null?'-':`${x.a.actual} min / ${x.a.planned} min`;
+            const common=`<td>${formatDate(x.day.work_date)}</td><td>${weekday(x.day.work_date)}</td><td>${esc(x.day.schedule_code||'-')}</td><td class="occ-interval-markings">${x.markHtml}</td><td class="occ-interval-comparison"><strong>${comparison}</strong><small>realizado / previsto</small></td><td class="occ-interval-difference ${x.critical?'critical':x.abnormal?'attention':'normal'}">${signedDiff}</td><td class="occ-interval-occurrence">${x.occurrence?esc(x.occurrence):'-'}</td><td>${x.work==null?'-':formatDuration(x.work,{signed:false})}</td><td class="occ-analysis-bh-minus">${x.bhNeg?formatDuration(x.bhNeg,{signed:false}):''}</td><td class="occ-analysis-bh-plus">${x.bhPos?formatDuration(x.bhPos,{signed:false}):''}</td><td>${x.abnormal?`<span class="occ-analysis-alert ${x.critical?'red':'yellow'}">${x.critical?'Crítico':'Atenção'} · ${x.diff} min</span>`:'<span class="occ-analysis-alert green">Normal</span>'}</td>`;
             return `<tr class="${x.critical?'occ-interval-row-critical':x.abnormal?'occ-interval-row-attention':''}">${common}</tr>`;
           });
-          headers=['Data','Sem','Hor','Marcações','Ocorrência / BH','Trabalho','BH -','BH +','Situação'];
+          headers=['Data','Sem','Hor','Marcações','Intervalo','Diferença','Ocorrência / BH','Trabalho','BH -','BH +','Situação'];
         }else{
           const byEmployee=new Map();
           filteredIntervals.forEach(x=>{
@@ -910,6 +934,9 @@
     $("occ-analysis-tbody")?.addEventListener("click",event=>{const button=event.target.closest("[data-bh-employee]");if(!button||!(analysisTab==="bh-positive"||analysisTab==="bh-negative"))return;const select=$("occurrences-employee");if(!select)return;select.value=button.dataset.bhEmployee||"";renderStatusSummary();renderExecutiveInsights();renderTable();renderAnalysis();});
     $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-back-all-bh]");if(!button||!(analysisTab==="bh-positive"||analysisTab==="bh-negative"))return;const select=$("occurrences-employee");if(!select)return;select.value="";renderStatusSummary();renderExecutiveInsights();renderTable();renderAnalysis();});
     $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-back-all-employees]");if(!button||analysisTab!=="intervals")return;const select=$("occurrences-employee");if(!select)return;select.value="";analysisShiftFilter="";renderStatusSummary();renderExecutiveInsights();renderTable();renderAnalysis();});
+    $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-interval-status]");if(!button||analysisTab!=="intervals")return;intervalStatusFilter=button.dataset.intervalStatus||"";renderAnalysis();});
+    $("occ-analysis-chart")?.addEventListener("change",event=>{const select=event.target.closest("[data-interval-sort]");if(!select||analysisTab!=="intervals")return;intervalSort=select.value||"date";renderAnalysis();});
+    $("occ-analysis-chart")?.addEventListener("click",event=>{const button=event.target.closest("[data-print-interval-employee]");if(!button||analysisTab!=="intervals")return;$("occurrences-print")?.click();});
     $("occurrences-print")?.addEventListener("click",printReport);
     window.addEventListener("afterprint",clearPrintMode);
     document.querySelectorAll("#occurrences-summary article[data-key]").forEach(card=>card.addEventListener("click",()=>selectKey(card.dataset.key)));

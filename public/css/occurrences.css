@@ -577,6 +577,20 @@ body.occ-analysis-specialized .occ-overview-block{display:none!important}body.oc
 #occurrences .occ-analysis-table tr.occ-interval-row-critical td:first-child{box-shadow:inset 3px 0 0 #c92a2a}
 .theme-dark #app #occurrences .occ-analysis-table .occ-interval-mark.attention{background:#3b3218;color:#ffd66b}.theme-dark #app #occurrences .occ-analysis-table .occ-interval-mark.critical{background:#3d2023;color:#ff9b9b}
 
+/* Beta.68 — conferência direta e comandos da jornada individual */
+#occurrences .occ-interval-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+#occurrences .occ-interval-reading{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.75rem;white-space:nowrap}
+#occurrences .occ-interval-reading strong:first-child{color:#087a46}#occurrences .occ-interval-reading strong:last-child{color:#b42318}
+#occurrences .occ-interval-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+#occurrences .occ-interval-actions button,#occurrences .occ-interval-actions select{min-height:34px;height:34px;padding:5px 10px;border:1px solid var(--occ-border);border-radius:8px;background:var(--card);color:var(--text);font-size:.68rem;font-weight:750}
+#occurrences .occ-interval-actions button.active{border-color:var(--p);background:color-mix(in srgb,var(--card) 88%,var(--p) 12%);color:var(--p);box-shadow:inset 0 -2px 0 var(--p)}
+#occurrences .occ-analysis-table thead th{position:sticky;top:0;z-index:3}
+#occurrences .occ-interval-comparison{white-space:nowrap}#occurrences .occ-interval-comparison strong{display:block;color:var(--heading)}
+#occurrences .occ-interval-difference{white-space:nowrap;font-weight:900}.occ-interval-difference.normal{color:#087a46}.occ-interval-difference.attention{color:#a66b00}.occ-interval-difference.critical{color:#b42318}
+body.occ-analysis-specialized:has(#occ-analysis-tabs [data-occ-tab="intervals"].active) #occurrences{padding-bottom:82px}
+body.occ-analysis-specialized:has(#occ-analysis-tabs [data-occ-tab="intervals"].active) .help-floating-launcher{bottom:76px}
+@media(max-width:900px){#occurrences .occ-interval-toolbar{align-items:flex-start;flex-direction:column}#occurrences .occ-interval-actions{justify-content:flex-start}.help-floating-launcher{bottom:68px}}
+
 /* Beta.45 — identificação do colaborador na análise de intervalos */
 #occ-analysis-panel .occ-interval-registration{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700;}
 #occ-analysis-panel .occ-interval-employee{min-width:220px;max-width:320px;white-space:normal;line-height:1.25;}
