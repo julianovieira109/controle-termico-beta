@@ -46,3 +46,13 @@ test('não contamina o fechamento do colaborador seguinte com o rodapé da pági
   assert.equal(parsed.employees[1].bhReconciliation.status,'VALIDATED');
   assert.equal(parsed.employees[1].footerTotals.bhPositiveMinutes,60);
 });
+
+test('identifica colaborador quando o pdf2json separa Empregado, matrícula e nome na última página',()=>{
+  const p1=`Cartão Ponto Período : 19/07/2026 a 18/08/2026 Pág.: 103\nEmpregado: 000000001 TESTE PENULTIMO\n19/07 DOM 9999 DSR ||SENIOR_COLS|| W=;BM=;BP=;HE=;F=;AN=;V=\nTrabalho: 00:00 BH - 00:00 BH + 00:00 HE 100%: 00:00 Faltas: 00:00`;
+  const p2=`Cartão Ponto Período : 19/07/2026 a 18/08/2026 Pág.: 104\nEmpregado:\n000008510\nZENILDO FILHO SANTOS TEIXEIRA\nCargo: CONFERENTE DE CARGA E DESCARGA\nHorários: 0046 06:00 12:00 13:00 14:20\n18/08 TER 0046 06:00 12:00 13:02 14:33 BH 50% ||SENIOR_COLS|| W=07:18;BM=00:02;BP=00:13;HE=;F=;AN=;V=\nTrabalho: 07:18 BH - 00:02 BH + 00:13 HE 100%: 00:00 Faltas: 00:00`;
+  const parsed=parseSeniorTimecard(`${p1}\n\f\n${p2}`);
+  assert.equal(parsed.employees.length,2);
+  assert.equal(parsed.employees[1].rawRegistration,'000008510');
+  assert.equal(parsed.employees[1].name,'ZENILDO FILHO SANTOS TEIXEIRA');
+  assert.equal(parsed.employees[1].bhReconciliation.status,'VALIDATED');
+});

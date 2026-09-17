@@ -41,10 +41,31 @@ function parsePeriod(block){
 }
 
 function parseEmployee(block){
-  const direct=block.match(/Empregado:\s*(\d{5,12})\s+([^\n]+)/i);
+  const source=String(block||"");
+  const direct=source.match(/Empregado:\s*(\d{5,12})\s+([^\n]+)/i);
   if(direct)return {registration:direct[1].replace(/^0+(?=\d)/,""),rawRegistration:direct[1],name:clean(direct[2])};
 
-  const pdfParse=block.match(/(?:Localiza[çc][ãa]o:\s*\n)?(\d{5,12})([A-ZÀ-Ü][A-ZÀ-Ü .'-]{3,})\n(?:Mensalista|Horista)Categoria:/);
+  // O pdf2json pode separar o rótulo "Empregado:" da matrícula/nome em
+  // páginas específicas (observado inclusive na última página de relatórios
+  // reais da Senior). Por isso, o cabeçalho é analisado linha a linha antes
+  // da tabela diária, procurando uma matrícula longa seguida de nome.
+  const header=source.split(/Data\s+Sem\s+Hor\s+Marcações/i)[0]||source;
+  const lines=header.split(/\r?\n/).map(clean).filter(Boolean);
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    let match=line.match(/(?:Empregado:\s*)?(\d{5,12})\s+([A-ZÀ-Ü][A-ZÀ-Ü .'-]{3,})(?:\s+CPF:.*)?$/i);
+    if(match){
+      const rawRegistration=match[1];
+      return {registration:rawRegistration.replace(/^0+(?=\d)/,""),rawRegistration,name:clean(match[2])};
+    }
+    // Variante em que matrícula e nome também foram quebrados em duas linhas.
+    if(/^\d{5,12}$/.test(line)&&i+1<lines.length&&/^[A-ZÀ-Ü][A-ZÀ-Ü .'-]{3,}$/i.test(lines[i+1])){
+      const rawRegistration=line;
+      return {registration:rawRegistration.replace(/^0+(?=\d)/,""),rawRegistration,name:clean(lines[i+1])};
+    }
+  }
+
+  const pdfParse=source.match(/(?:Localiza[çc][ãa]o:\s*\n)?(\d{5,12})\s*([A-ZÀ-Ü][A-ZÀ-Ü .'-]{3,})\n(?:Mensalista|Horista)Categoria:/i);
   if(!pdfParse)return null;
   return {
     registration:pdfParse[1].replace(/^0+(?=\d)/,""),
@@ -289,13 +310,20 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
 
 function splitBlocks(text){
   const source=String(text||"");
+
+  // A extração estrutural preserva o separador físico de páginas. Como o
+  // Cartão Ponto Senior usa um colaborador por página, essa é a fronteira mais
+  // segura e impede tanto contaminação entre rodapés quanto perda da última
+  // página do arquivo.
+  const physicalPages=source.split(/\f/).map(page=>page.trim()).filter(Boolean);
+  const cardPages=physicalPages.filter(page=>/Cart[ãa]o\s*Ponto/i.test(page));
+  if(cardPages.length)return cardPages;
+
+  // Compatibilidade com textos legados sem form-feed.
   const indexes=[];
-  const regex=/Cart[ãa]o Ponto/gi;
+  const regex=/Cart[ãa]o\s*Ponto/gi;
   let match;
   while((match=regex.exec(source)))indexes.push(match.index);
-  // Cada colaborador começa exatamente em "Cartão Ponto". Não recuamos para
-  // o fim da página anterior, pois isso pode trazer o rodapé do colaborador
-  // anterior para o bloco atual e contaminar a conciliação dos totais.
   return indexes.map((index,i)=>source.slice(index,indexes[i+1]??source.length));
 }
 

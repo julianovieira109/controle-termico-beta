@@ -32,3 +32,14 @@ test('confirmação exige 100% de estrutura e vínculo inequívoco de matrícula
   assert.equal(auditName.canConfirm,false);
   assert.equal(auditName.matching.nameMismatch,1);
 });
+
+test('confiança não pode aparecer como 100% quando falta cartão ou interpretação',()=>{
+  const employees=[validatedEmployee('1',480,480)];
+  const audit=buildTimecardAudit({
+    extraction:{dateRows:2,structuredRows:2,cardPages:2,footerRows:2,text:''},
+    parsed:{employees,totals:{days:1}},
+    rows:[{employeeId:'a',result:'APTO'}]
+  });
+  assert.equal(audit.status,'BLOCKED');
+  assert.ok(audit.confidence<100);
+});

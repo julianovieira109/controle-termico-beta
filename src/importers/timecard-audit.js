@@ -76,9 +76,11 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   const hasAlerts=!blocked&&(reviewDays>0||warnings.length>0||adjusted>0);
   const status=blocked?'BLOCKED':hasAlerts?'WARNING':'TRUSTED';
   const statusLabel=status==='TRUSTED'?'Leitura confiável':status==='WARNING'?'Leitura com alertas':'Importação bloqueada';
-  const structuralScore=Math.round(Math.min(1,structuralCoverage,interpretationCoverage)*40);
-  const reconciliationScore=Math.round((employees.length?validated/employees.length:0)*40);
-  const matchingScore=Math.round((matchedRows.length?(located-nameMismatch)/matchedRows.length:0)*20);
+  const structuralScore=Math.floor(Math.min(1,structuralCoverage,interpretationCoverage)*40);
+  const employeeBase=Math.max(cardPages,employees.length,1);
+  const reconciliationScore=Math.floor(Math.min(1,validated/employeeBase)*40);
+  const matchingBase=Math.max(cardPages,matchedRows.length,1);
+  const matchingScore=Math.floor(Math.min(1,Math.max(0,located-nameMismatch)/matchingBase)*20);
   const confidence=Math.max(0,Math.min(100,structuralScore+reconciliationScore+matchingScore));
   const reasons=[];
   if(structuralCoverage<1)reasons.push(`${structuredCount} de ${dateRows} linhas diárias foram reconstruídas pelas colunas da Senior. A confirmação exige 100%.`);
