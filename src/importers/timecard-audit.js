@@ -71,17 +71,31 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
 
   // Para confirmação, a estrutura diária precisa estar integralmente
   // reconstruída e todos os colaboradores precisam ter fechamento Senior
-  // conciliado e cadastro inequivocamente associado.
-  const blocked=structuralCoverage<1||interpretationCoverage<1||employees.length<cardPages||mismatched>0||unverified>0||notFound>0||nameMismatch>0;
+  // conciliado e cadastro inequivocamente associado. A partir da Beta.78,
+  // se a leitura e a conciliação estiverem corretas, mas houver matrículas
+  // sem cadastro, tratamos isso como uma pendência cadastral (e não como erro
+  // de leitura). A gravação continua bloqueada até o vínculo ser resolvido.
+  const readingBlocked=structuralCoverage<1||interpretationCoverage<1||employees.length<cardPages||mismatched>0||unverified>0;
+  const registryBlocked=notFound>0||nameMismatch>0;
+  const blocked=readingBlocked||registryBlocked;
   const hasAlerts=!blocked&&(reviewDays>0||warnings.length>0||adjusted>0);
   const status=blocked?'BLOCKED':hasAlerts?'WARNING':'TRUSTED';
-  const statusLabel=status==='TRUSTED'?'Leitura confiável':status==='WARNING'?'Leitura com alertas':'Importação bloqueada';
-  const structuralScore=Math.floor(Math.min(1,structuralCoverage,interpretationCoverage)*40);
+  const blockingCategory=readingBlocked?'READING_DIVERGENCE':registryBlocked?'REGISTRY_PENDING':null;
+  const statusLabel=blockingCategory==='REGISTRY_PENDING'
+    ?'Aguardando vínculo cadastral'
+    :status==='TRUSTED'?'Leitura confiável':status==='WARNING'?'Leitura com alertas':'Importação bloqueada';
+
+  // "confidence" mede agora somente a confiança da leitura/conciliação do
+  // Cartão Senior. A cobertura cadastral fica separada, para não sugerir que
+  // uma matrícula nova significa falha do leitor.
+  const structuralScore=Math.floor(Math.min(1,structuralCoverage,interpretationCoverage)*50);
   const employeeBase=Math.max(cardPages,employees.length,1);
-  const reconciliationScore=Math.floor(Math.min(1,validated/employeeBase)*40);
-  const matchingBase=Math.max(cardPages,matchedRows.length,1);
-  const matchingScore=Math.floor(Math.min(1,Math.max(0,located-nameMismatch)/matchingBase)*20);
-  const confidence=Math.max(0,Math.min(100,structuralScore+reconciliationScore+matchingScore));
+  const reconciliationScore=Math.floor(Math.min(1,validated/employeeBase)*50);
+  const confidence=Math.max(0,Math.min(100,structuralScore+reconciliationScore));
+  const registryBase=Math.max(matchedRows.length,1);
+  const registryCoverage=matchedRows.length
+    ?Number((Math.max(0,located-nameMismatch)/registryBase*100).toFixed(1))
+    :0;
   const reasons=[];
   if(structuralCoverage<1)reasons.push(`${structuredCount} de ${dateRows} linhas diárias foram reconstruídas pelas colunas da Senior. A confirmação exige 100%.`);
   if(interpretationCoverage<1)reasons.push(`${interpretedDays} de ${structuredCount} linhas estruturadas foram interpretadas como dias do cartão. A confirmação exige 100%.`);
@@ -109,8 +123,10 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   return {
     status,
     statusLabel,
+    blockingCategory,
     canConfirm:!blocked&&located>0,
     confidence,
+    registryCoverage,
     reasons,
     elapsedMs:number(elapsedMs),
     extraction:{

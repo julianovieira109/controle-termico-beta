@@ -4175,11 +4175,192 @@ router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
       bhValidation:{status:result.diagnostic.status,method:"SENIOR_COLUMN_RECONCILIATION",employees:result.parsed.employees.length,canConfirm:result.diagnostic.canConfirm},
       warnings:result.parsed.warnings,
       diagnostic:result.diagnostic,
+      missingEmployees:result.rows
+        .filter(row=>!row.employeeId)
+        .map(row=>({
+          registration:row.registration,
+          name:row.name,
+          page:row.page||null,
+          period:row.period||null,
+          result:row.result
+        })),
       rows:result.rows.map(({days,...row})=>row)
     });
   }catch(error){
     if(error.status)return res.status(error.status).json({error:error.message});
     next(error);
+  }
+});
+
+
+router.post("/timecard-resolve-new-hires",upload.single("file"),async(req,res,next)=>{
+  const client=await pool.connect();
+  try{
+    if(!req.file)return res.status(400).json({error:"Selecione o PDF da Relação de Admitidos da Senior."});
+    const companyId=String(req.body.companyId||"").trim();
+    const branchId=String(req.body.branchId||"").trim();
+    if(!companyId||!branchId)return res.status(400).json({error:"Selecione a empresa e a filial."});
+    assertScope(req,companyId,branchId);
+
+    let requested=[];
+    try{
+      const raw=req.body.registrations;
+      requested=Array.isArray(raw)?raw:JSON.parse(String(raw||"[]"));
+    }catch{
+      requested=String(req.body.registrations||"").split(/[;,\s]+/).filter(Boolean);
+    }
+    const requestedMap=new Map();
+    for(const value of requested){
+      const key=normalizePointRegistration(value);
+      if(key)requestedMap.set(key,String(value));
+    }
+    if(!requestedMap.size){
+      return res.status(400).json({error:"Nenhuma matrícula pendente foi informada para regularização."});
+    }
+
+    const extraction=await extractPdfText(req.file.buffer);
+    const type=detectImportType(extraction.text);
+    if(type!=="ADMITIDOS"){
+      return res.status(400).json({
+        error:"O arquivo não foi reconhecido como Relação de Admitidos da Senior.",
+        detail:"Envie o relatório de Admitidos para cadastrar somente os novatos pendentes do Cartão de Ponto."
+      });
+    }
+
+    const branchValidation=await validatePdfOperationalBranch({
+      text:extraction.text,
+      fileName:req.file.originalname,
+      companyId,
+      branchId
+    });
+    if(!branchValidation.ok){
+      return res.status(branchValidation.status||409).json(branchValidation);
+    }
+
+    const admittedRows=parseAdmitted(extraction.text)
+      .map(normalizeImportItem)
+      .filter(isValidAdmittedRow);
+    const matched=admittedRows.filter(row=>requestedMap.has(normalizePointRegistration(row.registration)));
+    if(!matched.length){
+      return res.status(422).json({
+        error:"Nenhum dos colaboradores pendentes foi encontrado na Relação de Admitidos.",
+        detail:"Confira se o relatório de Admitidos contempla os novatos do Cartão de Ponto.",
+        requested:[...requestedMap.values()]
+      });
+    }
+
+    await client.query("BEGIN");
+    let created=0,updated=0,alreadyLinked=0;
+    const results=[];
+    const resolvedKeys=new Set();
+
+    for(const item of matched){
+      const key=normalizePointRegistration(item.registration);
+      const current=await client.query(`
+        SELECT e.*,c.trade_name company_name,b.name branch_name
+        FROM employees e
+        LEFT JOIN companies c ON c.id=e.company_id
+        LEFT JOIN branches b ON b.id=e.branch_id
+        WHERE COALESCE(NULLIF(LTRIM(REGEXP_REPLACE(COALESCE(e.registration,''),'[^0-9]','','g'),'0'),''),'0')=$1
+        ORDER BY e.created_at
+        LIMIT 1
+      `,[key]);
+      const existing=current.rows[0]||null;
+      const sameUnit=Boolean(existing)&&String(existing.company_id)===String(companyId)&&String(existing.branch_id)===String(branchId);
+
+      if(existing&&!sameUnit){
+        results.push({
+          registration:item.registration,
+          fullName:item.fullName,
+          result:"OUTRA_UNIDADE",
+          companyName:existing.company_name||null,
+          branchName:existing.branch_name||null
+        });
+        continue;
+      }
+
+      let roleId=null;
+      const roleName=String(item.jobTitle||"").trim();
+      if(roleName){
+        const existingRole=await client.query(`
+          SELECT id FROM job_roles
+          WHERE company_id=$1 AND LOWER(TRIM(name))=LOWER(TRIM($2))
+          LIMIT 1
+        `,[companyId,roleName]);
+        if(existingRole.rows[0]){
+          roleId=existingRole.rows[0].id;
+          await client.query(`UPDATE job_roles SET active=TRUE WHERE id=$1`,[roleId]);
+        }else{
+          const role=await client.query(`
+            INSERT INTO job_roles(company_id,name,active)
+            VALUES($1,$2,TRUE)
+            RETURNING id
+          `,[companyId,roleName]);
+          roleId=role.rows[0].id;
+        }
+      }
+
+      if(existing){
+        const corrections=detectEmployeeCorrections(existing,item);
+        if(corrections.length){
+          await client.query(`
+            UPDATE employees
+            SET company_id=$1,branch_id=$2,full_name=$3,admission_date=$4,
+                job_role_id=$5,job_title=$6,point_card=COALESCE($7,point_card),
+                status='ATIVO',termination_date=NULL,source='SENIOR_TIMECARD_ADMITIDOS',
+                last_imported_at=NOW(),updated_at=NOW()
+            WHERE id=$8
+          `,[companyId,branchId,item.fullName,item.admissionDate,roleId,roleName,item.pointCard||null,existing.id]);
+          updated++;
+          results.push({registration:item.registration,fullName:item.fullName,result:"ATUALIZADO",corrections});
+        }else{
+          alreadyLinked++;
+          results.push({registration:item.registration,fullName:item.fullName,result:"JA_VINCULADO"});
+        }
+      }else{
+        const inserted=await client.query(`
+          INSERT INTO employees(
+            company_id,branch_id,full_name,registration,admission_date,
+            job_role_id,job_title,point_card,status,weekly_days_off,
+            source,last_imported_at
+          ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'ATIVO',ARRAY[0]::SMALLINT[],'SENIOR_TIMECARD_ADMITIDOS',NOW())
+          RETURNING id
+        `,[companyId,branchId,item.fullName,item.registration,item.admissionDate,roleId,roleName,item.pointCard||null]);
+        created++;
+        results.push({registration:item.registration,fullName:item.fullName,result:"CADASTRADO",id:inserted.rows[0].id});
+      }
+      resolvedKeys.add(key);
+    }
+
+    await client.query("COMMIT");
+
+    const unresolved=[...requestedMap.entries()]
+      .filter(([key])=>!resolvedKeys.has(key))
+      .map(([,original])=>original);
+
+    await audit(req,"RESOLVE_TIMECARD_NEW_HIRES","employees",null,{
+      companyId,branchId,fileName:req.file.originalname,
+      requested:requestedMap.size,matched:matched.length,created,updated,alreadyLinked,unresolved,results
+    });
+
+    res.json({
+      success:true,
+      readerUsed:extraction.readerUsed,
+      requested:requestedMap.size,
+      matched:matched.length,
+      created,updated,alreadyLinked,
+      unresolved,
+      results,
+      message:unresolved.length
+        ?`${created+updated+alreadyLinked} colaborador(es) regularizado(s). ${unresolved.length} ainda pendente(s).`
+        :`${created+updated+alreadyLinked} colaborador(es) regularizado(s). O Cartão de Ponto pode ser revalidado.`
+    });
+  }catch(error){
+    try{await client.query("ROLLBACK");}catch{}
+    if(error.status)return res.status(error.status).json({error:error.message});
+    next(error);
+  }finally{
+    client.release();
   }
 });
 

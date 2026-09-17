@@ -43,3 +43,19 @@ test('confiança não pode aparecer como 100% quando falta cartão ou interpreta
   assert.equal(audit.status,'BLOCKED');
   assert.ok(audit.confidence<100);
 });
+
+
+test('matrícula nova vira pendência cadastral sem reduzir a confiança da leitura',()=>{
+  const employees=[validatedEmployee('1',480,480),validatedEmployee('2',420,420)];
+  const audit=buildTimecardAudit({
+    extraction:{dateRows:2,structuredRows:2,cardPages:2,footerRows:2,text:''},
+    parsed:{employees,totals:{days:2}},
+    rows:[{employeeId:'a',result:'APTO'},{employeeId:null,result:'NAO_LOCALIZADO'}]
+  });
+  assert.equal(audit.status,'BLOCKED');
+  assert.equal(audit.blockingCategory,'REGISTRY_PENDING');
+  assert.equal(audit.statusLabel,'Aguardando vínculo cadastral');
+  assert.equal(audit.canConfirm,false);
+  assert.equal(audit.confidence,100);
+  assert.equal(audit.registryCoverage,50);
+});

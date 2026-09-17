@@ -650,8 +650,79 @@ function renderPointImportPreview(data){
   const closingReference=cycles.length===1?`${formatApiDate(cycles[0].start)} a ${formatApiDate(cycles[0].end)}`:cycles.length>1?`${formatApiDate(cycles[0].start)} a ${formatApiDate(cycles[cycles.length-1].end)}`:"—";
   $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias aptos</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Período identificado no arquivo:</strong> ${period}<br><strong>Classificação:</strong> ${escapeHtml(periodTypeLabel)} · <strong>Fechamento de referência:</strong> ${escapeHtml(closingReference)}<br><strong>Meses alcançados:</strong> ${escapeHtml(coveredMonths)}</p>`;
   $("point-import-body").innerHTML=data.rows.map(row=>`<tr><td>${escapeHtml(row.registration)}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.systemName||"-")}</td><td>${row.eligibleDays}</td><td>${row.reviewDays}</td><td>${row.nonWorkDays}</td><td><span class="import-result ${row.result}">${escapeHtml(row.result.replaceAll("_"," "))}</span></td></tr>`).join("");
+  renderPointMissingEmployees(data);
   renderPointAudit(data.diagnostic||{});
 }
+
+function renderPointMissingEmployees(data){
+  const panel=$("point-missing-employees-panel");
+  if(!panel)return;
+  const missing=Array.isArray(data?.missingEmployees)?data.missingEmployees:[];
+  panel.hidden=!missing.length;
+  if(!missing.length){
+    if($("point-missing-employees-list"))$("point-missing-employees-list").innerHTML="";
+    if($("point-missing-employees-feedback"))$("point-missing-employees-feedback").textContent="";
+    return;
+  }
+  if($("point-missing-employees-count"))$("point-missing-employees-count").textContent=missing.length;
+  if($("point-missing-employees-title"))$("point-missing-employees-title").textContent=`${missing.length} colaborador(es) aguardando vínculo cadastral`;
+  if($("point-missing-employees-list"))$("point-missing-employees-list").innerHTML=missing.map(item=>`
+    <article>
+      <div><span>Matrícula</span><strong>${escapeHtml(item.registration||"-")}</strong></div>
+      <div><span>Colaborador no Cartão</span><strong>${escapeHtml(item.name||"-")}</strong></div>
+      <div><span>Origem</span><strong>${item.page?`Pág. ${escapeHtml(item.page)}`:"Cartão Senior"}</strong></div>
+      <div><span>Situação</span><strong>Cadastro pendente</strong></div>
+    </article>`).join("");
+}
+
+async function resolvePointNewHires(){
+  const missing=Array.isArray(pointImportPreview?.missingEmployees)?pointImportPreview.missingEmployees:[];
+  if(!missing.length)return toast("Não há colaboradores pendentes neste Cartão de Ponto.","success");
+  const admittedFile=$("point-admitted-file")?.files?.[0];
+  if(!admittedFile)return toast("Selecione a Relação de Admitidos da Senior.","warning");
+  const pointFile=$("point-import-file")?.files?.[0];
+  if(!pointFile)return toast("O Cartão de Ponto original não está mais selecionado. Leia o ponto novamente.","warning");
+
+  const button=$("point-resolve-new-hires");
+  const feedback=$("point-missing-employees-feedback");
+  try{
+    setButtonLoading(button,true,"Cadastrando novatos");
+    if(feedback){feedback.className="feedback";feedback.textContent="Conferindo a Relação de Admitidos e vinculando somente as matrículas pendentes...";}
+    const form=new FormData();
+    form.append("file",admittedFile);
+    form.append("companyId",$("point-import-company").value);
+    form.append("branchId",$("point-import-branch").value);
+    form.append("registrations",JSON.stringify(missing.map(item=>item.registration)));
+    const response=await fetch("/api/imports/timecard-resolve-new-hires",{
+      method:"POST",
+      headers:{Authorization:`Bearer ${token}`},
+      body:form
+    });
+    const result=await response.json().catch(()=>({error:"Resposta inválida do servidor."}));
+    if(!response.ok)throw new Error([result.error,result.detail].filter(Boolean).join(" — ")||"Não foi possível regularizar os novatos.");
+
+    if(feedback){feedback.className=`feedback ${result.unresolved?.length?"warning":"success"}`;feedback.textContent=result.message||"Cadastro atualizado. Revalidando o Cartão de Ponto...";}
+    toast(result.message||"Cadastro dos novatos atualizado.",result.unresolved?.length?"warning":"success");
+
+    // O arquivo do ponto permanece no input do navegador. Após o cadastro,
+    // refazemos a leitura automaticamente para liberar a confirmação sem o
+    // usuário precisar selecionar ou enviar o cartão novamente.
+    const refreshed=await sendPointImport("/api/imports/timecard-preview");
+    renderPointImportPreview(refreshed);
+    if($("point-import-feedback")){
+      $("point-import-feedback").className="feedback full success";
+      $("point-import-feedback").textContent="Cadastro atualizado e Cartão de Ponto revalidado automaticamente.";
+    }
+    if(!refreshed.totals?.notFound)toast("Todos os colaboradores do Cartão de Ponto estão vinculados. A confirmação foi reavaliada.","success");
+  }catch(error){
+    if(feedback){feedback.className="feedback error";feedback.textContent=error.message;}
+    toast(error.message,"error");
+  }finally{
+    setButtonLoading(button,false);
+  }
+}
+
+if($("point-resolve-new-hires"))$("point-resolve-new-hires").onclick=resolvePointNewHires;
 
 function pointAuditMinutes(value,{signed=false}={}){
   const minutes=Number(value||0);
@@ -684,14 +755,19 @@ function renderPointAuditOriginal(search=""){
 
 function renderPointAudit(diagnostic){
   const status=diagnostic.status||"BLOCKED";
+  const registryPending=diagnostic.blockingCategory==="REGISTRY_PENDING";
   const statusBox=$("point-audit-status");
   if(statusBox){
-    statusBox.className=`point-audit-status is-${status.toLowerCase()}`;
-    statusBox.querySelector(".point-audit-status-icon").textContent=status==="TRUSTED"?"✓":status==="WARNING"?"!":"×";
+    statusBox.className=`point-audit-status is-${registryPending?"warning":status.toLowerCase()}`;
+    statusBox.querySelector(".point-audit-status-icon").textContent=status==="TRUSTED"?"✓":status==="WARNING"||registryPending?"!":"×";
   }
   if($("point-audit-status-title"))$("point-audit-status-title").textContent=diagnostic.statusLabel||"Leitura não validada";
-  if($("point-audit-status-text"))$("point-audit-status-text").textContent=status==="TRUSTED"?"As colunas e os totais fecharam com o Cartão Senior.":status==="WARNING"?"A leitura fechou, mas existem itens que precisam de conferência.":"Os dados não podem ser gravados enquanto houver divergências.";
+  if($("point-audit-status-text"))$("point-audit-status-text").textContent=registryPending
+    ?"A leitura e a conciliação do Cartão Senior estão corretas. Regularize os colaboradores sem cadastro para liberar a gravação."
+    :status==="TRUSTED"?"As colunas e os totais fecharam com o Cartão Senior.":status==="WARNING"?"A leitura fechou, mas existem itens que precisam de conferência.":"Os dados não podem ser gravados enquanto houver divergências.";
   if($("point-audit-confidence"))$("point-audit-confidence").textContent=`${Number(diagnostic.confidence||0)}%`;
+  const confidenceLabel=$("point-audit-confidence")?.previousElementSibling;
+  if(confidenceLabel)confidenceLabel.textContent="Leitura";
   const extraction=diagnostic.extraction||{};
   const activity=diagnostic.activity||{};
   if($("point-audit-metrics"))$("point-audit-metrics").innerHTML=`
@@ -707,8 +783,13 @@ function renderPointAudit(diagnostic){
   if($("point-audit-reasons"))$("point-audit-reasons").innerHTML=(diagnostic.reasons||[]).map(reason=>`<li>${escapeHtml(reason)}</li>`).join("");
   const confirmButton=$("point-import-confirm");
   if(confirmButton)confirmButton.disabled=!diagnostic.canConfirm;
-  if($("point-audit-confirm-title"))$("point-audit-confirm-title").textContent=diagnostic.canConfirm?"Leitura liberada para confirmação":"Confirmação bloqueada pela conferência";
-  if($("point-audit-confirm-help"))$("point-audit-confirm-help").textContent=diagnostic.canConfirm?"O arquivo será relido e validado novamente antes da gravação.":"Abra o diagnóstico e corrija as divergências antes de importar.";
+  if($("point-audit-confirm-title"))$("point-audit-confirm-title").textContent=diagnostic.canConfirm
+    ?"Leitura liberada para confirmação"
+    :registryPending?"Aguardando vínculo cadastral":"Confirmação bloqueada pela conferência";
+  if($("point-audit-confirm-help"))$("point-audit-confirm-help").textContent=diagnostic.canConfirm
+    ?"O arquivo será relido e validado novamente antes da gravação."
+    :registryPending?"Use a Relação de Admitidos acima para cadastrar os novatos. O mesmo Cartão de Ponto será revalidado automaticamente."
+    :"Abra o diagnóstico e corrija as divergências antes de importar.";
   renderPointAuditStructured();
   renderPointAuditOriginal();
 }

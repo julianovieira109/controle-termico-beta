@@ -1379,3 +1379,13 @@
   .meal-report-table .meal-col-day{width:9%!important}
   .meal-report-table .meal-col-signature{width:77%!important}
 }
+
+/* Beta.78 — regularização de novatos diretamente na Central de Conferência */
+.point-missing-employees{display:grid;gap:12px;padding:15px;border:1px solid #e7d29a;border-radius:14px;background:linear-gradient(135deg,#fff9ea,#fffdf8)}
+.point-missing-employees[hidden]{display:none}
+.point-missing-employees-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.point-missing-employees-head>div{display:grid;gap:4px}.point-missing-employees-head span{color:#9a6500;font-size:9px;font-weight:900;letter-spacing:.08em}.point-missing-employees-head strong{color:var(--ink);font-size:14px}.point-missing-employees-head p{margin:0;color:var(--muted);font-size:11px;line-height:1.45}
+.point-missing-employees-count{display:grid!important;place-items:center;min-width:38px;height:38px;padding:0 10px;border-radius:12px;background:#d88a06;color:#fff!important;font-size:16px!important;letter-spacing:0!important;box-shadow:0 7px 16px rgba(216,138,6,.18)}
+.point-missing-employees-list{display:grid;gap:8px}.point-missing-employees-list article{display:grid;grid-template-columns:.7fr 1.7fr .6fr .8fr;gap:10px;padding:10px 12px;border:1px solid color-mix(in srgb,#e7d29a 75%,var(--line));border-radius:11px;background:var(--card)}.point-missing-employees-list article>div{display:grid;gap:2px}.point-missing-employees-list article span{color:var(--muted);font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.04em}.point-missing-employees-list article strong{font-size:11px;color:var(--ink)}
+.point-missing-employees-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}.point-missing-employees-actions label{display:grid;gap:6px;font-size:11px;font-weight:800}.point-missing-employees-actions small{color:var(--muted);font-size:10px;font-weight:500}.point-missing-employees-actions button{min-height:42px}
+@media(max-width:760px){.point-missing-employees-head{align-items:stretch}.point-missing-employees-list article{grid-template-columns:1fr 1fr}.point-missing-employees-actions{grid-template-columns:1fr}.point-missing-employees-actions button{width:100%}}
