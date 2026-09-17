@@ -644,14 +644,89 @@ function renderPointImportPreview(data){
   $("point-import-preview").hidden=false;
   const period=data.period?`${formatApiDate(data.period.start)} a ${formatApiDate(data.period.end)}`:"não identificado";
   const coveredMonths=monthsCoveredByPeriod(data.period).map(reportMonthLabel).join(" e ")||"não identificadas";
-  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias com 4 marcações</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Período do Cartão de Ponto Senior:</strong> ${period} · <strong>Competências alcançadas:</strong> ${escapeHtml(coveredMonths)}</p>`;
+  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias aptos</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Período do Cartão de Ponto Senior:</strong> ${period} · <strong>Meses alcançados:</strong> ${escapeHtml(coveredMonths)}</p>`;
   $("point-import-body").innerHTML=data.rows.map(row=>`<tr><td>${escapeHtml(row.registration)}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.systemName||"-")}</td><td>${row.eligibleDays}</td><td>${row.reviewDays}</td><td>${row.nonWorkDays}</td><td><span class="import-result ${row.result}">${escapeHtml(row.result.replaceAll("_"," "))}</span></td></tr>`).join("");
+  renderPointAudit(data.diagnostic||{});
 }
+
+function pointAuditMinutes(value,{signed=false}={}){
+  const minutes=Number(value||0);
+  const sign=signed&&minutes?minutes>0?"+":"-":"";
+  const absolute=Math.abs(minutes);
+  return `${sign}${String(Math.floor(absolute/60)).padStart(2,"0")}:${String(absolute%60).padStart(2,"0")}`;
+}
+
+function renderPointAuditStructured(search=""){
+  const body=$("point-audit-structured-body");
+  if(!body)return;
+  const rows=pointImportPreview?.diagnostic?.structuredRows||[];
+  const term=String(search||"").trim().toLocaleLowerCase("pt-BR");
+  const filtered=term?rows.filter(row=>[row.registration,row.employeeName,row.date,row.occurrence,row.state,row.scheduleCode].some(value=>String(value||"").toLocaleLowerCase("pt-BR").includes(term))):rows;
+  const visible=filtered.slice(0,500);
+  body.innerHTML=visible.length?visible.map(row=>`<tr><td><small>Pág. ${row.page||"-"} · linha ${row.line||"-"}</small></td><td><strong>${escapeHtml(row.registration||"-")}</strong><small class="occurrence-subline">${escapeHtml(row.employeeName||"-")}</small></td><td>${row.date?formatApiDate(row.date):"-"}</td><td>${escapeHtml((row.markings||[]).join(" · ")||"-")}</td><td>${escapeHtml(row.occurrence||row.state||"-")}</td><td>${pointAuditMinutes(row.workMinutes)}</td><td>${pointAuditMinutes(row.bhNegativeMinutes)}</td><td>${pointAuditMinutes(row.bhPositiveMinutes)}</td><td>${pointAuditMinutes(row.absenceMinutes)}</td><td><span class="point-audit-row-status ${row.bhValidated?'validated':'review'}">${row.bhValidated?'Conciliado':'Revisar'}</span></td></tr>`).join(""):'<tr><td colspan="10" class="muted">Nenhuma linha corresponde à busca.</td></tr>';
+  if($("point-audit-structured-count"))$("point-audit-structured-count").textContent=`${filtered.length} registro(s) encontrado(s)${filtered.length>visible.length?` · exibindo os primeiros ${visible.length}`:""}.`;
+}
+
+function renderPointAuditOriginal(search=""){
+  const body=$("point-audit-original-body");
+  if(!body)return;
+  const rows=pointImportPreview?.diagnostic?.rawLines||[];
+  const term=String(search||"").trim().toLocaleLowerCase("pt-BR");
+  const filtered=term?rows.filter(row=>String(row.text||"").toLocaleLowerCase("pt-BR").includes(term)):rows;
+  const visible=filtered.slice(0,500);
+  body.innerHTML=visible.length?visible.map(row=>`<tr><td>${row.page}</td><td>${row.line}</td><td class="point-audit-raw-text">${escapeHtml(row.text)}</td></tr>`).join(""):'<tr><td colspan="3" class="muted">Nenhuma linha corresponde à busca.</td></tr>';
+  if($("point-audit-original-count"))$("point-audit-original-count").textContent=`${filtered.length} linha(s) encontrada(s)${filtered.length>visible.length?` · exibindo as primeiras ${visible.length}`:""}${pointImportPreview?.diagnostic?.extraction?.rawLinesTruncated?' · a prévia foi limitada para manter o desempenho':''}.`;
+}
+
+function renderPointAudit(diagnostic){
+  const status=diagnostic.status||"BLOCKED";
+  const statusBox=$("point-audit-status");
+  if(statusBox){
+    statusBox.className=`point-audit-status is-${status.toLowerCase()}`;
+    statusBox.querySelector(".point-audit-status-icon").textContent=status==="TRUSTED"?"✓":status==="WARNING"?"!":"×";
+  }
+  if($("point-audit-status-title"))$("point-audit-status-title").textContent=diagnostic.statusLabel||"Leitura não validada";
+  if($("point-audit-status-text"))$("point-audit-status-text").textContent=status==="TRUSTED"?"As colunas e os totais fecharam com o Cartão Senior.":status==="WARNING"?"A leitura fechou, mas existem itens que precisam de conferência.":"Os dados não podem ser gravados enquanto houver divergências.";
+  if($("point-audit-confidence"))$("point-audit-confidence").textContent=`${Number(diagnostic.confidence||0)}%`;
+  const extraction=diagnostic.extraction||{};
+  const activity=diagnostic.activity||{};
+  if($("point-audit-metrics"))$("point-audit-metrics").innerHTML=`
+    <div><span>Páginas analisadas</span><strong>${extraction.totalPages||0}</strong><small>${extraction.safePages||0} com colunas identificadas</small></div>
+    <div><span>Linhas diárias</span><strong>${extraction.structuredRows||0}/${extraction.dateRows||0}</strong><small>${extraction.structuralCoverage||0}% reconstruídas</small></div>
+    <div><span>Dias interpretados</span><strong>${activity.days||0}</strong><small>${activity.eligibleDays||0} aptos para relatório</small></div>
+    <div><span>Tempo de leitura</span><strong>${((diagnostic.elapsedMs||0)/1000).toFixed(1)}s</strong><small>${escapeHtml(extraction.readerUsed||"leitor estrutural")}</small></div>`;
+  const totals=diagnostic.totals||{};
+  const totalLabels={workMinutes:"Trabalho",bhNegativeMinutes:"BH negativo",bhPositiveMinutes:"BH positivo",he100Minutes:"HE 100%",absenceMinutes:"Faltas"};
+  if($("point-audit-reconciliation"))$("point-audit-reconciliation").innerHTML=`<div class="point-audit-total-head"><span>Indicador</span><span>Dias</span><span>Senior</span><span>Diferença</span></div>${Object.entries(totalLabels).map(([key,label])=>{const item=totals[key]||{};const ok=Number(item.difference||0)===0;return `<div class="point-audit-total-row"><span>${label}</span><strong>${pointAuditMinutes(item.daily)}</strong><strong>${pointAuditMinutes(item.official)}</strong><strong class="${ok?'is-ok':'is-different'}">${pointAuditMinutes(item.difference,{signed:true})}</strong></div>`;}).join("")}`;
+  const reconciliation=diagnostic.reconciliation||{};
+  if($("point-audit-reconciliation-badge"))$("point-audit-reconciliation-badge").textContent=`${reconciliation.validated||0} conciliados`;
+  if($("point-audit-reasons"))$("point-audit-reasons").innerHTML=(diagnostic.reasons||[]).map(reason=>`<li>${escapeHtml(reason)}</li>`).join("");
+  const confirmButton=$("point-import-confirm");
+  if(confirmButton)confirmButton.disabled=!diagnostic.canConfirm;
+  if($("point-audit-confirm-title"))$("point-audit-confirm-title").textContent=diagnostic.canConfirm?"Leitura liberada para confirmação":"Confirmação bloqueada pela conferência";
+  if($("point-audit-confirm-help"))$("point-audit-confirm-help").textContent=diagnostic.canConfirm?"O arquivo será relido e validado novamente antes da gravação.":"Abra o diagnóstico e corrija as divergências antes de importar.";
+  renderPointAuditStructured();
+  renderPointAuditOriginal();
+}
+
+document.querySelectorAll("[data-point-audit-tab]").forEach(button=>button.addEventListener("click",()=>{
+  document.querySelectorAll("[data-point-audit-tab]").forEach(item=>item.classList.toggle("active",item===button));
+  document.querySelectorAll("[data-point-audit-view]").forEach(view=>{
+    const active=view.dataset.pointAuditView===button.dataset.pointAuditTab;
+    view.hidden=!active;
+    view.classList.toggle("active",active);
+  });
+}));
+if($("point-audit-structured-search"))$("point-audit-structured-search").oninput=event=>renderPointAuditStructured(event.target.value);
+if($("point-audit-original-search"))$("point-audit-original-search").oninput=event=>renderPointAuditOriginal(event.target.value);
 
 if($("point-import-form"))$("point-import-form").onsubmit=async event=>{
   event.preventDefault();
   const button=event.submitter||event.currentTarget.querySelector('button[type="submit"]');
   try{
+    pointImportPreview=null;
+    if($("point-import-preview"))$("point-import-preview").hidden=true;
+    if($("point-import-confirm"))$("point-import-confirm").disabled=true;
     setButtonLoading(button,true,"Lendo ponto");
     const data=await sendPointImport("/api/imports/timecard-preview");
     renderPointImportPreview(data);

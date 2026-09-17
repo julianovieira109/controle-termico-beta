@@ -34,7 +34,7 @@
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
   <link rel="stylesheet" href="/css/base.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.17">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.75">
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
@@ -2115,9 +2115,39 @@
             <p id="point-import-feedback" class="feedback full" aria-live="polite"></p>
           </form>
           <div id="point-import-preview" class="point-import-preview" hidden>
+            <section id="point-audit-status" class="point-audit-status" aria-live="polite">
+              <div class="point-audit-status-icon" aria-hidden="true">✓</div>
+              <div><span>Resultado da conferência</span><strong id="point-audit-status-title">Aguardando leitura</strong><p id="point-audit-status-text">O diagnóstico aparecerá depois da extração do PDF.</p></div>
+              <div class="point-audit-confidence"><span>Confiança</span><strong id="point-audit-confidence">—</strong></div>
+            </section>
             <div id="point-import-summary" class="checklist-summary"></div>
-            <div class="table-wrap"><table><thead><tr><th>Matrícula</th><th>Colaborador no PDF</th><th>Cadastro localizado</th><th>4 marcações</th><th>Revisar</th><th>Sem jornada</th><th>Situação</th></tr></thead><tbody id="point-import-body"></tbody></table></div>
-            <div class="actions"><button type="button" id="point-import-confirm" class="primary">Confirmar importação do ponto</button></div>
+            <nav class="point-audit-tabs" aria-label="Conferência do Cartão Senior">
+              <button type="button" class="active" data-point-audit-tab="summary">Resumo da extração</button>
+              <button type="button" data-point-audit-tab="structured">Dados estruturados</button>
+              <button type="button" data-point-audit-tab="original">Linhas originais</button>
+              <button type="button" data-point-audit-tab="matching">Colaboradores</button>
+            </nav>
+            <section class="point-audit-view active" data-point-audit-view="summary">
+              <div id="point-audit-metrics" class="point-audit-metrics"></div>
+              <div class="point-audit-grid">
+                <article><header><span>Conciliação com a Senior</span><strong id="point-audit-reconciliation-badge">—</strong></header><div id="point-audit-reconciliation"></div></article>
+                <article><header><span>Pontos de conferência</span><strong>Diagnóstico</strong></header><ul id="point-audit-reasons"></ul></article>
+              </div>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="structured" hidden>
+              <div class="point-audit-toolbar"><p>Dados identificados antes de alimentar os relatórios.</p><input id="point-audit-structured-search" type="search" placeholder="Buscar matrícula, nome, data ou ocorrência"></div>
+              <div class="table-wrap point-audit-table-wrap"><table><thead><tr><th>Origem</th><th>Matrícula / colaborador</th><th>Data</th><th>Marcações</th><th>Ocorrência</th><th>Trabalho</th><th>BH−</th><th>BH+</th><th>Faltas</th><th>Validação</th></tr></thead><tbody id="point-audit-structured-body"></tbody></table></div>
+              <p class="hint" id="point-audit-structured-count"></p>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="original" hidden>
+              <div class="point-audit-toolbar"><p>Texto preservado para localizar a origem de cada informação.</p><input id="point-audit-original-search" type="search" placeholder="Buscar no texto extraído"></div>
+              <div class="table-wrap point-audit-table-wrap"><table><thead><tr><th>Página</th><th>Linha</th><th>Texto original extraído</th></tr></thead><tbody id="point-audit-original-body"></tbody></table></div>
+              <p class="hint" id="point-audit-original-count"></p>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="matching" hidden>
+              <div class="table-wrap"><table><thead><tr><th>Matrícula</th><th>Colaborador no PDF</th><th>Cadastro localizado</th><th>Dias aptos</th><th>Revisar</th><th>Sem jornada</th><th>Situação</th></tr></thead><tbody id="point-import-body"></tbody></table></div>
+            </section>
+            <div class="point-audit-confirm-bar"><div><strong id="point-audit-confirm-title">Confira os dados antes de confirmar</strong><span id="point-audit-confirm-help">A confirmação grava somente os dados validados.</span></div><button type="button" id="point-import-confirm" class="primary">Confirmar importação do ponto</button></div>
           </div>
           <details class="import-history-details"><summary>Histórico de cartões de ponto importados</summary><div class="table-wrap"><table><thead><tr><th>Data</th><th>Arquivo</th><th>Período</th><th>Filial</th><th>Localizados</th><th>Usuário</th></tr></thead><tbody id="point-import-history"></tbody></table></div></details>
           <details class="import-history-details master-only" id="point-cleanup-details">
@@ -2687,7 +2717,7 @@
   <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
   <script src="/js/rest-audit.js?v=1.0.31-beta.17"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.18"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.75"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>

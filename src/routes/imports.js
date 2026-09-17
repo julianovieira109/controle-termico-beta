@@ -8,6 +8,7 @@ const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
 const {parseSeniorTimecard}=require("../importers/timecard-reader");
+const {buildTimecardAudit}=require("../importers/timecard-audit");
 const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors,reconstructSeniorDailyRows}=require("../importers/senior-column-layout");
 
 const router=express.Router();
@@ -150,7 +151,7 @@ function pdf2JsonDataToSeniorText(data){
   return {text:pageTexts.join("\n\f\n"),safePages,totalPages:pages.length,dateRows,structuredRows};
 }
 
-function extractSeniorWithPdf2Json(buffer){
+function extractSeniorWithPdf2Json(buffer,{allowIncomplete=false}={}){
   return new Promise((resolve,reject)=>{
     const parser=new PDFParser(null,1);
     const cleanup=()=>{parser.removeAllListeners("pdfParser_dataError");parser.removeAllListeners("pdfParser_dataReady");};
@@ -161,7 +162,8 @@ function extractSeniorWithPdf2Json(buffer){
         const result=pdf2JsonDataToSeniorText(data);
         if(!result.text.trim()||!result.safePages)throw new Error("Não foi possível identificar com segurança as colunas Trabalho/BH-/BH+ do cartão Senior.");
         const coverage=result.dateRows?result.structuredRows/result.dateRows:0;
-        if(!result.dateRows||coverage<0.95)throw new Error(`Leitura estrutural incompleta das linhas do cartão Senior (${result.structuredRows}/${result.dateRows} linhas reconstruídas).`);
+        if(!result.dateRows)throw new Error("Nenhuma linha diária do Cartão Senior foi localizada.");
+        if(coverage<0.95&&!allowIncomplete)throw new Error(`Leitura estrutural incompleta das linhas do cartão Senior (${result.structuredRows}/${result.dateRows} linhas reconstruídas).`);
         resolve(result);
       }catch(error){reject(error);}
     });
@@ -3936,7 +3938,8 @@ function formatBhDifference(item){
   return parts.length?parts.join(", "):item?.bhReconciliation?.status||"UNVERIFIED";
 }
 
-async function readAndMatchTimecard(req){
+async function readAndMatchTimecard(req,{allowBlocked=false}={}){
+  const startedAt=Date.now();
   if(!req.file)throw Object.assign(new Error("Selecione o cartão de ponto em PDF."),{status:400});
   const companyId=String(req.body.companyId||"").trim();
   const branchId=String(req.body.branchId||"").trim();
@@ -3947,15 +3950,15 @@ async function readAndMatchTimecard(req){
 
   let extraction;
   try{
-    const structured=await extractSeniorWithPdf2Json(req.file.buffer);
-    extraction={text:structured.text,readerUsed:"pdf2json-senior-columns",attempts:[{reader:"pdf2json-senior-columns",success:true}],safePages:structured.safePages,totalPages:structured.totalPages};
+    const structured=await extractSeniorWithPdf2Json(req.file.buffer,{allowIncomplete:allowBlocked});
+    extraction={...structured,readerUsed:"pdf2json-senior-columns",attempts:[{reader:"pdf2json-senior-columns",success:true}]};
   }catch(error){
     throw Object.assign(new Error(`Leitura segura do BH bloqueada: ${error.message||error}. O cartão não será importado para evitar valores incorretos.`),{status:422});
   }
   const parsed=parseSeniorTimecard(extraction.text);
   if(!parsed.employees.length)throw Object.assign(new Error("O arquivo não foi reconhecido como Cartão Ponto da Senior."),{status:400});
   const invalidBh=parsed.employees.filter(item=>item.bhReconciliation?.status!=="VALIDATED");
-  if(invalidBh.length){
+  if(invalidBh.length&&!allowBlocked){
     const sample=invalidBh.slice(0,5).map(item=>`${item.registration}: ${formatBhDifference(item)}`).join(" | ");
     throw Object.assign(new Error(`Importação bloqueada: ${invalidBh.length} colaborador(es) não fecharam os totais de BH com a Senior (${sample}). Nenhum ponto foi gravado.`),{status:422});
   }
@@ -3979,7 +3982,8 @@ async function readAndMatchTimecard(req){
       nonWorkDays:item.days.filter(day=>!day.eligibleForAutomaticRest&&day.state!=="REVIEW"&&day.state!=="NO_MARKINGS").length
     };
   });
-  return {companyId,branchId,extraction,parsed,rows};
+  const diagnostic=buildTimecardAudit({extraction,parsed,rows,elapsedMs:Date.now()-startedAt});
+  return {companyId,branchId,extraction,parsed,rows,diagnostic};
 }
 
 function pointCleanupAllowed(){
@@ -4066,7 +4070,7 @@ router.post("/timecard-cleanup",requireMasterAdmin,async(req,res,next)=>{
 
 router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
   try{
-    const result=await readAndMatchTimecard(req);
+    const result=await readAndMatchTimecard(req,{allowBlocked:true});
     const located=result.rows.filter(row=>row.employeeId).length;
     res.json({
       reportType:"SENIOR_TIMECARD",
@@ -4075,9 +4079,10 @@ router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
       companyId:result.companyId,
       branchId:result.branchId,
       period:result.parsed.employees[0]?.period||null,
-      totals:{...result.parsed.totals,located,notFound:result.rows.length-located,bhValidation:"VALIDATED"},
-      bhValidation:{status:"VALIDATED",method:"SENIOR_COLUMN_RECONCILIATION",employees:result.parsed.employees.length},
+      totals:{...result.parsed.totals,located,notFound:result.rows.length-located,bhValidation:result.diagnostic.status},
+      bhValidation:{status:result.diagnostic.status,method:"SENIOR_COLUMN_RECONCILIATION",employees:result.parsed.employees.length,canConfirm:result.diagnostic.canConfirm},
       warnings:result.parsed.warnings,
+      diagnostic:result.diagnostic,
       rows:result.rows.map(({days,...row})=>row)
     });
   }catch(error){
@@ -4098,7 +4103,7 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
         user_id,company_id,branch_id,import_type,file_name,total_found,total_created,total_updated,total_not_found,details
       ) VALUES($1,$2,$3,'PONTO_SENIOR',$4,$5,0,$6,$7,$8::jsonb)
       RETURNING id,created_at
-    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays,bhValidation:"VALIDATED",bhValidationMethod:"SENIOR_COLUMN_RECONCILIATION"})]);
+    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays,bhValidation:"VALIDATED",bhValidationMethod:"SENIOR_COLUMN_RECONCILIATION",audit:{status:result.diagnostic.status,confidence:result.diagnostic.confidence,totalPages:result.diagnostic.extraction.totalPages,dateRows:result.diagnostic.extraction.dateRows,structuredRows:result.diagnostic.extraction.structuredRows,structuralCoverage:result.diagnostic.extraction.structuralCoverage,validatedEmployees:result.diagnostic.reconciliation.validated,elapsedMs:result.diagnostic.elapsedMs}})]);
     const importId=importResult.rows[0].id;
     const importedPeriod=result.parsed.employees[0]?.period||null;
 
@@ -4136,8 +4141,8 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
       }
     }
     await client.query("COMMIT");
-    await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId,period:importedPeriod,replacedPeriod:true});
-    res.json({success:true,importId,employees:located.length,savedDays,notFound:result.rows.length-located.length,period:importedPeriod,replacedPeriod:true});
+    await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId,period:importedPeriod,replacedPeriod:true,confidence:result.diagnostic.confidence});
+    res.json({success:true,importId,employees:located.length,savedDays,notFound:result.rows.length-located.length,period:importedPeriod,replacedPeriod:true,confidence:result.diagnostic.confidence});
   }catch(error){
     await client.query("ROLLBACK");
     if(error.status)return res.status(error.status).json({error:error.message});

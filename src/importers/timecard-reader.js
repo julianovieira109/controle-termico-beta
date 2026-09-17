@@ -305,7 +305,10 @@ function parseSeniorTimecard(text){
       continue;
     }
     const scheduleDefinitions=parseScheduleDefinitions(block);
-    const days=block.split(/\r?\n/).map(line=>parseDayLine(line,period,scheduleDefinitions)).filter(Boolean);
+    const days=block.split(/\r?\n/).map((line,index)=>{
+      const day=parseDayLine(line,period,scheduleDefinitions);
+      return day?{...day,sourceLine:index+1,sourceText:clean(line)}:null;
+    }).filter(Boolean);
     const footerTotals=parseFooterTotals(block);
     const bhReconciliation=reconcileEmployeeBh(days,footerTotals);
     if(bhReconciliation.status!=="VALIDATED")warnings.push({page:pageIndex+1,registration:employee.registration,message:bhReconciliation.status==="MISMATCH"?"Totais diários não conferem com o fechamento oficial da Senior.":"Fechamento da Senior não pôde ser validado pelas colunas do PDF."});
