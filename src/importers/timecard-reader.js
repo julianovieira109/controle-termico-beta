@@ -1,5 +1,6 @@
 const NON_WORK_PATTERNS=[
   ["DSR",/\bDSR\b/i],
+  ["FERIADO",/\bFERIADO\b/i],
   ["FOLGA",/\bFOLGA\b/i],
   ["FERIAS",/\bF[ÉE]RIAS\b/i],
   ["FALTA",/\bFALTAS?\b/i],
@@ -9,7 +10,7 @@ const NON_WORK_PATTERNS=[
   ["OBITO",/\b[ÓO]BITO\b/i],
   ["LICENCA",/\bLICEN[ÇC]A\b/i],
   ["SUSPENSAO",/\bSUSPENS[ÃA]O\b/i],
-  ["AFASTAMENTO",/\bAFASTAMENTO\b/i]
+  ["AFASTAMENTO",/\b(?:AFASTAMENTO|AUX[ÍI]LIO\s+DOEN[ÇC]A)\b/i]
 ];
 
 const OCCURRENCE_ONLY_PATTERNS=[
@@ -115,7 +116,7 @@ function parseExplicitColumns(payload){
 
 function parseFooterTotals(block){
   const text=String(block||"").replace(/\s+/g," ");
-  const m=text.match(/Trabalho:\s*(\d{1,3}:\d{2})\s+BH\s*-\s*(\d{1,3}:\d{2})\s+BH\s*\+\s*(\d{1,3}:\d{2})\s+HE\s*100%:\s*(\d{1,3}:\d{2})\s+Faltas:\s*(\d{1,3}:\d{2})/i);
+  const m=text.match(/Trabalho:\s*(\d{1,5}:\d{2})\s+BH\s*-\s*(\d{1,5}:\d{2})\s+BH\s*\+\s*(\d{1,5}:\d{2})\s+HE\s*100%:\s*(\d{1,5}:\d{2})\s+Faltas?:\s*(\d{1,5}:\d{2})/i);
   if(!m)return null;
   return {workMinutes:durationToMinutes(m[1]),bhNegativeMinutes:durationToMinutes(m[2]),bhPositiveMinutes:durationToMinutes(m[3]),he100Minutes:durationToMinutes(m[4]),absenceMinutes:durationToMinutes(m[5])};
 }
@@ -130,7 +131,8 @@ function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount){
   // marcações normais (ex.: "Faltas Noturnas" e lançamentos especiais do 3º
   // turno). Nesses casos o valor impresso na coluna BH- precisa ser convertido
   // a 80% para reproduzir o fechamento oficial do próprio cartão. A regra foi
-  // validada contra o cartão real de 105 páginas de 01/08/2026 a 02/09/2026.
+  // validada contra os cartões reais de 104 páginas de 19/07/2026 a
+  // 18/08/2026 e de 19/08/2026 a 13/09/2026.
   const specialWithoutNormalMarkings=Number(markingsCount||0)<2&&!isBhDayOff;
   if(isNightAbsence||specialWithoutNormalMarkings){
     return {
@@ -190,7 +192,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   const rawTail=head[3];
   const explicitColumns=parseExplicitColumns(rawTail);
   const tail=explicitColumns?explicitColumns.base:rawTail;
-  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
+  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|FERIADO\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|AUX[ÍI]LIO\s+DOEN[ÇC]A|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
   if(!codeMatch)return null;
   const scheduleCode=codeMatch[1];
   const payload=clean(codeMatch[2]);
@@ -291,7 +293,10 @@ function splitBlocks(text){
   const regex=/Cart[ãa]o Ponto/gi;
   let match;
   while((match=regex.exec(source)))indexes.push(match.index);
-  return indexes.map((index,i)=>source.slice(Math.max(0,index-250),indexes[i+1]??source.length));
+  // Cada colaborador começa exatamente em "Cartão Ponto". Não recuamos para
+  // o fim da página anterior, pois isso pode trazer o rodapé do colaborador
+  // anterior para o bloco atual e contaminar a conciliação dos totais.
+  return indexes.map((index,i)=>source.slice(index,indexes[i+1]??source.length));
 }
 
 function parseSeniorTimecard(text){

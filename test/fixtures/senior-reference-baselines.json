@@ -1,0 +1,41 @@
+{
+  "note": "Baselines agregadas dos PDFs reais usados na validação da Beta.76. Os PDFs não são incluídos no repositório por conterem dados pessoais.",
+  "cards": [
+    {
+      "label": "fechamento_anterior",
+      "period": {"start": "2026-07-19", "end": "2026-08-18"},
+      "pages": 104,
+      "employees": 104,
+      "structuredRows": 3195,
+      "validatedEmployees": 104,
+      "footerTotals": {
+        "work": "16455:31",
+        "bhNegative": "1042:57",
+        "bhPositive": "2090:46",
+        "he100": "0:00",
+        "absences": "339:00"
+      }
+    },
+    {
+      "label": "fechamento_atual_parcial",
+      "period": {"start": "2026-08-19", "end": "2026-09-13"},
+      "pages": 104,
+      "employees": 104,
+      "structuredRows": 2605,
+      "validatedEmployees": 104,
+      "footerTotals": {
+        "work": "12706:16",
+        "bhNegative": "1709:22",
+        "bhPositive": "1399:31",
+        "he100": "0:00",
+        "absences": "431:02"
+      }
+    }
+  ],
+  "bankHoursReference": {
+    "referenceDate": "2026-09-14",
+    "totalFinalBalance": "383:30",
+    "totalNegativeHours": "0:00",
+    "rule": "Banco de Horas Sintético é saldo acumulado na data e não deve ser comparado diretamente com BH+/BH- de movimentação do Cartão Ponto."
+  }
+}

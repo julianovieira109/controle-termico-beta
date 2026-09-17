@@ -441,7 +441,7 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
   const maximumRests=Math.min(4,Math.max(0,...days.map(day=>(thermalPlan?.get(`${employee.id}|${day.iso}`)||[]).length)));
   const restsPerPage=4;
   const pageCount=1;
-  const pointLabels={DSR:"DSR",FOLGA:"FOLGA / SEM JORNADA",FERIAS:"FÉRIAS",FALTA:"FALTA",ATESTADO:"ATESTADO",LICENCA:"LICENÇA",SUSPENSAO:"SUSPENSÃO",AFASTAMENTO:"AFASTAMENTO",COMPENSADO:"COMPENSADO",CURSO:"CURSO",OBITO:"ÓBITO FAMILIAR",REVIEW:"REVISAR MARCAÇÕES DO PONTO",NO_MARKINGS:"SEM MARCAÇÕES"};
+  const pointLabels={DSR:"DSR",FERIADO:"FERIADO",FOLGA:"FOLGA / SEM JORNADA",FERIAS:"FÉRIAS",FALTA:"FALTA",ATESTADO:"ATESTADO",LICENCA:"LICENÇA",SUSPENSAO:"SUSPENSÃO",AFASTAMENTO:"AFASTAMENTO",COMPENSADO:"COMPENSADO",CURSO:"CURSO",OBITO:"ÓBITO FAMILIAR",REVIEW:"REVISAR MARCAÇÕES DO PONTO",NO_MARKINGS:"SEM MARCAÇÕES"};
   return Array.from({length:pageCount},(_,pageIndex)=>{
     const offset=pageIndex*restsPerPage;
     const slots=pageIndex===pageCount-1&&maximumRests>offset?Math.min(restsPerPage,maximumRests-offset):restsPerPage;
@@ -644,7 +644,11 @@ function renderPointImportPreview(data){
   $("point-import-preview").hidden=false;
   const period=data.period?`${formatApiDate(data.period.start)} a ${formatApiDate(data.period.end)}`:"não identificado";
   const coveredMonths=monthsCoveredByPeriod(data.period).map(reportMonthLabel).join(" e ")||"não identificadas";
-  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias aptos</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Período do Cartão de Ponto Senior:</strong> ${period} · <strong>Meses alcançados:</strong> ${escapeHtml(coveredMonths)}</p>`;
+  const context=data.periodContext||{};
+  const periodTypeLabel=({FULL_CLOSING:"Fechamento completo",PARTIAL_CLOSING:"Período parcial do fechamento",FULL_MONTH:"Mês inteiro",MULTIPLE_CLOSINGS:"Período atravessa mais de um fechamento",PERIOD_RANGE:"Período informado"})[context.type]||"Período informado";
+  const cycles=Array.isArray(context.cycles)?context.cycles:[];
+  const closingReference=cycles.length===1?`${formatApiDate(cycles[0].start)} a ${formatApiDate(cycles[0].end)}`:cycles.length>1?`${formatApiDate(cycles[0].start)} a ${formatApiDate(cycles[cycles.length-1].end)}`:"—";
+  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias aptos</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Período identificado no arquivo:</strong> ${period}<br><strong>Classificação:</strong> ${escapeHtml(periodTypeLabel)} · <strong>Fechamento de referência:</strong> ${escapeHtml(closingReference)}<br><strong>Meses alcançados:</strong> ${escapeHtml(coveredMonths)}</p>`;
   $("point-import-body").innerHTML=data.rows.map(row=>`<tr><td>${escapeHtml(row.registration)}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.systemName||"-")}</td><td>${row.eligibleDays}</td><td>${row.reviewDays}</td><td>${row.nonWorkDays}</td><td><span class="import-result ${row.result}">${escapeHtml(row.result.replaceAll("_"," "))}</span></td></tr>`).join("");
   renderPointAudit(data.diagnostic||{});
 }
@@ -691,15 +695,15 @@ function renderPointAudit(diagnostic){
   const extraction=diagnostic.extraction||{};
   const activity=diagnostic.activity||{};
   if($("point-audit-metrics"))$("point-audit-metrics").innerHTML=`
-    <div><span>Páginas analisadas</span><strong>${extraction.totalPages||0}</strong><small>${extraction.safePages||0} com colunas identificadas</small></div>
-    <div><span>Linhas diárias</span><strong>${extraction.structuredRows||0}/${extraction.dateRows||0}</strong><small>${extraction.structuralCoverage||0}% reconstruídas</small></div>
+    <div><span>Páginas analisadas</span><strong>${extraction.totalPages||0}</strong><small>${extraction.safePages||0} com colunas · ${extraction.footerRows||0} fechamentos localizados</small></div>
+    <div><span>Linhas diárias</span><strong>${extraction.structuredRows||0}/${extraction.dateRows||0}</strong><small>${extraction.structuralCoverage||0}% reconstruídas · ${extraction.interpretationCoverage??0}% interpretadas</small></div>
     <div><span>Dias interpretados</span><strong>${activity.days||0}</strong><small>${activity.eligibleDays||0} aptos para relatório</small></div>
     <div><span>Tempo de leitura</span><strong>${((diagnostic.elapsedMs||0)/1000).toFixed(1)}s</strong><small>${escapeHtml(extraction.readerUsed||"leitor estrutural")}</small></div>`;
   const totals=diagnostic.totals||{};
   const totalLabels={workMinutes:"Trabalho",bhNegativeMinutes:"BH negativo",bhPositiveMinutes:"BH positivo",he100Minutes:"HE 100%",absenceMinutes:"Faltas"};
   if($("point-audit-reconciliation"))$("point-audit-reconciliation").innerHTML=`<div class="point-audit-total-head"><span>Indicador</span><span>Dias</span><span>Senior</span><span>Diferença</span></div>${Object.entries(totalLabels).map(([key,label])=>{const item=totals[key]||{};const ok=Number(item.difference||0)===0;return `<div class="point-audit-total-row"><span>${label}</span><strong>${pointAuditMinutes(item.daily)}</strong><strong>${pointAuditMinutes(item.official)}</strong><strong class="${ok?'is-ok':'is-different'}">${pointAuditMinutes(item.difference,{signed:true})}</strong></div>`;}).join("")}`;
   const reconciliation=diagnostic.reconciliation||{};
-  if($("point-audit-reconciliation-badge"))$("point-audit-reconciliation-badge").textContent=`${reconciliation.validated||0} conciliados`;
+  if($("point-audit-reconciliation-badge"))$("point-audit-reconciliation-badge").textContent=`${reconciliation.validated||0}/${reconciliation.comparable??0} conciliados`;
   if($("point-audit-reasons"))$("point-audit-reasons").innerHTML=(diagnostic.reasons||[]).map(reason=>`<li>${escapeHtml(reason)}</li>`).join("");
   const confirmButton=$("point-import-confirm");
   if(confirmButton)confirmButton.disabled=!diagnostic.canConfirm;

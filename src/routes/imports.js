@@ -9,7 +9,7 @@ const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("..
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
 const {parseSeniorTimecard}=require("../importers/timecard-reader");
 const {buildTimecardAudit}=require("../importers/timecard-audit");
-const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors,reconstructSeniorDailyRows}=require("../importers/senior-column-layout");
+const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors,reconstructSeniorDailyRows,extractSeniorFooterTotalsFromPage}=require("../importers/senior-column-layout");
 
 const router=express.Router();
 
@@ -98,6 +98,8 @@ function pdf2JsonDataToSeniorText(data){
   let safePages=0;
   let dateRows=0;
   let structuredRows=0;
+  let footerRows=0;
+  let cardPages=0;
   for(const page of pages){
     const decoded=(page.Texts||[]).map(item=>({
       x:Number(item.x||0),
@@ -105,6 +107,7 @@ function pdf2JsonDataToSeniorText(data){
       text:(item.R||[]).map(run=>decodePdf2JsonText(run.T)).join("").replace(/\s+/g," ").trim()
     })).filter(item=>item.text);
     const ordered=groupPdf2JsonRows(decoded,0.12).map(row=>row.items);
+    if(decoded.some(item=>/Cart[ãa]o\s+Ponto/i.test(item.text)))cardPages++;
 
     let anchors=detectSeniorColumnAnchorsFromPage(decoded);
     if(!anchors){
@@ -127,6 +130,9 @@ function pdf2JsonDataToSeniorText(data){
     dateRows+=decoded.filter(item=>/^\s*\d{2}\/\d{2}(?:\s|$)/.test(item.text)&&(anchors?item.x<anchors.W:true)).length;
     structuredRows+=rebuilt.length;
 
+    const footerTotals=extractSeniorFooterTotalsFromPage(decoded);
+    if(footerTotals)footerRows++;
+
     const lines=[];
     for(const items of ordered){
       const joined=items.map(i=>i.text).join(" ").replace(/\s+/g," ").trim();
@@ -146,9 +152,16 @@ function pdf2JsonDataToSeniorText(data){
       }
       lines.push(joined);
     }
+    // O fechamento oficial do colaborador é reconstruído diretamente da
+    // faixa física do rodapé. Isso evita depender da ordem textual interna do
+    // PDF, que pode separar os rótulos e valores mesmo quando a página está
+    // visualmente correta.
+    if(footerTotals){
+      lines.push(`Trabalho: ${footerTotals.W} BH - ${footerTotals.BM} BH + ${footerTotals.BP} HE 100%: ${footerTotals.HE} Faltas: ${footerTotals.F}`);
+    }
     pageTexts.push(lines.join("\n"));
   }
-  return {text:pageTexts.join("\n\f\n"),safePages,totalPages:pages.length,dateRows,structuredRows};
+  return {text:pageTexts.join("\n\f\n"),safePages,totalPages:pages.length,cardPages,dateRows,structuredRows,footerRows};
 }
 
 function extractSeniorWithPdf2Json(buffer,{allowIncomplete=false}={}){
@@ -163,7 +176,7 @@ function extractSeniorWithPdf2Json(buffer,{allowIncomplete=false}={}){
         if(!result.text.trim()||!result.safePages)throw new Error("Não foi possível identificar com segurança as colunas Trabalho/BH-/BH+ do cartão Senior.");
         const coverage=result.dateRows?result.structuredRows/result.dateRows:0;
         if(!result.dateRows)throw new Error("Nenhuma linha diária do Cartão Senior foi localizada.");
-        if(coverage<0.95&&!allowIncomplete)throw new Error(`Leitura estrutural incompleta das linhas do cartão Senior (${result.structuredRows}/${result.dateRows} linhas reconstruídas).`);
+        if(coverage<1&&!allowIncomplete)throw new Error(`Leitura estrutural incompleta das linhas do cartão Senior (${result.structuredRows}/${result.dateRows} linhas reconstruídas). A confirmação exige 100% das linhas estruturadas.`);
         resolve(result);
       }catch(error){reject(error);}
     });
@@ -3921,6 +3934,78 @@ function normalizePointRegistration(value){
   return String(value||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");
 }
 
+function normalizePointEmployeeName(value){
+  return String(value||"")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^A-Z0-9 ]/gi," ")
+    .replace(/\s+/g," ")
+    .trim()
+    .toUpperCase();
+}
+
+function isoUtcDate(value){
+  const match=String(value||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!match)return null;
+  return new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));
+}
+
+function isoFromUtc(date){
+  return date instanceof Date&&!Number.isNaN(date.getTime())?date.toISOString().slice(0,10):null;
+}
+
+function addUtcDays(date,days){
+  const next=new Date(date.getTime());
+  next.setUTCDate(next.getUTCDate()+Number(days||0));
+  return next;
+}
+
+function pointClosingStartDay(){
+  const configured=Number(process.env.TIMECARD_CLOSING_START_DAY||19);
+  return Number.isInteger(configured)&&configured>=1&&configured<=28?configured:19;
+}
+
+function closingCycleForDate(date,startDay=pointClosingStartDay()){
+  const current=new Date(date.getTime());
+  let start;
+  if(startDay===1){
+    start=new Date(Date.UTC(current.getUTCFullYear(),current.getUTCMonth(),1));
+    const end=new Date(Date.UTC(current.getUTCFullYear(),current.getUTCMonth()+1,0));
+    return {start:isoFromUtc(start),end:isoFromUtc(end)};
+  }
+  if(current.getUTCDate()>=startDay){
+    start=new Date(Date.UTC(current.getUTCFullYear(),current.getUTCMonth(),startDay));
+  }else{
+    start=new Date(Date.UTC(current.getUTCFullYear(),current.getUTCMonth()-1,startDay));
+  }
+  const end=new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+1,startDay-1));
+  return {start:isoFromUtc(start),end:isoFromUtc(end)};
+}
+
+function describePointPeriod(period){
+  const start=isoUtcDate(period?.start);
+  const end=isoUtcDate(period?.end);
+  if(!start||!end||start>end)return null;
+  const closingStartDay=pointClosingStartDay();
+  const cycles=[];
+  let cursor=closingCycleForDate(start,closingStartDay);
+  for(let guard=0;guard<36&&cursor;guard++){
+    const cycleStart=isoUtcDate(cursor.start);
+    const cycleEnd=isoUtcDate(cursor.end);
+    if(cycleStart>end)break;
+    if(cycleEnd>=start)cycles.push(cursor);
+    cursor=closingCycleForDate(addUtcDays(cycleEnd,1),closingStartDay);
+  }
+  const sameMonth=start.getUTCFullYear()===end.getUTCFullYear()&&start.getUTCMonth()===end.getUTCMonth();
+  const monthLast=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth()+1,0)).getUTCDate();
+  let type="PERIOD_RANGE";
+  if(cycles.length===1&&period.start===cycles[0].start&&period.end===cycles[0].end)type="FULL_CLOSING";
+  else if(sameMonth&&start.getUTCDate()===1&&end.getUTCDate()===monthLast)type="FULL_MONTH";
+  else if(cycles.length===1)type="PARTIAL_CLOSING";
+  else if(cycles.length>1)type="MULTIPLE_CLOSINGS";
+  return {closingStartDay,closingEndDay:closingStartDay===1?null:closingStartDay-1,type,cycles};
+}
+
 function formatBhDifference(item){
   const diff=item?.bhReconciliation?.differences||{};
   const fmt=(minutes)=>{
@@ -3971,7 +4056,7 @@ async function readAndMatchTimecard(req,{allowBlocked=false}={}){
   const byRegistration=new Map(current.rows.map(employee=>[normalizePointRegistration(employee.registration),employee]));
   const rows=parsed.employees.map(item=>{
     const employee=byRegistration.get(normalizePointRegistration(item.registration));
-    const sameName=employee&&cleanCaptured(employee.full_name).toUpperCase()===cleanCaptured(item.name).toUpperCase();
+    const sameName=employee&&normalizePointEmployeeName(employee.full_name)===normalizePointEmployeeName(item.name);
     return {
       ...item,
       employeeId:employee?.id||null,
@@ -3983,7 +4068,13 @@ async function readAndMatchTimecard(req,{allowBlocked=false}={}){
     };
   });
   const diagnostic=buildTimecardAudit({extraction,parsed,rows,elapsedMs:Date.now()-startedAt});
-  return {companyId,branchId,extraction,parsed,rows,diagnostic};
+  if(!allowBlocked&&!diagnostic.canConfirm){
+    const reason=(diagnostic.reasons||[]).slice(0,4).join(" ");
+    throw Object.assign(new Error(`Importação bloqueada pela Central de Conferência. ${reason}`),{status:422});
+  }
+  const period=parsed.employees[0]?.period||null;
+  const periodContext=describePointPeriod(period);
+  return {companyId,branchId,extraction,parsed,rows,diagnostic,periodContext};
 }
 
 function pointCleanupAllowed(){
@@ -4079,6 +4170,7 @@ router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
       companyId:result.companyId,
       branchId:result.branchId,
       period:result.parsed.employees[0]?.period||null,
+      periodContext:result.periodContext,
       totals:{...result.parsed.totals,located,notFound:result.rows.length-located,bhValidation:result.diagnostic.status},
       bhValidation:{status:result.diagnostic.status,method:"SENIOR_COLUMN_RECONCILIATION",employees:result.parsed.employees.length,canConfirm:result.diagnostic.canConfirm},
       warnings:result.parsed.warnings,
@@ -4103,7 +4195,7 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
         user_id,company_id,branch_id,import_type,file_name,total_found,total_created,total_updated,total_not_found,details
       ) VALUES($1,$2,$3,'PONTO_SENIOR',$4,$5,0,$6,$7,$8::jsonb)
       RETURNING id,created_at
-    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays,bhValidation:"VALIDATED",bhValidationMethod:"SENIOR_COLUMN_RECONCILIATION",audit:{status:result.diagnostic.status,confidence:result.diagnostic.confidence,totalPages:result.diagnostic.extraction.totalPages,dateRows:result.diagnostic.extraction.dateRows,structuredRows:result.diagnostic.extraction.structuredRows,structuralCoverage:result.diagnostic.extraction.structuralCoverage,validatedEmployees:result.diagnostic.reconciliation.validated,elapsedMs:result.diagnostic.elapsedMs}})]);
+    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,periodContext:result.periodContext,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays,bhValidation:"VALIDATED",bhValidationMethod:"SENIOR_COLUMN_RECONCILIATION",audit:{status:result.diagnostic.status,confidence:result.diagnostic.confidence,totalPages:result.diagnostic.extraction.totalPages,dateRows:result.diagnostic.extraction.dateRows,structuredRows:result.diagnostic.extraction.structuredRows,structuralCoverage:result.diagnostic.extraction.structuralCoverage,validatedEmployees:result.diagnostic.reconciliation.validated,elapsedMs:result.diagnostic.elapsedMs}})]);
     const importId=importResult.rows[0].id;
     const importedPeriod=result.parsed.employees[0]?.period||null;
 
@@ -4142,7 +4234,7 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
     }
     await client.query("COMMIT");
     await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId,period:importedPeriod,replacedPeriod:true,confidence:result.diagnostic.confidence});
-    res.json({success:true,importId,employees:located.length,savedDays,notFound:result.rows.length-located.length,period:importedPeriod,replacedPeriod:true,confidence:result.diagnostic.confidence});
+    res.json({success:true,importId,employees:located.length,savedDays,notFound:result.rows.length-located.length,period:importedPeriod,periodContext:result.periodContext,replacedPeriod:true,confidence:result.diagnostic.confidence});
   }catch(error){
     await client.query("ROLLBACK");
     if(error.status)return res.status(error.status).json({error:error.message});

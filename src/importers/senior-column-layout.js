@@ -33,7 +33,7 @@ function detectSeniorColumnAnchors(items){
     const item=list[i];
     const text=upper(item.text);
 
-    if(found.W==null&&/^TRABALHO:?$/.test(text))found.W=item.x;
+    if(found.W==null&&/^TRABALHO$/.test(text))found.W=item.x;
     if(found.HE==null&&(/^HE\s*100%:?$/.test(text)||text==="HE"))found.HE=item.x;
     if(found.F==null&&/^FALTA(S)?:?$/.test(text))found.F=item.x;
     if(found.AN==null&&(/^AD\.?\s*NOT/.test(text)||/^AD\.?$/.test(text)))found.AN=item.x;
@@ -71,7 +71,7 @@ function detectSeniorColumnAnchorsFromPage(items,{yTolerance=0.85}={}){
     .filter(item=>item.text);
   if(!list.length)return null;
 
-  const workItems=list.filter(item=>/^TRABALHO:?$/i.test(item.text));
+  const workItems=list.filter(item=>/^TRABALHO$/i.test(item.text));
 
   // Beta.65: o PDFium pode entregar todo o cabeçalho num único Text,
   // embora os valores diários continuem posicionados nas colunas oficiais.
@@ -140,7 +140,7 @@ function detectSeniorColumnAnchorsFromPage(items,{yTolerance=0.85}={}){
   // transforma uma leitura ambígua em importação válida.
   const headerWords=list.map(item=>upper(item.text));
   const hasHeaderSignature=
-    headerWords.some(text=>/^TRABALHO:?$/.test(text)) &&
+    headerWords.some(text=>/^TRABALHO$/.test(text)) &&
     headerWords.some(text=>/^MARCA/.test(text)) &&
     headerWords.some(text=>/^DATA$/.test(text)) &&
     headerWords.some(text=>/^SEM$/.test(text)) &&
@@ -273,10 +273,51 @@ function reconstructSeniorDailyRows(items,anchors){
   }).filter(row=>row.split&&/^\d{2}\/\d{2}\b/.test(row.split.left));
 }
 
+
+function extractSeniorFooterTotalsFromPage(items,{yTolerance=0.35}={}){
+  const list=(items||[])
+    .map(item=>({x:Number(item.x||0),y:Number(item.y||0),text:clean(item.text)}))
+    .filter(item=>item.text);
+  if(!list.length)return null;
+
+  const candidates=list.filter(item=>/\bTRABALHO\s*:/i.test(item.text));
+  const parseBand=(candidate,tolerance)=>{
+    const band=list
+      .filter(item=>Math.abs(item.y-candidate.y)<=tolerance)
+      .sort((a,b)=>a.x-b.x||a.y-b.y);
+    if(!band.length)return null;
+    const joined=band.map(item=>item.text).join(" ").replace(/\s+/g," ").trim();
+    const direct=joined.match(/Trabalho\s*:\s*(\d{1,5}:\d{2}).*?BH\s*-\s*(\d{1,5}:\d{2}).*?BH\s*\+\s*(\d{1,5}:\d{2}).*?HE\s*100%\s*:\s*(\d{1,5}:\d{2}).*?Faltas?\s*:\s*(\d{1,5}:\d{2})/i);
+    if(direct){
+      return {W:direct[1],BM:direct[2],BP:direct[3],HE:direct[4],F:direct[5],sourceText:joined};
+    }
+
+    // O PDFium/pdf2json pode quebrar o rodapé em vários Texts, preservando a
+    // ordem horizontal. Quando os cinco rótulos oficiais estão presentes, os
+    // cinco primeiros valores HH:MM da mesma faixa correspondem a
+    // Trabalho/BH-/BH+/HE100/Faltas, nessa ordem.
+    const signature=/TRABALHO\s*:/i.test(joined)&&/BH\s*-/i.test(joined)&&/BH\s*\+/i.test(joined)&&/HE\s*100%/i.test(joined)&&/FALTAS?\s*:/i.test(joined);
+    const durations=joined.match(/\b\d{1,5}:\d{2}\b/g)||[];
+    if(signature&&durations.length>=5){
+      return {W:durations[0],BM:durations[1],BP:durations[2],HE:durations[3],F:durations[4],sourceText:joined};
+    }
+    return null;
+  };
+
+  for(const candidate of candidates){
+    const exact=parseBand(candidate,yTolerance);
+    if(exact)return exact;
+    const relaxed=parseBand(candidate,Math.min(0.60,Math.max(yTolerance,0.50)));
+    if(relaxed)return relaxed;
+  }
+  return null;
+}
+
 module.exports={
   detectSeniorColumnAnchors,
   detectSeniorColumnAnchorsFromPage,
   groupPdf2JsonRows,
   splitSeniorRowByAnchors,
-  reconstructSeniorDailyRows
+  reconstructSeniorDailyRows,
+  extractSeniorFooterTotalsFromPage
 };
