@@ -56,3 +56,24 @@ test('identifica colaborador quando o pdf2json separa Empregado, matrícula e no
   assert.equal(parsed.employees[1].name,'ZENILDO FILHO SANTOS TEIXEIRA');
   assert.equal(parsed.employees[1].bhReconciliation.status,'VALIDATED');
 });
+
+test('lançamento especial sem marcações desconta a coluna Falta do BH- em vez de aplicar 80% cegamente',()=>{
+  const normalized=normalizeSeniorBhNegative(7*60+19,'BH (-) Saída Antecipada Noturn',0,66);
+  assert.equal(normalized.minutes,6*60+13);
+  assert.equal(normalized.normalized,true);
+  assert.equal(normalized.reason,'SENIOR_SPECIAL_NEGATIVE_MINUS_ABSENCE');
+});
+
+test('reproduz o caso real de Matheus Lopes em 15/09/2026',()=>{
+  const day=parseDayLine('15/09 TER 0056 BH (-) Saída Antecipada Noturn ||SENIOR_COLS|| W=03:06;BM=07:19;BP=;HE=;F=01:06;AN=03:06;V=',{start:'2026-08-19',end:'2026-09-17'},new Map());
+  assert.equal(day.bhNegativeRawMinutes,7*60+19);
+  assert.equal(day.absenceMinutes,66);
+  assert.equal(day.bhNegativeMinutes,6*60+13);
+  assert.equal(day.bhNegativeNormalizationReason,'SENIOR_SPECIAL_NEGATIVE_MINUS_ABSENCE');
+});
+
+test('mantém 80% para Faltas Noturnas mesmo quando existe valor na coluna Falta',()=>{
+  const normalized=normalizeSeniorBhNegative(27*60+15,'Faltas Noturnas',0,7*60);
+  assert.equal(normalized.minutes,21*60+48);
+  assert.equal(normalized.reason,'SENIOR_NIGHT_ABSENCE_80');
+});

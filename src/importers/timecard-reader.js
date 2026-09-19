@@ -142,26 +142,38 @@ function parseFooterTotals(block){
   return {workMinutes:durationToMinutes(m[1]),bhNegativeMinutes:durationToMinutes(m[2]),bhPositiveMinutes:durationToMinutes(m[3]),he100Minutes:durationToMinutes(m[4]),absenceMinutes:durationToMinutes(m[5])};
 }
 
-function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount){
+function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount,absenceMinutes=0){
   const raw=Number(rawMinutes||0);
   if(raw<=0)return {minutes:0,normalized:false,reason:null};
   const text=clean(payload).toUpperCase();
   const isNightAbsence=/FALTAS?\s+NOTURNAS?/.test(text);
   const isBhDayOff=/FOLGA\s+BH/.test(text);
-  // O cartão Senior usa uma base noturna específica em algumas ocorrências sem
-  // marcações normais (ex.: "Faltas Noturnas" e lançamentos especiais do 3º
-  // turno). Nesses casos o valor impresso na coluna BH- precisa ser convertido
-  // a 80% para reproduzir o fechamento oficial do próprio cartão. A regra foi
-  // validada contra os cartões reais de 104 páginas de 19/07/2026 a
-  // 18/08/2026 e de 19/08/2026 a 13/09/2026.
   const specialWithoutNormalMarkings=Number(markingsCount||0)<2&&!isBhDayOff;
-  if(isNightAbsence||specialWithoutNormalMarkings){
-    return {
-      minutes:Math.round(raw*0.8),
-      normalized:true,
-      reason:isNightAbsence?"SENIOR_NIGHT_ABSENCE_80":"SENIOR_SPECIAL_NEGATIVE_80"
-    };
+
+  // "Faltas Noturnas" tem uma base própria da Senior e permanece em 80%.
+  // Essa regra é comprovada nos cartões reais já usados como referência.
+  if(isNightAbsence){
+    return {minutes:Math.round(raw*0.8),normalized:true,reason:"SENIOR_NIGHT_ABSENCE_80"};
   }
+
+  // Em lançamentos especiais sem marcações normais, a coluna BH- pode vir
+  // acompanhada de uma parcela na coluna Falta. Nesse formato a Senior fecha
+  // o BH- líquido descontando exatamente essa parcela de falta, e não aplicando
+  // 80% cegamente. Exemplo real: Matheus Lopes, 15/09/2026, BH- 07:19 e
+  // Falta 01:06 => BH- efetivo 06:13. Isso elimina o resíduo de -00:22 do
+  // fechamento 19/08/2026 a 17/09/2026 sem criar tolerância artificial.
+  if(specialWithoutNormalMarkings){
+    const absence=Math.max(0,Number(absenceMinutes||0));
+    if(absence>0&&absence<raw){
+      return {
+        minutes:raw-absence,
+        normalized:true,
+        reason:"SENIOR_SPECIAL_NEGATIVE_MINUS_ABSENCE"
+      };
+    }
+    return {minutes:Math.round(raw*0.8),normalized:true,reason:"SENIOR_SPECIAL_NEGATIVE_80"};
+  }
+
   return {minutes:raw,normalized:false,reason:null};
 }
 
@@ -229,7 +241,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   let markings=rawMarkings.slice(0,8);
   let ignoredMarkings=[];
   const negativeNormalization=explicitColumns
-    ?normalizeSeniorBhNegative(explicitColumns.bhNegativeRawMinutes,payload,rawMarkings.length)
+    ?normalizeSeniorBhNegative(explicitColumns.bhNegativeRawMinutes,payload,rawMarkings.length,explicitColumns.absenceMinutes)
     :{minutes:null,normalized:false,reason:null};
 
   // Em algumas extrações do PDF, quando não há texto de ocorrência entre as
