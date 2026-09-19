@@ -1402,9 +1402,13 @@ function parseCollaborators(text){
 
 function detectImportType(text){
   const normalized=normalizeText(text).toUpperCase();
-  if(normalized.includes("RELACAO DE ADMITIDOS"))return "ADMITIDOS";
-  if(normalized.includes("RELACAO DE DEMITIDOS"))return "DEMITIDOS";
-  if(normalized.includes("RELACAO DE COLABORADORES"))return "COLABORADORES";
+
+  // Os relatórios PDFium da Senior nem sempre preservam o título na extração
+  // textual. Os códigos FPRE, porém, são identificadores estáveis do relatório
+  // e servem como segunda assinatura segura.
+  if(normalized.includes("RELACAO DE ADMITIDOS")||/\bFPRE004(?:\.COL)?\b/.test(normalized))return "ADMITIDOS";
+  if(normalized.includes("RELACAO DE DEMITIDOS")||/\bFPRE005(?:\.COL)?\b/.test(normalized))return "DEMITIDOS";
+  if(normalized.includes("RELACAO DE COLABORADORES")||/\bFPRE001(?:\.COL)?\b/.test(normalized))return "COLABORADORES";
   return null;
 }
 
@@ -4218,17 +4222,38 @@ router.post("/timecard-resolve-new-hires",upload.single("file"),async(req,res,ne
       return res.status(400).json({error:"Nenhuma matrícula pendente foi informada para regularização."});
     }
 
-    const extraction=await extractPdfText(req.file.buffer);
-    const type=detectImportType(extraction.text);
-    if(type!=="ADMITIDOS"){
+    // A Relação de Admitidos (FPRE004.COL) é um relatório PDFium. Ela precisa
+    // usar o mesmo leitor especializado da importação normal de Admitidos; o
+    // leitor genérico pode perder/reordenar o cabeçalho e causar falso
+    // "arquivo não reconhecido".
+    const extraction=await extractSeniorMovementPdfText(req.file.buffer);
+    const sourceText=extraction.text||"";
+    const type=detectImportType(sourceText);
+
+    const admittedRows=parseAdmitted(sourceText)
+      .map(normalizeImportItem)
+      .filter(isValidAdmittedRow);
+    const matched=admittedRows.filter(row=>requestedMap.has(normalizePointRegistration(row.registration)));
+
+    // Se houver assinatura explícita de outro relatório Senior, bloqueia. Se o
+    // título tiver se perdido, aceitamos somente quando a estrutura de
+    // Admitidos foi validada e contém ao menos uma das matrículas pendentes.
+    if(type&&type!=="ADMITIDOS"){
+      return res.status(400).json({
+        error:"O arquivo enviado não é a Relação de Admitidos da Senior.",
+        detail:`Relatório identificado como ${type.toLowerCase()}. Envie o FPRE004.COL / Relação de Admitidos.`
+      });
+    }
+    if(type!=="ADMITIDOS"&&!matched.length){
       return res.status(400).json({
         error:"O arquivo não foi reconhecido como Relação de Admitidos da Senior.",
-        detail:"Envie o relatório de Admitidos para cadastrar somente os novatos pendentes do Cartão de Ponto."
+        detail:"O sistema tentou o leitor específico do FPRE004.COL, mas não encontrou assinatura nem estrutura compatível com as matrículas pendentes.",
+        readerUsed:extraction.readerUsed||null
       });
     }
 
     const branchValidation=await validatePdfOperationalBranch({
-      text:extraction.text,
+      text:sourceText,
       fileName:req.file.originalname,
       companyId,
       branchId
@@ -4237,10 +4262,6 @@ router.post("/timecard-resolve-new-hires",upload.single("file"),async(req,res,ne
       return res.status(branchValidation.status||409).json(branchValidation);
     }
 
-    const admittedRows=parseAdmitted(extraction.text)
-      .map(normalizeImportItem)
-      .filter(isValidAdmittedRow);
-    const matched=admittedRows.filter(row=>requestedMap.has(normalizePointRegistration(row.registration)));
     if(!matched.length){
       return res.status(422).json({
         error:"Nenhum dos colaboradores pendentes foi encontrado na Relação de Admitidos.",
