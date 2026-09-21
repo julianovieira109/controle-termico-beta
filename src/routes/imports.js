@@ -9,6 +9,7 @@ const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("..
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
 const {parseSeniorTimecard}=require("../importers/timecard-reader");
 const {buildTimecardAudit}=require("../importers/timecard-audit");
+const {buildExpectedStorageSnapshot,normalizeStoredSnapshot,compareStorageSnapshots}=require("../importers/timecard-storage-audit");
 const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors,reconstructSeniorDailyRows,extractSeniorFooterTotalsFromPage}=require("../importers/senior-column-layout");
 
 const router=express.Router();
@@ -4404,19 +4405,23 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
     // A importação mais recente passa a ser a fonte oficial do período informado.
     // Isso evita que dias/ocorrências de uma importação anterior permaneçam nas fichas
     // quando deixaram de existir ou foram corrigidos no novo Cartão de Ponto.
+    let replacedDays=0;
     if(importedPeriod?.start&&importedPeriod?.end){
       const locatedIds=located.map(row=>row.employeeId).filter(Boolean);
       if(locatedIds.length){
-        await client.query(`
+        const replaced=await client.query(`
           DELETE FROM employee_point_days
           WHERE employee_id=ANY($1::uuid[])
             AND company_id=$2
             AND branch_id=$3
             AND work_date BETWEEN $4::date AND $5::date
+          RETURNING id
         `,[locatedIds,result.companyId,result.branchId,importedPeriod.start,importedPeriod.end]);
+        replacedDays=replaced.rowCount||0;
       }
     }
 
+    const expectedStorage=buildExpectedStorageSnapshot(located);
     let savedDays=0;
     for(const row of located){
       for(const day of row.days){
@@ -4434,9 +4439,55 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
         savedDays++;
       }
     }
+    // Beta.81: a confirmação só é efetivada se o que foi gravado no banco
+    // reproduzir exatamente o conjunto aprovado na Central de Conferência.
+    // Qualquer diferença provoca ROLLBACK da transação inteira.
+    const storageResult=await client.query(`
+      SELECT
+        COUNT(*)::int AS days,
+        COUNT(DISTINCT employee_id)::int AS employees,
+        MIN(work_date) AS min_date,
+        MAX(work_date) AS max_date,
+        COALESCE(SUM(work_minutes),0)::bigint AS work_minutes,
+        COALESCE(SUM(bh_negative_minutes),0)::bigint AS bh_negative_minutes,
+        COALESCE(SUM(bh_positive_minutes),0)::bigint AS bh_positive_minutes,
+        COALESCE(SUM(he_100_minutes),0)::bigint AS he_100_minutes,
+        COALESCE(SUM(absence_minutes),0)::bigint AS absence_minutes,
+        COALESCE(SUM(night_additional_minutes),0)::bigint AS night_additional_minutes,
+        COALESCE(SUM(travel_minutes),0)::bigint AS travel_minutes
+      FROM employee_point_days
+      WHERE import_id=$1
+        AND company_id=$2
+        AND branch_id=$3
+    `,[importId,result.companyId,result.branchId]);
+    const storedSnapshot=normalizeStoredSnapshot(storageResult.rows[0]||{});
+    const storageAudit=compareStorageSnapshots(expectedStorage,storedSnapshot);
+    if(!storageAudit.ok){
+      const details=storageAudit.differences.map(item=>`${item.field}: esperado ${item.expected}, gravado ${item.stored}`).join(" | ");
+      const storageError=new Error(`Auditoria pós-gravação bloqueou a importação: os dados salvos não reproduzem a leitura aprovada (${details}). Nenhuma alteração foi mantida.`);
+      storageError.status=500;
+      throw storageError;
+    }
+
+    const writeAudit={
+      status:"VALIDATED",
+      employees:storedSnapshot.employees,
+      days:storedSnapshot.days,
+      minDate:storedSnapshot.minDate,
+      maxDate:storedSnapshot.maxDate,
+      totals:storedSnapshot.totals,
+      replacedDays,
+      mode:replacedDays>0?"REIMPORT_REPLACE":"FIRST_IMPORT"
+    };
+    await client.query(`
+      UPDATE employee_imports
+      SET details=jsonb_set(details,'{postWriteAudit}',$2::jsonb,true)
+      WHERE id=$1
+    `,[importId,JSON.stringify(writeAudit)]);
+
     await client.query("COMMIT");
-    await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId,period:importedPeriod,replacedPeriod:true,confidence:result.diagnostic.confidence});
-    res.json({success:true,importId,employees:located.length,savedDays,notFound:result.rows.length-located.length,period:importedPeriod,periodContext:result.periodContext,replacedPeriod:true,confidence:result.diagnostic.confidence});
+    await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId,period:importedPeriod,replacedPeriod:true,replacedDays,confidence:result.diagnostic.confidence,postWriteAudit:writeAudit});
+    res.json({success:true,importId,employees:located.length,savedDays,replacedDays,notFound:result.rows.length-located.length,period:importedPeriod,periodContext:result.periodContext,replacedPeriod:true,confidence:result.diagnostic.confidence,postWriteAudit:writeAudit});
   }catch(error){
     await client.query("ROLLBACK");
     if(error.status)return res.status(error.status).json({error:error.message});

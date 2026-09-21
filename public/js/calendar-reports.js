@@ -886,8 +886,14 @@ if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
     setButtonLoading(button,true,"Importando ponto");
     const data=await sendPointImport("/api/imports/timecard-confirm");
     $("point-import-feedback").className="feedback full success";
-    $("point-import-feedback").textContent=`Importação concluída: ${data.employees} colaborador(es) e ${data.savedDays} dia(s) salvos.`;
-    toast("Cartão de ponto importado com sucesso.","success");
+    const postAudit=data.postWriteAudit||null;
+    const replacementText=Number(data.replacedDays||0)>0
+      ?` · ${data.replacedDays} dia(s) anteriores substituídos sem duplicidade`
+      :" · primeira gravação do período";
+    $("point-import-feedback").textContent=postAudit?.status==="VALIDATED"
+      ?`Importação concluída e auditada: ${data.employees} colaborador(es), ${data.savedDays} dia(s) gravados${replacementText}. Auditoria pós-gravação 100% validada.`
+      :`Importação concluída: ${data.employees} colaborador(es) e ${data.savedDays} dia(s) salvos.`;
+    toast(postAudit?.status==="VALIDATED"?"Ponto salvo e conferido novamente no banco.":"Cartão de ponto importado com sucesso.","success");
     if(typeof invalidateOccurrencesControl==="function")invalidateOccurrencesControl();
     await Promise.all([
       loadPointImportHistory(),
