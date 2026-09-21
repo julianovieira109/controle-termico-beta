@@ -10,6 +10,7 @@ const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../impor
 const {parseSeniorTimecard}=require("../importers/timecard-reader");
 const {buildTimecardAudit}=require("../importers/timecard-audit");
 const {buildExpectedStorageSnapshot,normalizeStoredSnapshot,compareStorageSnapshots}=require("../importers/timecard-storage-audit");
+const {REVIEW_CONTROL_STATUSES,normalizeReviewControlStatus,reviewControlStatusLabel,reviewControlKey,nextStatusWhenIssueSeen}=require("../importers/timecard-review-control");
 const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors,reconstructSeniorDailyRows,extractSeniorFooterTotalsFromPage}=require("../importers/senior-column-layout");
 
 const router=express.Router();
@@ -4082,6 +4083,144 @@ async function readAndMatchTimecard(req,{allowBlocked=false}={}){
   return {companyId,branchId,extraction,parsed,rows,diagnostic,periodContext};
 }
 
+async function enrichTimecardReviewTracking(result){
+  const reviewRows=Array.isArray(result?.diagnostic?.reviewRows)?result.diagnostic.reviewRows:[];
+  const employeeByRegistration=new Map((result?.rows||[])
+    .filter(row=>row.employeeId)
+    .map(row=>[normalizePointRegistration(row.registration),row.employeeId]));
+  const enriched=reviewRows.map(row=>({
+    ...row,
+    employeeId:employeeByRegistration.get(normalizePointRegistration(row.registration))||null
+  }));
+
+  const period=result?.parsed?.employees?.[0]?.period||null;
+  const employeeIds=[...new Set((result?.rows||[]).map(row=>row.employeeId).filter(Boolean))];
+  let controls=[];
+  let resolvedInPeriod=0;
+  if(employeeIds.length&&period?.start&&period?.end){
+    const controlResult=await pool.query(`
+      SELECT c.employee_id,c.work_date::text work_date,c.status,c.note,c.reviewed_at,c.resolved_at,c.updated_at,
+             c.last_seen_reason_code,c.last_seen_occurrence,c.last_seen_source_file,u.name updated_by_name,
+             e.full_name employee_name,e.registration
+      FROM timecard_review_controls c
+      LEFT JOIN users u ON u.id=c.updated_by
+      JOIN employees e ON e.id=c.employee_id
+      WHERE c.company_id=$1 AND c.branch_id=$2
+        AND c.employee_id=ANY($3::uuid[])
+        AND c.work_date BETWEEN $4::date AND $5::date
+    `,[result.companyId,result.branchId,employeeIds,period.start,period.end]);
+    controls=controlResult.rows;
+    resolvedInPeriod=controls.filter(item=>item.status==='RESOLVED_BY_NEW_IMPORT').length;
+  }
+  const byKey=new Map(controls.map(item=>[reviewControlKey(item.employee_id,item.work_date),item]));
+  const rows=enriched.map(row=>{
+    const control=row.employeeId?byKey.get(reviewControlKey(row.employeeId,row.date)):null;
+    const status=control?.status||'UNREVIEWED';
+    return {
+      ...row,
+      tracking:{
+        status,
+        statusLabel:reviewControlStatusLabel(status),
+        note:control?.note||'',
+        reviewedAt:control?.reviewed_at||null,
+        resolvedAt:control?.resolved_at||null,
+        updatedAt:control?.updated_at||null,
+        updatedByName:control?.updated_by_name||null
+      }
+    };
+  });
+  const resolvedRows=controls
+    .filter(item=>item.status==='RESOLVED_BY_NEW_IMPORT')
+    .map(item=>({
+      employeeId:item.employee_id,
+      employeeName:item.employee_name,
+      registration:item.registration,
+      date:item.work_date,
+      status:item.status,
+      statusLabel:reviewControlStatusLabel(item.status),
+      note:item.note||'',
+      previousReasonCode:item.last_seen_reason_code||null,
+      previousOccurrence:item.last_seen_occurrence||null,
+      resolvedAt:item.resolved_at||null,
+      updatedByName:item.updated_by_name||null
+    }))
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(a.employeeName||'').localeCompare(String(b.employeeName||''),'pt-BR'));
+  const summary={
+    total:rows.length,
+    unreviewed:rows.filter(row=>row.tracking.status==='UNREVIEWED').length,
+    reviewed:rows.filter(row=>row.tracking.status==='REVIEWED').length,
+    pendingSenior:rows.filter(row=>row.tracking.status==='PENDING_SENIOR_CORRECTION').length,
+    seniorCorrectedWaitingImport:rows.filter(row=>row.tracking.status==='SENIOR_CORRECTED_WAITING_IMPORT').length,
+    resolvedInPeriod
+  };
+  return {rows,summary,resolvedRows};
+}
+
+function currentReviewControlItems(result){
+  const employeeByRegistration=new Map((result?.rows||[])
+    .filter(row=>row.employeeId)
+    .map(row=>[normalizePointRegistration(row.registration),row.employeeId]));
+  return (result?.diagnostic?.reviewRows||[])
+    .map(row=>({
+      employeeId:employeeByRegistration.get(normalizePointRegistration(row.registration))||null,
+      workDate:row.date,
+      reasonCode:row.reasonCode||'REVIEW',
+      occurrence:row.occurrence||null
+    }))
+    .filter(row=>row.employeeId&&row.workDate);
+}
+
+async function syncTimecardReviewControls(client,{result,importId,sourceFile}){
+  const period=result?.parsed?.employees?.[0]?.period||null;
+  if(!period?.start||!period?.end)return {current:0,autoResolved:0,reopened:0};
+  const locatedIds=[...new Set((result.rows||[]).map(row=>row.employeeId).filter(Boolean))];
+  if(!locatedIds.length)return {current:0,autoResolved:0,reopened:0};
+
+  const current=currentReviewControlItems(result);
+  const currentKeys=new Set(current.map(item=>reviewControlKey(item.employeeId,item.workDate)));
+  const existingResult=await client.query(`
+    SELECT id,employee_id,work_date::text work_date,status
+    FROM timecard_review_controls
+    WHERE company_id=$1 AND branch_id=$2
+      AND employee_id=ANY($3::uuid[])
+      AND work_date BETWEEN $4::date AND $5::date
+  `,[result.companyId,result.branchId,locatedIds,period.start,period.end]);
+  const existingByKey=new Map(existingResult.rows.map(row=>[reviewControlKey(row.employee_id,row.work_date),row]));
+
+  let reopened=0;
+  for(const item of current){
+    const previous=existingByKey.get(reviewControlKey(item.employeeId,item.workDate));
+    const nextStatus=nextStatusWhenIssueSeen(previous?.status);
+    if(previous&&nextStatus!==previous.status)reopened++;
+    await client.query(`
+      INSERT INTO timecard_review_controls(
+        company_id,branch_id,employee_id,work_date,status,last_seen_import_id,last_seen_reason_code,
+        last_seen_occurrence,last_seen_source_file,last_seen_at,updated_at,resolved_at
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW(),NULL)
+      ON CONFLICT(employee_id,work_date) DO UPDATE SET
+        company_id=EXCLUDED.company_id,branch_id=EXCLUDED.branch_id,
+        status=$5,last_seen_import_id=EXCLUDED.last_seen_import_id,
+        last_seen_reason_code=EXCLUDED.last_seen_reason_code,last_seen_occurrence=EXCLUDED.last_seen_occurrence,
+        last_seen_source_file=EXCLUDED.last_seen_source_file,last_seen_at=NOW(),updated_at=NOW(),resolved_at=NULL
+    `,[result.companyId,result.branchId,item.employeeId,item.workDate,nextStatus,importId,item.reasonCode,item.occurrence,sourceFile]);
+  }
+
+  let autoResolved=0;
+  for(const existing of existingResult.rows){
+    const key=reviewControlKey(existing.employee_id,existing.work_date);
+    if(currentKeys.has(key)||existing.status==='RESOLVED_BY_NEW_IMPORT')continue;
+    await client.query(`
+      UPDATE timecard_review_controls
+      SET status='RESOLVED_BY_NEW_IMPORT',resolved_at=NOW(),last_seen_import_id=$2,
+          last_seen_source_file=$3,updated_at=NOW()
+      WHERE id=$1
+    `,[existing.id,importId,sourceFile]);
+    autoResolved++;
+  }
+
+  return {current:current.length,autoResolved,reopened};
+}
+
 function pointCleanupAllowed(){
   if(String(process.env.ALLOW_POINT_DATA_CLEANUP||"").toLowerCase()==="true")return true;
   if(process.env.NODE_ENV==="test")return true;
@@ -4121,6 +4260,11 @@ router.post("/timecard-cleanup",requireMasterAdmin,async(req,res,next)=>{
     if(!scope.rows.length)return res.status(404).json({error:"Empresa ou filial não localizada."});
 
     await client.query("BEGIN");
+    const reviewControlsResult=await client.query(`
+      DELETE FROM timecard_review_controls
+      WHERE company_id=$1 AND branch_id=$2
+      RETURNING id
+    `,[companyId,branchId]);
     const daysResult=await client.query(`
       DELETE FROM employee_point_days
       WHERE company_id=$1 AND branch_id=$2
@@ -4135,6 +4279,7 @@ router.post("/timecard-cleanup",requireMasterAdmin,async(req,res,next)=>{
     `,[companyId,branchId]);
     await client.query("COMMIT");
 
+    const reviewControlsDeleted=reviewControlsResult.rowCount||0;
     const pointDaysDeleted=daysResult.rowCount||0;
     const importsDeleted=importsResult.rowCount||0;
     await audit(req,"CLEAR_BETA_TIMECARD_DATA","employee_point_days",branchId,{
@@ -4142,6 +4287,7 @@ router.post("/timecard-cleanup",requireMasterAdmin,async(req,res,next)=>{
       branchId,
       companyName:scope.rows[0].company_name,
       branchName:scope.rows[0].branch_name,
+      reviewControlsDeleted,
       pointDaysDeleted,
       importsDeleted,
       protectedEnvironment:true
@@ -4153,6 +4299,7 @@ router.post("/timecard-cleanup",requireMasterAdmin,async(req,res,next)=>{
       branchId,
       companyName:scope.rows[0].company_name,
       branchName:scope.rows[0].branch_name,
+      reviewControlsDeleted,
       pointDaysDeleted,
       importsDeleted
     });
@@ -4168,6 +4315,7 @@ router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
   try{
     const result=await readAndMatchTimecard(req,{allowBlocked:true});
     const located=result.rows.filter(row=>row.employeeId).length;
+    const reviewTracking=await enrichTimecardReviewTracking(result);
     res.json({
       reportType:"SENIOR_TIMECARD",
       fileName:req.file.originalname,
@@ -4179,7 +4327,8 @@ router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
       totals:{...result.parsed.totals,located,notFound:result.rows.length-located,bhValidation:result.diagnostic.status},
       bhValidation:{status:result.diagnostic.status,method:"SENIOR_COLUMN_RECONCILIATION",employees:result.parsed.employees.length,canConfirm:result.diagnostic.canConfirm},
       warnings:result.parsed.warnings,
-      diagnostic:result.diagnostic,
+      diagnostic:{...result.diagnostic,reviewRows:reviewTracking.rows,reviewTrackingSummary:reviewTracking.summary,resolvedReviewRows:reviewTracking.resolvedRows},
+      reviewControlStatuses:REVIEW_CONTROL_STATUSES,
       missingEmployees:result.rows
         .filter(row=>!row.employeeId)
         .map(row=>({
@@ -4195,6 +4344,57 @@ router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
     if(error.status)return res.status(error.status).json({error:error.message});
     next(error);
   }
+});
+
+router.post("/timecard-review-control",async(req,res,next)=>{
+  try{
+    const companyId=String(req.body?.companyId||"").trim();
+    const branchId=String(req.body?.branchId||"").trim();
+    const employeeId=String(req.body?.employeeId||"").trim();
+    const workDate=String(req.body?.workDate||"").slice(0,10);
+    const status=normalizeReviewControlStatus(req.body?.status);
+    const note=String(req.body?.note||"").trim().slice(0,1200);
+    if(!companyId||!branchId||!employeeId||!/^\d{4}-\d{2}-\d{2}$/.test(workDate)){
+      return res.status(400).json({error:"Dados insuficientes para salvar o acompanhamento da pendência."});
+    }
+    if(!status)return res.status(400).json({error:"Status de acompanhamento inválido."});
+    assertScope(req,companyId,branchId);
+    const employee=await pool.query(`
+      SELECT id,full_name,registration
+      FROM employees
+      WHERE id=$1 AND company_id=$2 AND branch_id=$3
+      LIMIT 1
+    `,[employeeId,companyId,branchId]);
+    if(!employee.rows[0])return res.status(404).json({error:"Colaborador não localizado na empresa/filial selecionada."});
+
+    const saved=await pool.query(`
+      INSERT INTO timecard_review_controls(
+        company_id,branch_id,employee_id,work_date,status,note,updated_by,reviewed_at,resolved_at,updated_at
+      ) VALUES($1,$2,$3,$4,$5,$6,$7,NOW(),NULL,NOW())
+      ON CONFLICT(employee_id,work_date) DO UPDATE SET
+        company_id=EXCLUDED.company_id,branch_id=EXCLUDED.branch_id,status=EXCLUDED.status,note=EXCLUDED.note,
+        updated_by=EXCLUDED.updated_by,reviewed_at=NOW(),resolved_at=NULL,updated_at=NOW()
+      RETURNING employee_id,work_date::text work_date,status,note,reviewed_at,resolved_at,updated_at
+    `,[companyId,branchId,employeeId,workDate,status,note||null,req.user.sub]);
+    const control=saved.rows[0];
+    await audit(req,"UPDATE_TIMECARD_REVIEW_CONTROL","timecard_review_controls",employeeId,{
+      companyId,branchId,workDate,status,note,
+      rule:"TRACKING_ONLY_NO_POINT_MUTATION"
+    });
+    res.json({
+      success:true,
+      control:{
+        status:control.status,
+        statusLabel:reviewControlStatusLabel(control.status),
+        note:control.note||"",
+        reviewedAt:control.reviewed_at,
+        resolvedAt:control.resolved_at,
+        updatedAt:control.updated_at,
+        updatedByName:req.user.name||null
+      },
+      message:"Acompanhamento salvo. Nenhuma marcação, jornada ou saldo de ponto foi alterado."
+    });
+  }catch(error){next(error);}
 });
 
 
@@ -4469,6 +4669,14 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
       throw storageError;
     }
 
+    // Beta.84: sincroniza somente o acompanhamento das pendências. Nenhum
+    // horário, marcação, jornada ou saldo é criado/corrigido por esta rotina.
+    // Se uma pendência não existir mais no novo relatório confirmado, ela é
+    // encerrada automaticamente como resolvida pela nova leitura da Senior.
+    const reviewTracking=await syncTimecardReviewControls(client,{
+      result,importId,sourceFile:req.file.originalname
+    });
+
     const writeAudit={
       status:"VALIDATED",
       employees:storedSnapshot.employees,
@@ -4477,7 +4685,8 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
       maxDate:storedSnapshot.maxDate,
       totals:storedSnapshot.totals,
       replacedDays,
-      mode:replacedDays>0?"REIMPORT_REPLACE":"FIRST_IMPORT"
+      mode:replacedDays>0?"REIMPORT_REPLACE":"FIRST_IMPORT",
+      reviewTracking
     };
     await client.query(`
       UPDATE employee_imports
@@ -4487,7 +4696,7 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
 
     await client.query("COMMIT");
     await audit(req,"IMPORT_TIMECARD","employee_point_days",importId,{fileName:req.file.originalname,employees:located.length,savedDays,companyId:result.companyId,branchId:result.branchId,period:importedPeriod,replacedPeriod:true,replacedDays,confidence:result.diagnostic.confidence,postWriteAudit:writeAudit});
-    res.json({success:true,importId,employees:located.length,savedDays,replacedDays,notFound:result.rows.length-located.length,period:importedPeriod,periodContext:result.periodContext,replacedPeriod:true,confidence:result.diagnostic.confidence,postWriteAudit:writeAudit});
+    res.json({success:true,importId,employees:located.length,savedDays,replacedDays,notFound:result.rows.length-located.length,period:importedPeriod,periodContext:result.periodContext,replacedPeriod:true,confidence:result.diagnostic.confidence,postWriteAudit:writeAudit,reviewTracking});
   }catch(error){
     await client.query("ROLLBACK");
     if(error.status)return res.status(error.status).json({error:error.message});

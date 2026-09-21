@@ -294,6 +294,35 @@ CREATE TABLE IF NOT EXISTS employee_point_days (
   UNIQUE(employee_id,work_date)
 );
 
+-- Beta.84: acompanhamento das pendências do ponto. Esta tabela nunca
+-- altera marcações, jornada ou saldos; registra somente o estado da conferência
+-- do DP enquanto a correção oficial permanece exclusivamente na Senior.
+CREATE TABLE IF NOT EXISTS timecard_review_controls (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+  employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  work_date DATE NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'UNREVIEWED',
+  note TEXT,
+  updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  resolved_at TIMESTAMPTZ,
+  last_seen_import_id UUID REFERENCES employee_imports(id) ON DELETE SET NULL,
+  last_seen_reason_code VARCHAR(80),
+  last_seen_occurrence TEXT,
+  last_seen_source_file VARCHAR(255),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(employee_id,work_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_timecard_review_controls_scope
+  ON timecard_review_controls(company_id,branch_id,work_date);
+CREATE INDEX IF NOT EXISTS idx_timecard_review_controls_status
+  ON timecard_review_controls(status,work_date);
+
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES user_profiles(id) ON DELETE RESTRICT;
 

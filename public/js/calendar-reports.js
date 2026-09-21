@@ -739,8 +739,52 @@ function pointReviewRows(){
     reason:row.state==="NO_MARKINGS"?"Sem marcações — conferir contexto":"Revisão necessária",
     priority:row.state==="NO_MARKINGS"?"MEDIUM":"HIGH",
     explainedBySenior:false,
-    restPolicy:row.eligibleForAutomaticRest?"Repouso automático somente nos intervalos confirmados pelas marcações":"Não gerar repouso automaticamente — horários insuficientes ou jornada não confirmada"
+    restPolicy:row.eligibleForAutomaticRest?"Repouso automático somente nos intervalos confirmados pelas marcações":"Não gerar repouso automaticamente — horários insuficientes ou jornada não confirmada",
+    tracking:{status:"UNREVIEWED",statusLabel:"Não analisado",note:""}
   }));
+}
+
+function pointReviewStatusLabel(status){
+  const serverLabels=pointImportPreview?.reviewControlStatuses||{};
+  const fallback={
+    UNREVIEWED:"Não analisado",
+    REVIEWED:"Conferido",
+    PENDING_SENIOR_CORRECTION:"Aguardando correção na Senior",
+    SENIOR_CORRECTED_WAITING_IMPORT:"Senior corrigida — aguardando nova importação",
+    RESOLVED_BY_NEW_IMPORT:"Resolvido após nova leitura"
+  };
+  return serverLabels?.[status]||fallback[status]||fallback.UNREVIEWED;
+}
+
+function pointReviewTracking(row){
+  const tracking=row?.tracking||{};
+  const status=tracking.status||"UNREVIEWED";
+  return {...tracking,status,statusLabel:tracking.statusLabel||pointReviewStatusLabel(status),note:tracking.note||""};
+}
+
+function pointReviewStatusTone(status){
+  return ({
+    UNREVIEWED:"gray",
+    REVIEWED:"blue",
+    PENDING_SENIOR_CORRECTION:"amber",
+    SENIOR_CORRECTED_WAITING_IMPORT:"purple",
+    RESOLVED_BY_NEW_IMPORT:"green"
+  })[status]||"gray";
+}
+
+function renderPointReviewResolvedHistory(){
+  const section=$("point-review-resolved-section");
+  const body=$("point-review-resolved-body");
+  const count=$("point-review-resolved-count");
+  if(!section||!body)return;
+  const rows=Array.isArray(pointImportPreview?.diagnostic?.resolvedReviewRows)?pointImportPreview.diagnostic.resolvedReviewRows:[];
+  section.hidden=!rows.length;
+  if(count)count.textContent=rows.length;
+  body.innerHTML=rows.length?rows.map(row=>`<div class="point-review-resolved-item">
+    <div><strong>${escapeHtml(row.employeeName||"-")}</strong><small>${escapeHtml(row.registration||"-")} · ${row.date?formatApiDate(row.date):"-"}</small></div>
+    <div><span class="point-review-tracking-chip green">${escapeHtml(row.statusLabel||"Resolvido após nova leitura")}</span><small>${row.resolvedAt?new Date(row.resolvedAt).toLocaleString("pt-BR"):""}</small></div>
+    <div><small>${escapeHtml(row.previousOccurrence||row.previousReasonCode||"Pendência anterior não consta mais no relatório atual.")}</small>${row.note?`<small>Obs.: ${escapeHtml(row.note)}</small>`:""}</div>
+  </div>`).join(""):"";
 }
 
 function renderPointReviewQueue(){
@@ -750,10 +794,13 @@ function renderPointReviewQueue(){
   const term=String($("point-review-search")?.value||"").trim().toLocaleLowerCase("pt-BR");
   const words=term.split(/\s+/).filter(Boolean);
   const priority=String($("point-review-priority")?.value||"");
+  const trackingStatus=String($("point-review-tracking-status")?.value||"");
   const filtered=rows.filter(row=>{
+    const tracking=pointReviewTracking(row);
     if(priority&&row.priority!==priority)return false;
+    if(trackingStatus&&tracking.status!==trackingStatus)return false;
     if(!words.length)return true;
-    const haystack=[row.registration,row.employeeName,row.date,row.scheduleCode,row.reason,row.occurrence,(row.markings||[]).join(" "),(row.ignoredMarkings||[]).join(" ")].join(" ").toLocaleLowerCase("pt-BR");
+    const haystack=[row.registration,row.employeeName,row.date,row.scheduleCode,row.reason,row.occurrence,(row.markings||[]).join(" "),(row.ignoredMarkings||[]).join(" "),tracking.statusLabel,tracking.note].join(" ").toLocaleLowerCase("pt-BR");
     return words.every(word=>haystack.includes(word));
   });
   if($("point-review-tab-count"))$("point-review-tab-count").textContent=rows.length;
@@ -762,9 +809,11 @@ function renderPointReviewQueue(){
   if($("point-review-high"))$("point-review-high").textContent=rows.filter(row=>row.priority==="HIGH").length;
   if($("point-review-explained"))$("point-review-explained").textContent=rows.filter(row=>row.explainedBySenior).length;
   if($("point-review-employees"))$("point-review-employees").textContent=new Set(rows.map(row=>String(row.registration||row.employeeName||""))).size;
+  if($("point-review-pending-senior"))$("point-review-pending-senior").textContent=rows.filter(row=>pointReviewTracking(row).status==="PENDING_SENIOR_CORRECTION").length;
   body.innerHTML=filtered.length?filtered.map(row=>{
     const markings=(row.markings||[]).join(" · ")||"—";
     const ignored=(row.ignoredMarkings||[]).length?`<small>Desconsiderada(s): ${escapeHtml(row.ignoredMarkings.join(" · "))}</small>`:"";
+    const tracking=pointReviewTracking(row);
     return `<tr>
       <td><strong>${escapeHtml(row.employeeName||"-")}</strong><small>${escapeHtml(row.registration||"Sem matrícula")} · Pág. ${escapeHtml(row.page||"-")}</small></td>
       <td>${row.date?formatApiDate(row.date):"-"}</td>
@@ -775,17 +824,47 @@ function renderPointReviewQueue(){
       <td>${pointAuditMinutes(row.bhNegativeMinutes)}</td>
       <td>${pointAuditMinutes(row.bhPositiveMinutes)}</td>
       <td>${pointAuditMinutes(row.absenceMinutes)}</td>
+      <td><span class="point-review-tracking-chip ${pointReviewStatusTone(tracking.status)}">${escapeHtml(tracking.statusLabel)}</span>${tracking.note?`<small>${escapeHtml(tracking.note)}</small>`:""}</td>
       <td><button type="button" class="secondary point-review-action" data-point-review-index="${row.__reviewIndex}">Conferir</button></td>
     </tr>`;
-  }).join(""):'<tr><td colspan="10" class="muted">Nenhum dia corresponde aos filtros selecionados.</td></tr>';
+  }).join(""):'<tr><td colspan="11" class="muted">Nenhum dia corresponde aos filtros selecionados.</td></tr>';
   if($("point-review-count")){
     const high=rows.filter(row=>row.priority==="HIGH").length;
     const explained=rows.filter(row=>row.explainedBySenior).length;
-    $("point-review-count").textContent=`${filtered.length} de ${rows.length} dia(s) exibido(s) · ${high} alta prioridade · ${explained} explicado(s) pela Senior. Nenhum valor é alterado nesta fila.`;
+    const pending=rows.filter(row=>pointReviewTracking(row).status==="PENDING_SENIOR_CORRECTION").length;
+    $("point-review-count").textContent=`${filtered.length} de ${rows.length} dia(s) exibido(s) · ${high} alta prioridade · ${explained} explicado(s) pela Senior · ${pending} aguardando correção na Senior. A fila não altera o ponto.`;
   }
   body.querySelectorAll("[data-point-review-index]").forEach(button=>button.addEventListener("click",()=>openPointReviewDetail(Number(button.dataset.pointReviewIndex))));
+  renderPointReviewResolvedHistory();
   const detail=$("point-review-detail");
   if(detail&&!rows.length)detail.hidden=true;
+}
+
+async function savePointReviewControl(index){
+  const row=pointReviewRows()[Number(index)];
+  if(!row?.employeeId)return toast("Não foi possível vincular esta pendência ao colaborador cadastrado.","error");
+  const status=$("point-review-control-status")?.value||"UNREVIEWED";
+  const note=String($("point-review-control-note")?.value||"").trim();
+  const button=$("point-review-control-save");
+  try{
+    setButtonLoading(button,true,"Salvando");
+    const data=await api("/api/imports/timecard-review-control",{
+      method:"POST",
+      body:JSON.stringify({
+        companyId:pointImportPreview?.companyId,
+        branchId:pointImportPreview?.branchId,
+        employeeId:row.employeeId,
+        workDate:row.date,
+        status,
+        note
+      })
+    });
+    row.tracking=data.control;
+    renderPointReviewQueue();
+    openPointReviewDetail(Number(index));
+    toast(data.message||"Acompanhamento salvo.","success");
+  }catch(error){toast(error.message||"Não foi possível salvar o acompanhamento.","error");}
+  finally{setButtonLoading(button,false);}
 }
 
 function openPointReviewDetail(index){
@@ -794,9 +873,20 @@ function openPointReviewDetail(index){
   if(!row||!detail)return;
   const markings=(row.markings||[]).join(" · ")||"—";
   const ignored=(row.ignoredMarkings||[]).join(" · ")||"—";
+  const tracking=pointReviewTracking(row);
+  const options=[
+    ["UNREVIEWED","Não analisado"],
+    ["REVIEWED","Conferido"],
+    ["PENDING_SENIOR_CORRECTION","Aguardando correção na Senior"],
+    ["SENIOR_CORRECTED_WAITING_IMPORT","Senior corrigida — aguardando nova importação"]
+  ].map(([value,label])=>`<option value="${value}" ${tracking.status===value?"selected":""}>${escapeHtml(label)}</option>`).join("");
+  const meta=tracking.updatedAt
+    ?`Última atualização: ${new Date(tracking.updatedAt).toLocaleString("pt-BR")}${tracking.updatedByName?` · ${escapeHtml(tracking.updatedByName)}`:""}`
+    :"Ainda não houve acompanhamento registrado para este dia.";
   detail.hidden=false;
   detail.innerHTML=`
     <header><div><span>Conferência do dia</span><strong>${escapeHtml(row.employeeName||"-")} · ${escapeHtml(row.registration||"-")} · ${row.date?formatApiDate(row.date):"-"}</strong></div><button type="button" class="secondary point-review-action" id="point-review-detail-close">Fechar</button></header>
+    <div class="point-review-lock-note"><strong>Somente acompanhamento</strong><span>O Controle Térmico não cria, completa nem corrige horários. Qualquer correção deve ser feita na Senior e validada por uma nova importação.</span></div>
     <div class="point-review-detail-grid">
       <div><span>Motivo</span><strong>${escapeHtml(row.reason||"Revisão necessária")}</strong></div>
       <div><span>Origem</span><strong>Pág. ${escapeHtml(row.page||"-")} · linha ${escapeHtml(row.line||"-")}</strong></div>
@@ -811,8 +901,15 @@ function openPointReviewDetail(index){
     </div>
     ${row.reviewContext?`<div><span class="hint">Interpretação da conferência</span><div class="point-review-source">${escapeHtml(row.reviewContext)}</div></div>`:""}
     <div><span class="hint">Ocorrência identificada</span><div class="point-review-source">${escapeHtml(row.occurrence||"Nenhuma ocorrência textual identificada.")}</div></div>
-    <div><span class="hint">Linha original preservada</span><div class="point-review-source">${escapeHtml(row.sourceText||"Linha original não disponível nesta prévia.")}</div></div>`;
+    <div><span class="hint">Linha original preservada</span><div class="point-review-source">${escapeHtml(row.sourceText||"Linha original não disponível nesta prévia.")}</div></div>
+    <section class="point-review-control-panel">
+      <div><span>Acompanhamento do DP</span><strong>${escapeHtml(tracking.statusLabel)}</strong><small>${meta}</small></div>
+      <label>Status<select id="point-review-control-status">${options}</select></label>
+      <label>Observação do DP<textarea id="point-review-control-note" maxlength="1200" rows="3" placeholder="Ex.: solicitado ajuste na Senior; aguardando nova emissão do Cartão Ponto.">${escapeHtml(tracking.note)}</textarea></label>
+      <div class="point-review-control-actions"><button type="button" class="primary" id="point-review-control-save" ${row.employeeId?"":"disabled"}>Salvar acompanhamento</button><small>Nenhuma ação desta área modifica marcações, jornada, BH ou faltas.</small></div>
+    </section>`;
   $("point-review-detail-close")?.addEventListener("click",()=>{detail.hidden=true;});
+  $("point-review-control-save")?.addEventListener("click",()=>savePointReviewControl(Number(index)));
   detail.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 
@@ -890,6 +987,7 @@ document.querySelectorAll("[data-point-audit-tab]").forEach(button=>button.addEv
 }));
 if($("point-review-search"))$("point-review-search").oninput=()=>renderPointReviewQueue();
 if($("point-review-priority"))$("point-review-priority").onchange=()=>renderPointReviewQueue();
+if($("point-review-tracking-status"))$("point-review-tracking-status").onchange=()=>renderPointReviewQueue();
 if($("point-audit-structured-search"))$("point-audit-structured-search").oninput=event=>renderPointAuditStructured(event.target.value);
 if($("point-audit-original-search"))$("point-audit-original-search").oninput=event=>renderPointAuditOriginal(event.target.value);
 
@@ -978,8 +1076,14 @@ if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
     const replacementText=Number(data.replacedDays||0)>0
       ?` · ${data.replacedDays} dia(s) anteriores substituídos sem duplicidade`
       :" · primeira gravação do período";
+    const reviewTracking=data.reviewTracking||postAudit?.reviewTracking||{};
+    const reviewText=Number(reviewTracking.autoResolved||0)>0
+      ?` · ${reviewTracking.autoResolved} pendência(s) resolvida(s) automaticamente pela nova leitura da Senior`
+      :Number(reviewTracking.reopened||0)>0
+        ?` · ${reviewTracking.reopened} pendência(s) continuam presentes e foram reabertas para acompanhamento`
+        :"";
     $("point-import-feedback").textContent=postAudit?.status==="VALIDATED"
-      ?`Importação concluída e auditada: ${data.employees} colaborador(es), ${data.savedDays} dia(s) gravados${replacementText}. Auditoria pós-gravação 100% validada.`
+      ?`Importação concluída e auditada: ${data.employees} colaborador(es), ${data.savedDays} dia(s) gravados${replacementText}${reviewText}. Auditoria pós-gravação 100% validada.`
       :`Importação concluída: ${data.employees} colaborador(es) e ${data.savedDays} dia(s) salvos.`;
     toast(postAudit?.status==="VALIDATED"?"Ponto salvo e conferido novamente no banco.":"Cartão de ponto importado com sucesso.","success");
     if(typeof invalidateOccurrencesControl==="function")invalidateOccurrencesControl();

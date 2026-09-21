@@ -33,8 +33,8 @@
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
   <link rel="stylesheet" href="/css/base.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.83">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.83">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.84">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.84">
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
@@ -2152,12 +2152,13 @@
             </section>
             <section class="point-audit-view" data-point-audit-view="reviews" hidden>
               <div class="point-review-head">
-                <div><span>FILA DE CONFERÊNCIA DO DP</span><strong id="point-review-title">Nenhum dia pendente</strong><p>Esses registros foram preservados como vieram da Senior. A fila serve para localizar e conferir as exceções; ela não altera o ponto automaticamente.</p></div>
-                <div class="point-review-kpis"><div><span>Total</span><strong id="point-review-total">0</strong></div><div><span>Alta prioridade</span><strong id="point-review-high">0</strong></div><div><span>Senior reconhecido</span><strong id="point-review-explained">0</strong></div><div><span>Colaboradores</span><strong id="point-review-employees">0</strong></div></div>
+                <div><span>FILA DE CONFERÊNCIA DO DP</span><strong id="point-review-title">Nenhum dia pendente</strong><p>Esses registros foram preservados como vieram da Senior. A fila serve somente para acompanhar e conferir exceções; horários, jornada, BH e faltas só podem ser corrigidos na Senior.</p></div>
+                <div class="point-review-kpis"><div><span>Total</span><strong id="point-review-total">0</strong></div><div><span>Alta prioridade</span><strong id="point-review-high">0</strong></div><div><span>Senior reconhecido</span><strong id="point-review-explained">0</strong></div><div><span>Aguardando Senior</span><strong id="point-review-pending-senior">0</strong></div><div><span>Colaboradores</span><strong id="point-review-employees">0</strong></div></div>
               </div>
-              <div class="point-audit-toolbar point-review-toolbar"><p>Filtre por colaborador, matrícula, data, motivo ou código de horário.</p><div><select id="point-review-priority"><option value="">Todas as prioridades</option><option value="HIGH">Alta prioridade</option><option value="MEDIUM">Atenção</option></select><input id="point-review-search" type="search" placeholder="Buscar na fila de revisão"></div></div>
-              <div class="table-wrap point-audit-table-wrap point-review-table-wrap"><table><thead><tr><th>Colaborador</th><th>Data</th><th>Horário Senior</th><th>Motivo</th><th>Marcações</th><th>Ocorrência</th><th>BH−</th><th>BH+</th><th>Faltas</th><th>Ação</th></tr></thead><tbody id="point-review-body"></tbody></table></div>
+              <div class="point-audit-toolbar point-review-toolbar"><p>Filtre por colaborador, matrícula, data, motivo, horário ou acompanhamento.</p><div><select id="point-review-priority"><option value="">Todas as prioridades</option><option value="HIGH">Alta prioridade</option><option value="MEDIUM">Atenção</option></select><select id="point-review-tracking-status"><option value="">Todos os acompanhamentos</option><option value="UNREVIEWED">Não analisado</option><option value="REVIEWED">Conferido</option><option value="PENDING_SENIOR_CORRECTION">Aguardando correção na Senior</option><option value="SENIOR_CORRECTED_WAITING_IMPORT">Senior corrigida — aguardando nova importação</option></select><input id="point-review-search" type="search" placeholder="Buscar na fila de revisão"></div></div>
+              <div class="table-wrap point-audit-table-wrap point-review-table-wrap"><table><thead><tr><th>Colaborador</th><th>Data</th><th>Horário Senior</th><th>Motivo</th><th>Marcações</th><th>Ocorrência</th><th>BH−</th><th>BH+</th><th>Faltas</th><th>Acompanhamento</th><th>Ação</th></tr></thead><tbody id="point-review-body"></tbody></table></div>
               <p class="hint" id="point-review-count"></p>
+              <details id="point-review-resolved-section" class="point-review-resolved" hidden><summary>Pendências resolvidas após nova leitura <strong id="point-review-resolved-count">0</strong></summary><div id="point-review-resolved-body" class="point-review-resolved-body"></div></details>
               <article id="point-review-detail" class="point-review-detail" hidden aria-live="polite"></article>
             </section>
             <section class="point-audit-view" data-point-audit-view="structured" hidden>
@@ -2743,7 +2744,7 @@
   <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
   <script src="/js/rest-audit.js?v=1.0.31-beta.17"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.83"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.84"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>

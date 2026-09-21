@@ -273,7 +273,7 @@
       if(irregular)actions.push('Reforçar e acompanhar o cumprimento do intervalo previsto.');
       if(additional)actions.push('Verificar necessidade e autorização das horas adicionais/BH.');
       if(early)actions.push('Conferir as saídas antecipadas e suas justificativas.');
-      if(incomplete)actions.push('Regularizar as marcações incompletas antes da análise definitiva.');
+      if(incomplete)actions.push('Regularizar as marcações incompletas exclusivamente na Senior e reimportar antes da análise definitiva.');
       if(!actions.length)actions.push('Manter o acompanhamento da jornada e do intervalo no padrão atual.');
       if($("occurrences-journey-suggestion"))$("occurrences-journey-suggestion").innerHTML=`<strong>Sugestão de melhoria</strong><span>${esc(actions.join(' '))}</span>`;
       if(body)body.innerHTML=days.length?days.map((day,index)=>{const marks=Array.isArray(day.markings)?day.markings:[];const a=analyses[index];return `<tr class="occ-journey-${a.level}"><td>${formatDate(day.work_date)}</td><td>${esc(day.shift_description||day.schedule_code||"-")}</td><td>${esc(marks[0]||"-")}</td><td>${esc(marks[1]||"-")}</td><td>${esc(marks[2]||"-")}</td><td>${esc(marks[3]||"-")}</td><td>${a.actual==null?"-":`${a.actual} min${a.planned!=null?` / ${a.planned} prev.`:''}`}</td><td><strong>${a.level==='red'?'🔴':a.level==='yellow'?'🟡':a.level==='green'?'🟢':'⚪'} ${esc(a.label)}</strong><small class="occurrence-subline">${esc(day.occurrence||"")}</small></td></tr>`;}).join(""):'<tr><td colspan="8" class="muted">Nenhuma jornada encontrada neste período.</td></tr>';
@@ -409,7 +409,7 @@
     const top=impacts[0];
     let suggestion='Manter o acompanhamento da jornada e das ocorrências da equipe.';
     if(top?.value){
-      suggestion={absences:'Priorizar os colaboradores com faltas e verificar reincidências, justificativas e necessidade de orientação individual.',bh_positive_minutes:'Revisar onde o BH positivo está sendo gerado e confirmar necessidade e autorização das horas adicionais.',bh_negative_minutes:'Identificar a origem do BH negativo e acompanhar a regularização do saldo com a liderança.',early_exits:'Conferir as saídas antecipadas, separar os casos justificados e acompanhar os colaboradores com repetição.',incomplete_days:'Regularizar as marcações incompletas antes de tomar decisões sobre jornada e reforçar o registro correto do ponto.',review_days:'Priorizar a conferência dos dias para revisão para que o painel reflita somente dados de ponto confirmados.'}[top.key]||suggestion;
+      suggestion={absences:'Priorizar os colaboradores com faltas e verificar reincidências, justificativas e necessidade de orientação individual.',bh_positive_minutes:'Revisar onde o BH positivo está sendo gerado e confirmar necessidade e autorização das horas adicionais.',bh_negative_minutes:'Identificar a origem do BH negativo e acompanhar a regularização do saldo com a liderança.',early_exits:'Conferir as saídas antecipadas, separar os casos justificados e acompanhar os colaboradores com repetição.',incomplete_days:'Regularizar as marcações incompletas exclusivamente na Senior, reimportar o Cartão Ponto e só então tomar decisões sobre a jornada.',review_days:'Priorizar a conferência dos dias para revisão para que o painel reflita somente dados de ponto confirmados.'}[top.key]||suggestion;
     }
     if($('occ-general-suggestion'))$('occ-general-suggestion').textContent=suggestion;
   }
@@ -705,7 +705,7 @@
     "bh-positive":{title:"Banco de Horas Positivo",subtitle:"Acompanhe os créditos acumulados por colaborador.",purpose:"Identificar saldos que exigem compensação ou pagamento.",action:"Priorizar maiores saldos e conferir os dias que geraram crédito.",source:"Coluna BH+ validada no fechamento do Cartão Senior."},
     "bh-negative":{title:"Banco de Horas Negativo",subtitle:"Acompanhe os débitos acumulados por colaborador.",purpose:"Identificar saldos que precisam de regularização.",action:"Conferir justificativas e definir compensação ou tratamento do débito.",source:"Coluna BH- validada no fechamento do Cartão Senior."},
     justifications:{title:"Justificativas",subtitle:"Consulte ausências explicadas sem classificá-las como falta.",purpose:"Auditar DSR, atestados, férias, licenças e demais motivos.",action:"Conferir documentação e quantidade de dias por tipo.",source:"Ocorrências justificadas registradas no Cartão Senior."},
-    reviews:{title:"Revisões do ponto",subtitle:"Resolva pendências antes de usar os indicadores gerenciais.",purpose:"Localizar marcações incompletas ou leitura que exige conferência.",action:"Corrigir ou confirmar o ponto, reimportar e validar novamente.",source:"Dias classificados como revisão ou jornada incompleta."}
+    reviews:{title:"Revisões do ponto",subtitle:"Resolva pendências antes de usar os indicadores gerenciais.",purpose:"Localizar marcações incompletas ou leitura que exige conferência.",action:"Corrigir exclusivamente na Senior, reimportar o Cartão Ponto e validar novamente.",source:"Dias classificados como revisão ou jornada incompleta."}
   };
   function renderAnalysisGuide(meta){
     const box=$("occ-analysis-guide");if(!box)return;
