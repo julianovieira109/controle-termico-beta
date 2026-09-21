@@ -15,7 +15,8 @@ const NON_WORK_PATTERNS=[
 
 const OCCURRENCE_ONLY_PATTERNS=[
   /\bADICIONAL\s+NOTURNO\b/i,
-  /\bSA[ÍI]DA\s+INTERMEDI[ÁA]RIA(?:\s+NOTURNA)?\b/i
+  /\bSA[ÍI]DA\s+INTERMEDI[ÁA]RIA(?:\s+NOTURNA)?\b/i,
+  /\bJORNADA\s+INCOMPLETA\b/i
 ];
 
 function clean(value){

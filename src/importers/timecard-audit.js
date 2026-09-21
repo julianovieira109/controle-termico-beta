@@ -24,6 +24,49 @@ function rawExtractionLines(text,limit=6000){
   return {rows:result,total:result.length,truncated:false};
 }
 
+
+function reviewReason(day){
+  const occurrence=String(day?.occurrence||'');
+  const markings=Array.isArray(day?.markings)?day.markings:[];
+  const ignored=Array.isArray(day?.ignoredMarkings)?day.ignoredMarkings:[];
+  if(/JORNADA\s+INCOMPLETA/i.test(occurrence))return {code:'INCOMPLETE_JOURNEY',label:'Jornada incompleta informada pela Senior',priority:'HIGH'};
+  if(/MARCA[CÇ][ÃA]O\s+SEM\s+PAR/i.test(occurrence)||ignored.length)return {code:'UNPAIRED_MARKING',label:'Marcação incompleta / batida sem par',priority:'HIGH'};
+  if(day?.state==='NO_MARKINGS')return {code:'NO_MARKINGS',label:occurrence?`Sem marcações reconhecidas · ${occurrence}`:'Sem marcações reconhecidas',priority:'HIGH'};
+  if(day?.state==='REVIEW'&&markings.length)return {code:'UNUSUAL_MARKINGS',label:`Quantidade incomum de marcações (${markings.length})`,priority:'MEDIUM'};
+  return {code:'REVIEW',label:'Revisão necessária',priority:'MEDIUM'};
+}
+
+function buildReviewRows(employees){
+  const rows=[];
+  for(const employee of employees||[]){
+    for(const day of employee.days||[]){
+      if(day.state!=='REVIEW'&&day.state!=='NO_MARKINGS')continue;
+      const reason=reviewReason(day);
+      rows.push({
+        page:employee.page||null,
+        line:day.sourceLine||null,
+        registration:employee.registration,
+        employeeName:employee.name,
+        date:day.date,
+        scheduleCode:day.scheduleCode,
+        markings:Array.isArray(day.markings)?day.markings:[],
+        ignoredMarkings:Array.isArray(day.ignoredMarkings)?day.ignoredMarkings:[],
+        occurrence:day.occurrence||null,
+        state:day.state,
+        reasonCode:reason.code,
+        reason:reason.label,
+        priority:reason.priority,
+        workMinutes:number(day.workMinutes),
+        bhNegativeMinutes:number(day.bhNegativeMinutes),
+        bhPositiveMinutes:number(day.bhPositiveMinutes),
+        absenceMinutes:number(day.absenceMinutes),
+        sourceText:day.sourceText||null
+      });
+    }
+  }
+  return rows.sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.employeeName||'').localeCompare(String(b.employeeName||''),'pt-BR'));
+}
+
 function buildStructuredRows(employees){
   return employees.flatMap(employee=>(employee.days||[]).map(day=>({
     page:employee.page||null,
@@ -120,6 +163,7 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   }
   const raw=rawExtractionLines(extraction.text);
   const structuredRows=buildStructuredRows(employees);
+  const reviewRows=buildReviewRows(employees);
   return {
     status,
     statusLabel,
@@ -149,8 +193,9 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
     totals,
     warnings,
     structuredRows,
+    reviewRows,
     rawLines:raw.rows
   };
 }
 
-module.exports={buildTimecardAudit,buildStructuredRows,rawExtractionLines};
+module.exports={buildTimecardAudit,buildStructuredRows,buildReviewRows,reviewReason,rawExtractionLines};

@@ -2138,6 +2138,7 @@
             </section>
             <nav class="point-audit-tabs" aria-label="Conferência do Cartão Senior">
               <button type="button" class="active" data-point-audit-tab="summary">Resumo da extração</button>
+              <button type="button" data-point-audit-tab="reviews">Dias para revisão <span id="point-review-tab-count" class="point-review-tab-count">0</span></button>
               <button type="button" data-point-audit-tab="structured">Dados estruturados</button>
               <button type="button" data-point-audit-tab="original">Linhas originais</button>
               <button type="button" data-point-audit-tab="matching">Colaboradores</button>
@@ -2148,6 +2149,16 @@
                 <article><header><span>Conciliação com a Senior</span><strong id="point-audit-reconciliation-badge">—</strong></header><div id="point-audit-reconciliation"></div></article>
                 <article><header><span>Pontos de conferência</span><strong>Diagnóstico</strong></header><ul id="point-audit-reasons"></ul></article>
               </div>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="reviews" hidden>
+              <div class="point-review-head">
+                <div><span>FILA DE CONFERÊNCIA DO DP</span><strong id="point-review-title">Nenhum dia pendente</strong><p>Esses registros foram preservados como vieram da Senior. A fila serve para localizar e conferir as exceções; ela não altera o ponto automaticamente.</p></div>
+                <div class="point-review-kpis"><div><span>Total</span><strong id="point-review-total">0</strong></div><div><span>Alta prioridade</span><strong id="point-review-high">0</strong></div><div><span>Colaboradores</span><strong id="point-review-employees">0</strong></div></div>
+              </div>
+              <div class="point-audit-toolbar point-review-toolbar"><p>Filtre por colaborador, matrícula, data, motivo ou código de horário.</p><div><select id="point-review-priority"><option value="">Todas as prioridades</option><option value="HIGH">Alta prioridade</option><option value="MEDIUM">Atenção</option></select><input id="point-review-search" type="search" placeholder="Buscar na fila de revisão"></div></div>
+              <div class="table-wrap point-audit-table-wrap point-review-table-wrap"><table><thead><tr><th>Colaborador</th><th>Data</th><th>Horário Senior</th><th>Motivo</th><th>Marcações</th><th>Ocorrência</th><th>BH−</th><th>BH+</th><th>Faltas</th><th>Ação</th></tr></thead><tbody id="point-review-body"></tbody></table></div>
+              <p class="hint" id="point-review-count"></p>
+              <article id="point-review-detail" class="point-review-detail" hidden aria-live="polite"></article>
             </section>
             <section class="point-audit-view" data-point-audit-view="structured" hidden>
               <div class="point-audit-toolbar"><p>Dados identificados antes de alimentar os relatórios.</p><input id="point-audit-structured-search" type="search" placeholder="Buscar matrícula, nome, data ou ocorrência"></div>

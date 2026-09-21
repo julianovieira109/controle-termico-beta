@@ -731,6 +731,81 @@ function pointAuditMinutes(value,{signed=false}={}){
   return `${sign}${String(Math.floor(absolute/60)).padStart(2,"0")}:${String(absolute%60).padStart(2,"0")}`;
 }
 
+function pointReviewRows(){
+  const diagnostic=pointImportPreview?.diagnostic||{};
+  if(Array.isArray(diagnostic.reviewRows))return diagnostic.reviewRows;
+  return (diagnostic.structuredRows||[]).filter(row=>row.state==="REVIEW"||row.state==="NO_MARKINGS").map(row=>({
+    ...row,
+    reason:row.state==="NO_MARKINGS"?"Sem marcações reconhecidas":"Revisão necessária",
+    priority:"HIGH"
+  }));
+}
+
+function renderPointReviewQueue(){
+  const body=$("point-review-body");
+  if(!body)return;
+  const rows=pointReviewRows().map((row,index)=>({...row,__reviewIndex:index}));
+  const term=String($("point-review-search")?.value||"").trim().toLocaleLowerCase("pt-BR");
+  const words=term.split(/\s+/).filter(Boolean);
+  const priority=String($("point-review-priority")?.value||"");
+  const filtered=rows.filter(row=>{
+    if(priority&&row.priority!==priority)return false;
+    if(!words.length)return true;
+    const haystack=[row.registration,row.employeeName,row.date,row.scheduleCode,row.reason,row.occurrence,(row.markings||[]).join(" "),(row.ignoredMarkings||[]).join(" ")].join(" ").toLocaleLowerCase("pt-BR");
+    return words.every(word=>haystack.includes(word));
+  });
+  if($("point-review-tab-count"))$("point-review-tab-count").textContent=rows.length;
+  if($("point-review-title"))$("point-review-title").textContent=rows.length?`${rows.length} dia(s) aguardando conferência`:"Nenhum dia pendente";
+  if($("point-review-total"))$("point-review-total").textContent=rows.length;
+  if($("point-review-high"))$("point-review-high").textContent=rows.filter(row=>row.priority==="HIGH").length;
+  if($("point-review-employees"))$("point-review-employees").textContent=new Set(rows.map(row=>String(row.registration||row.employeeName||""))).size;
+  body.innerHTML=filtered.length?filtered.map(row=>{
+    const markings=(row.markings||[]).join(" · ")||"—";
+    const ignored=(row.ignoredMarkings||[]).length?`<small>Desconsiderada(s): ${escapeHtml(row.ignoredMarkings.join(" · "))}</small>`:"";
+    return `<tr>
+      <td><strong>${escapeHtml(row.employeeName||"-")}</strong><small>${escapeHtml(row.registration||"Sem matrícula")} · Pág. ${escapeHtml(row.page||"-")}</small></td>
+      <td>${row.date?formatApiDate(row.date):"-"}</td>
+      <td><strong>${escapeHtml(row.scheduleCode||"-")}</strong></td>
+      <td><span class="point-review-reason ${row.priority==="HIGH"?"high":"medium"}">${escapeHtml(row.reason||"Revisão necessária")}</span></td>
+      <td>${escapeHtml(markings)}${ignored}</td>
+      <td>${escapeHtml(row.occurrence||"-")}</td>
+      <td>${pointAuditMinutes(row.bhNegativeMinutes)}</td>
+      <td>${pointAuditMinutes(row.bhPositiveMinutes)}</td>
+      <td>${pointAuditMinutes(row.absenceMinutes)}</td>
+      <td><button type="button" class="secondary point-review-action" data-point-review-index="${row.__reviewIndex}">Conferir</button></td>
+    </tr>`;
+  }).join(""):'<tr><td colspan="10" class="muted">Nenhum dia corresponde aos filtros selecionados.</td></tr>';
+  if($("point-review-count"))$("point-review-count").textContent=`${filtered.length} de ${rows.length} dia(s) exibido(s). Nenhum valor é alterado nesta fila.`;
+  body.querySelectorAll("[data-point-review-index]").forEach(button=>button.addEventListener("click",()=>openPointReviewDetail(Number(button.dataset.pointReviewIndex))));
+  const detail=$("point-review-detail");
+  if(detail&&!rows.length)detail.hidden=true;
+}
+
+function openPointReviewDetail(index){
+  const row=pointReviewRows()[Number(index)];
+  const detail=$("point-review-detail");
+  if(!row||!detail)return;
+  const markings=(row.markings||[]).join(" · ")||"—";
+  const ignored=(row.ignoredMarkings||[]).join(" · ")||"—";
+  detail.hidden=false;
+  detail.innerHTML=`
+    <header><div><span>Conferência do dia</span><strong>${escapeHtml(row.employeeName||"-")} · ${escapeHtml(row.registration||"-")} · ${row.date?formatApiDate(row.date):"-"}</strong></div><button type="button" class="secondary point-review-action" id="point-review-detail-close">Fechar</button></header>
+    <div class="point-review-detail-grid">
+      <div><span>Motivo</span><strong>${escapeHtml(row.reason||"Revisão necessária")}</strong></div>
+      <div><span>Origem</span><strong>Pág. ${escapeHtml(row.page||"-")} · linha ${escapeHtml(row.line||"-")}</strong></div>
+      <div><span>Horário Senior</span><strong>${escapeHtml(row.scheduleCode||"-")}</strong></div>
+      <div><span>Estado</span><strong>${escapeHtml(row.state||"-")}</strong></div>
+      <div><span>Marcações usadas</span><strong>${escapeHtml(markings)}</strong></div>
+      <div><span>Marcações preservadas</span><strong>${escapeHtml(ignored)}</strong></div>
+      <div><span>Trabalho</span><strong>${pointAuditMinutes(row.workMinutes)}</strong></div>
+      <div><span>BH− / BH+ / Faltas</span><strong>${pointAuditMinutes(row.bhNegativeMinutes)} / ${pointAuditMinutes(row.bhPositiveMinutes)} / ${pointAuditMinutes(row.absenceMinutes)}</strong></div>
+    </div>
+    <div><span class="hint">Ocorrência identificada</span><div class="point-review-source">${escapeHtml(row.occurrence||"Nenhuma ocorrência textual identificada.")}</div></div>
+    <div><span class="hint">Linha original preservada</span><div class="point-review-source">${escapeHtml(row.sourceText||"Linha original não disponível nesta prévia.")}</div></div>`;
+  $("point-review-detail-close")?.addEventListener("click",()=>{detail.hidden=true;});
+  detail.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
 function renderPointAuditStructured(search=""){
   const body=$("point-audit-structured-body");
   if(!body)return;
@@ -790,6 +865,7 @@ function renderPointAudit(diagnostic){
     ?"O arquivo será relido e validado novamente antes da gravação."
     :registryPending?"Use a Relação de Admitidos acima para cadastrar os novatos. O mesmo Cartão de Ponto será revalidado automaticamente."
     :"Abra o diagnóstico e corrija as divergências antes de importar.";
+  renderPointReviewQueue();
   renderPointAuditStructured();
   renderPointAuditOriginal();
 }
@@ -802,6 +878,8 @@ document.querySelectorAll("[data-point-audit-tab]").forEach(button=>button.addEv
     view.classList.toggle("active",active);
   });
 }));
+if($("point-review-search"))$("point-review-search").oninput=()=>renderPointReviewQueue();
+if($("point-review-priority"))$("point-review-priority").onchange=()=>renderPointReviewQueue();
 if($("point-audit-structured-search"))$("point-audit-structured-search").oninput=event=>renderPointAuditStructured(event.target.value);
 if($("point-audit-original-search"))$("point-audit-original-search").oninput=event=>renderPointAuditOriginal(event.target.value);
 

@@ -77,3 +77,10 @@ test('mantém 80% para Faltas Noturnas mesmo quando existe valor na coluna Falta
   assert.equal(normalized.minutes,21*60+48);
   assert.equal(normalized.reason,'SENIOR_NIGHT_ABSENCE_80');
 });
+
+test('identifica Jornada Incompleta como ocorrência de revisão preservando a batida',()=>{
+  const day=parseDayLine('14/09 SEG 0045 07:11 Jornada Incompleta ||SENIOR_COLS|| W=;BM=;BP=;HE=;F=;AN=;V=',{start:'2026-08-19',end:'2026-09-17'},new Map());
+  assert.equal(day.state,'REVIEW');
+  assert.equal(day.occurrence,'Jornada Incompleta');
+  assert.deepEqual(day.markings,['07:11']);
+});
