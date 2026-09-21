@@ -26,22 +26,124 @@ function rawExtractionLines(text,limit=6000){
 
 
 function reviewReason(day){
-  const occurrence=String(day?.occurrence||'');
+  const occurrence=String(day?.occurrence||'').trim();
   const markings=Array.isArray(day?.markings)?day.markings:[];
   const ignored=Array.isArray(day?.ignoredMarkings)?day.ignoredMarkings:[];
-  if(/JORNADA\s+INCOMPLETA/i.test(occurrence))return {code:'INCOMPLETE_JOURNEY',label:'Jornada incompleta informada pela Senior',priority:'HIGH'};
-  if(/MARCA[CÇ][ÃA]O\s+SEM\s+PAR/i.test(occurrence)||ignored.length)return {code:'UNPAIRED_MARKING',label:'Marcação incompleta / batida sem par',priority:'HIGH'};
-  if(day?.state==='NO_MARKINGS')return {code:'NO_MARKINGS',label:occurrence?`Sem marcações reconhecidas · ${occurrence}`:'Sem marcações reconhecidas',priority:'HIGH'};
-  if(day?.state==='REVIEW'&&markings.length)return {code:'UNUSUAL_MARKINGS',label:`Quantidade incomum de marcações (${markings.length})`,priority:'MEDIUM'};
-  return {code:'REVIEW',label:'Revisão necessária',priority:'MEDIUM'};
+  const hasSeniorTotals=[day?.workMinutes,day?.bhNegativeMinutes,day?.bhPositiveMinutes,day?.absenceMinutes]
+    .some(value=>Number(value||0)>0);
+  const hourlyMedical=Boolean(day?.hourlyMedical)||/ATESTADO(?:\s+NOTURNO)?\s+EM\s+HORAS/i.test(occurrence)||/ATESTADO.*\bHORAS\b/i.test(occurrence);
+  const earlyExit=Boolean(day?.explicitEarlyExit)||/SA[ÍI]DA\s+ANTECIPADA/i.test(occurrence);
+  const bankMovement=/\bBH\b|BANCO\s+DE\s+HORAS/i.test(occurrence);
+
+  if(/JORNADA\s+INCOMPLETA/i.test(occurrence)){
+    return {
+      code:'INCOMPLETE_JOURNEY',
+      label:'Jornada incompleta informada pela Senior',
+      priority:'HIGH',
+      explainedBySenior:false,
+      context:'A Senior sinalizou a jornada como incompleta; confira a marcação faltante antes de usar o dia operacionalmente.'
+    };
+  }
+
+  if(hourlyMedical){
+    return {
+      code:'MEDICAL_HOURS',
+      label:'Atestado em horas — ocorrência reconhecida pela Senior',
+      priority:'MEDIUM',
+      explainedBySenior:true,
+      context:'A ausência de parte das marcações pode decorrer do atestado em horas. Os valores oficiais da Senior são preservados.'
+    };
+  }
+
+  if(earlyExit){
+    return {
+      code:'EARLY_EXIT',
+      label:'Saída antecipada — ocorrência reconhecida pela Senior',
+      priority:'MEDIUM',
+      explainedBySenior:true,
+      context:'A jornada terminou antes do horário-base. O sistema preserva as batidas e os valores calculados pela Senior.'
+    };
+  }
+
+  if(/MARCA[CÇ][ÃA]O\s+SEM\s+PAR/i.test(occurrence)||ignored.length){
+    return {
+      code:'UNPAIRED_MARKING',
+      label:'Marcação incompleta / batida sem par',
+      priority:'HIGH',
+      explainedBySenior:false,
+      context:'Existe batida sem par confirmado. O sistema não inventa a marcação ausente.'
+    };
+  }
+
+  if(day?.state==='NO_MARKINGS'){
+    if(occurrence||hasSeniorTotals){
+      const suffix=occurrence?` · ${occurrence}`:'';
+      return {
+        code:'SENIOR_CONSOLIDATED_NO_MARKINGS',
+        label:`Lançamento Senior sem marcações completas${suffix}`,
+        priority:'MEDIUM',
+        explainedBySenior:true,
+        context:bankMovement
+          ?'A Senior trouxe horas/lançamento de banco sem batidas individuais. Pode ocorrer quando o colaborador não registrou o ponto e o tratamento foi lançado na Senior.'
+          :'A Senior trouxe valores consolidados sem batidas individuais. Confira o contexto operacional, mas não trate como falha do leitor.'
+      };
+    }
+    return {
+      code:'NO_MARKINGS_UNEXPLAINED',
+      label:'Sem marcações e sem justificativa explícita — conferir possível falta de batida',
+      priority:'HIGH',
+      explainedBySenior:false,
+      context:'Não há marcações nem ocorrência suficiente para explicar o dia.'
+    };
+  }
+
+  if(day?.state==='REVIEW'&&markings.length){
+    if(bankMovement){
+      return {
+        code:'PARTIAL_MARKINGS_WITH_SENIOR_EVENT',
+        label:`Marcações parciais com lançamento Senior · ${occurrence||'BH'}`,
+        priority:'MEDIUM',
+        explainedBySenior:true,
+        context:'As batidas não formam a jornada-base completa, mas a Senior registrou a ocorrência e os totais. Nenhuma batida é inventada.'
+      };
+    }
+    return {
+      code:'UNUSUAL_MARKINGS',
+      label:`Quantidade incomum de marcações (${markings.length})`,
+      priority:'MEDIUM',
+      explainedBySenior:false,
+      context:'Confira se houve falta de batida, saída antecipada ou outro tratamento ainda não identificado no texto da Senior.'
+    };
+  }
+
+  return {code:'REVIEW',label:'Revisão necessária',priority:'MEDIUM',explainedBySenior:false,context:'Conferência operacional necessária.'};
+}
+
+function reviewRestPolicy(day){
+  if(day?.eligibleForAutomaticRest){
+    if(day?.requiresReview){
+      return {
+        code:'CONFIRMED_INTERVAL_ONLY',
+        label:'Repouso automático somente nos intervalos confirmados pelas marcações',
+        allowed:true
+      };
+    }
+    return {code:'AUTO_ALLOWED',label:'Repouso automático permitido pelas marcações confirmadas',allowed:true};
+  }
+  return {
+    code:'NO_AUTO_REST_INSUFFICIENT_MARKINGS',
+    label:'Não gerar repouso automaticamente — horários insuficientes ou jornada não confirmada',
+    allowed:false
+  };
 }
 
 function buildReviewRows(employees){
   const rows=[];
   for(const employee of employees||[]){
     for(const day of employee.days||[]){
-      if(day.state!=='REVIEW'&&day.state!=='NO_MARKINGS')continue;
+      if(day.requiresReview!==true&&day.state!=='REVIEW'&&day.state!=='NO_MARKINGS')continue;
       const reason=reviewReason(day);
+      const restPolicy=reviewRestPolicy(day);
       rows.push({
         page:employee.page||null,
         line:day.sourceLine||null,
@@ -56,6 +158,13 @@ function buildReviewRows(employees){
         reasonCode:reason.code,
         reason:reason.label,
         priority:reason.priority,
+        explainedBySenior:Boolean(reason.explainedBySenior),
+        reviewContext:reason.context||null,
+        expectedMarkingsCount:number(day.expectedMarkingsCount),
+        incompleteAgainstSchedule:Boolean(day.incompleteAgainstSchedule),
+        restPolicyCode:restPolicy.code,
+        restPolicy:restPolicy.label,
+        automaticRestAllowed:Boolean(restPolicy.allowed),
         workMinutes:number(day.workMinutes),
         bhNegativeMinutes:number(day.bhNegativeMinutes),
         bhPositiveMinutes:number(day.bhPositiveMinutes),
@@ -79,6 +188,9 @@ function buildStructuredRows(employees){
     ignoredMarkings:Array.isArray(day.ignoredMarkings)?day.ignoredMarkings:[],
     occurrence:day.occurrence||null,
     state:day.state,
+    requiresReview:Boolean(day.requiresReview),
+    expectedMarkingsCount:number(day.expectedMarkingsCount),
+    incompleteAgainstSchedule:Boolean(day.incompleteAgainstSchedule),
     workMinutes:number(day.workMinutes),
     bhNegativeMinutes:number(day.bhNegativeMinutes),
     bhPositiveMinutes:number(day.bhPositiveMinutes),
@@ -147,7 +259,12 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   if(unverified)reasons.push(`${unverified} colaborador(es) não possuem fechamento validável no arquivo.`);
   if(notFound)reasons.push(`${notFound} matrícula(s) do PDF não foram localizadas no cadastro selecionado.`);
   if(nameMismatch)reasons.push(`${nameMismatch} matrícula(s) foram localizadas, mas o nome diverge do cadastro e exige conferência.`);
-  if(reviewDays)reasons.push(`${reviewDays} dia(s) possuem marcações incompletas ou precisam de revisão.`);
+  if(reviewDays){
+    const provisionalReviewRows=buildReviewRows(employees);
+    const high=provisionalReviewRows.filter(item=>item.priority==='HIGH').length;
+    const explained=provisionalReviewRows.filter(item=>item.explainedBySenior).length;
+    reasons.push(`${reviewDays} dia(s) estão na fila de conferência: ${high} de alta prioridade e ${explained} com ocorrência/lançamento já reconhecido pela Senior.`);
+  }
   if(adjusted)reasons.push(`${adjusted} colaborador(es) tiveram conciliação controlada de pequenos resíduos de BH-.`);
   if(!reasons.length)reasons.push('Estrutura, matrículas, nomes e totais de fechamento foram conciliados.');
 
@@ -198,4 +315,4 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   };
 }
 
-module.exports={buildTimecardAudit,buildStructuredRows,buildReviewRows,reviewReason,rawExtractionLines};
+module.exports={buildTimecardAudit,buildStructuredRows,buildReviewRows,reviewReason,reviewRestPolicy,rawExtractionLines};

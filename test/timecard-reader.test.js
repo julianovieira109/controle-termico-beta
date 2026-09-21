@@ -84,3 +84,20 @@ test('identifica Jornada Incompleta como ocorrência de revisão preservando a b
   assert.equal(day.occurrence,'Jornada Incompleta');
   assert.deepEqual(day.markings,['07:11']);
 });
+
+test('atestado em horas é explicado pela Senior e não cria alerta novo nem repouso automático',()=>{
+  const day=parseDayLine('15/09 TER 0046 Atestado EM HORAS ||SENIOR_COLS|| W=;BM=;BP=;HE=;F=;AN=;V=',{start:'2026-08-19',end:'2026-09-17'},new Map([['0046',['06:00','12:00','13:00','14:20']]]));
+  assert.equal(day.state,'ATESTADO');
+  assert.equal(day.hourlyMedical,true);
+  assert.equal(day.requiresReview,false);
+  assert.equal(day.eligibleForAutomaticRest,false);
+});
+
+test('saída antecipada com apenas um par preserva a ocorrência sem criar alerta novo',()=>{
+  const day=parseDayLine('11/09 SEX 0046 06:05 12:38 BH (-) Saída Antecipada ||SENIOR_COLS|| W=06:33;BM=00:47;BP=;HE=;F=;AN=;V=',{start:'2026-08-19',end:'2026-09-17'},new Map([['0046',['06:00','12:00','13:00','14:20']]]));
+  assert.deepEqual(day.markings,['06:05','12:38']);
+  assert.equal(day.explicitEarlyExit,true);
+  assert.equal(day.incompleteAgainstSchedule,true);
+  assert.equal(day.requiresReview,false);
+  assert.equal(day.eligibleForAutomaticRest,true);
+});

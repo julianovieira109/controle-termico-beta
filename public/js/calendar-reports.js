@@ -734,10 +734,12 @@ function pointAuditMinutes(value,{signed=false}={}){
 function pointReviewRows(){
   const diagnostic=pointImportPreview?.diagnostic||{};
   if(Array.isArray(diagnostic.reviewRows))return diagnostic.reviewRows;
-  return (diagnostic.structuredRows||[]).filter(row=>row.state==="REVIEW"||row.state==="NO_MARKINGS").map(row=>({
+  return (diagnostic.structuredRows||[]).filter(row=>row.requiresReview||row.state==="REVIEW"||row.state==="NO_MARKINGS").map(row=>({
     ...row,
-    reason:row.state==="NO_MARKINGS"?"Sem marcações reconhecidas":"Revisão necessária",
-    priority:"HIGH"
+    reason:row.state==="NO_MARKINGS"?"Sem marcações — conferir contexto":"Revisão necessária",
+    priority:row.state==="NO_MARKINGS"?"MEDIUM":"HIGH",
+    explainedBySenior:false,
+    restPolicy:row.eligibleForAutomaticRest?"Repouso automático somente nos intervalos confirmados pelas marcações":"Não gerar repouso automaticamente — horários insuficientes ou jornada não confirmada"
   }));
 }
 
@@ -758,6 +760,7 @@ function renderPointReviewQueue(){
   if($("point-review-title"))$("point-review-title").textContent=rows.length?`${rows.length} dia(s) aguardando conferência`:"Nenhum dia pendente";
   if($("point-review-total"))$("point-review-total").textContent=rows.length;
   if($("point-review-high"))$("point-review-high").textContent=rows.filter(row=>row.priority==="HIGH").length;
+  if($("point-review-explained"))$("point-review-explained").textContent=rows.filter(row=>row.explainedBySenior).length;
   if($("point-review-employees"))$("point-review-employees").textContent=new Set(rows.map(row=>String(row.registration||row.employeeName||""))).size;
   body.innerHTML=filtered.length?filtered.map(row=>{
     const markings=(row.markings||[]).join(" · ")||"—";
@@ -766,7 +769,7 @@ function renderPointReviewQueue(){
       <td><strong>${escapeHtml(row.employeeName||"-")}</strong><small>${escapeHtml(row.registration||"Sem matrícula")} · Pág. ${escapeHtml(row.page||"-")}</small></td>
       <td>${row.date?formatApiDate(row.date):"-"}</td>
       <td><strong>${escapeHtml(row.scheduleCode||"-")}</strong></td>
-      <td><span class="point-review-reason ${row.priority==="HIGH"?"high":"medium"}">${escapeHtml(row.reason||"Revisão necessária")}</span></td>
+      <td><span class="point-review-reason ${row.priority==="HIGH"?"high":"medium"}">${escapeHtml(row.reason||"Revisão necessária")}</span>${row.explainedBySenior?'<small>Ocorrência/lançamento reconhecido pela Senior</small>':""}</td>
       <td>${escapeHtml(markings)}${ignored}</td>
       <td>${escapeHtml(row.occurrence||"-")}</td>
       <td>${pointAuditMinutes(row.bhNegativeMinutes)}</td>
@@ -775,7 +778,11 @@ function renderPointReviewQueue(){
       <td><button type="button" class="secondary point-review-action" data-point-review-index="${row.__reviewIndex}">Conferir</button></td>
     </tr>`;
   }).join(""):'<tr><td colspan="10" class="muted">Nenhum dia corresponde aos filtros selecionados.</td></tr>';
-  if($("point-review-count"))$("point-review-count").textContent=`${filtered.length} de ${rows.length} dia(s) exibido(s). Nenhum valor é alterado nesta fila.`;
+  if($("point-review-count")){
+    const high=rows.filter(row=>row.priority==="HIGH").length;
+    const explained=rows.filter(row=>row.explainedBySenior).length;
+    $("point-review-count").textContent=`${filtered.length} de ${rows.length} dia(s) exibido(s) · ${high} alta prioridade · ${explained} explicado(s) pela Senior. Nenhum valor é alterado nesta fila.`;
+  }
   body.querySelectorAll("[data-point-review-index]").forEach(button=>button.addEventListener("click",()=>openPointReviewDetail(Number(button.dataset.pointReviewIndex))));
   const detail=$("point-review-detail");
   if(detail&&!rows.length)detail.hidden=true;
@@ -799,7 +806,10 @@ function openPointReviewDetail(index){
       <div><span>Marcações preservadas</span><strong>${escapeHtml(ignored)}</strong></div>
       <div><span>Trabalho</span><strong>${pointAuditMinutes(row.workMinutes)}</strong></div>
       <div><span>BH− / BH+ / Faltas</span><strong>${pointAuditMinutes(row.bhNegativeMinutes)} / ${pointAuditMinutes(row.bhPositiveMinutes)} / ${pointAuditMinutes(row.absenceMinutes)}</strong></div>
+      <div><span>Classificação</span><strong>${row.explainedBySenior?"Ocorrência/lançamento reconhecido pela Senior":row.priority==="HIGH"?"Conferência obrigatória":"Atenção operacional"}</strong></div>
+      <div><span>Repouso térmico</span><strong>${escapeHtml(row.restPolicy||"Não definido")}</strong></div>
     </div>
+    ${row.reviewContext?`<div><span class="hint">Interpretação da conferência</span><div class="point-review-source">${escapeHtml(row.reviewContext)}</div></div>`:""}
     <div><span class="hint">Ocorrência identificada</span><div class="point-review-source">${escapeHtml(row.occurrence||"Nenhuma ocorrência textual identificada.")}</div></div>
     <div><span class="hint">Linha original preservada</span><div class="point-review-source">${escapeHtml(row.sourceText||"Linha original não disponível nesta prévia.")}</div></div>`;
   $("point-review-detail-close")?.addEventListener("click",()=>{detail.hidden=true;});

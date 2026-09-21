@@ -4068,8 +4068,8 @@ async function readAndMatchTimecard(req,{allowBlocked=false}={}){
       systemName:employee?.full_name||null,
       result:!employee?"NAO_LOCALIZADO":sameName?"APTO":"CONFERIR_NOME",
       eligibleDays:item.days.filter(day=>day.eligibleForAutomaticRest).length,
-      reviewDays:item.days.filter(day=>day.state==="REVIEW"||day.state==="NO_MARKINGS").length,
-      nonWorkDays:item.days.filter(day=>!day.eligibleForAutomaticRest&&day.state!=="REVIEW"&&day.state!=="NO_MARKINGS").length
+      reviewDays:item.days.filter(day=>day.requiresReview===true||day.state==="REVIEW"||day.state==="NO_MARKINGS").length,
+      nonWorkDays:item.days.filter(day=>!day.eligibleForAutomaticRest&&!day.requiresReview&&day.state!=="REVIEW"&&day.state!=="NO_MARKINGS").length
     };
   });
   const diagnostic=buildTimecardAudit({extraction,parsed,rows,elapsedMs:Date.now()-startedAt});

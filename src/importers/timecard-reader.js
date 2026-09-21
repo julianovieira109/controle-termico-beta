@@ -294,6 +294,20 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   else if(markings.length===0)state="NO_MARKINGS";
   else if(markings.length!==4&&!confirmedPartial&&!confirmedTwoMarkSchedule)state="REVIEW";
 
+  // Beta.83: a fila do DP diferencia falha de leitura de uma exceção já
+  // explicada pela própria Senior. Saída antecipada e atestado em horas podem
+  // produzir uma jornada com menos batidas que o horário-base sem significar
+  // que o PDF foi lido errado. Esses casos continuam visíveis para conferência,
+  // mas não viram alta prioridade automaticamente.
+  const expectedMarkingsCount=plannedMarkings.length;
+  const incompleteAgainstSchedule=expectedMarkingsCount>0&&markings.length<expectedMarkingsCount;
+  const hourlyMedical=/ATESTADO(?:\s+NOTURNO)?\s+EM\s+HORAS/i.test(payload)||/ATESTADO.*\bHORAS\b/i.test(payload);
+  const explicitEarlyExit=/SA[ÍI]DA\s+ANTECIPADA/i.test(occurrence||payload);
+  // A fila permanece restrita às exceções que já exigiam conferência.
+  // Atestado em horas e saída antecipada, quando a Senior já os explica e
+  // as batidas são utilizáveis, não criam uma pendência nova por si só.
+  const requiresReview=state==="REVIEW"||state==="NO_MARKINGS";
+
   return {
     date:isoDate(head[1],period.start,period.end),
     weekDay:head[2].toUpperCase(),
@@ -302,6 +316,11 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     ignoredMarkings,
     state,
     occurrence,
+    expectedMarkingsCount,
+    incompleteAgainstSchedule,
+    hourlyMedical,
+    explicitEarlyExit,
+    requiresReview,
     eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule),
     workMinutes:explicitColumns?.workMinutes??null,
     bhNegativeMinutes:explicitColumns?negativeNormalization.minutes:null,
@@ -369,8 +388,8 @@ function parseSeniorTimecard(text){
       employees:employees.length,
       days:employees.reduce((sum,item)=>sum+item.days.length,0),
       eligibleDays:employees.reduce((sum,item)=>sum+item.days.filter(day=>day.eligibleForAutomaticRest).length,0),
-      reviewDays:employees.reduce((sum,item)=>sum+item.days.filter(day=>day.state==="REVIEW"||day.state==="NO_MARKINGS").length,0),
-      nonWorkDays:employees.reduce((sum,item)=>sum+item.days.filter(day=>!day.eligibleForAutomaticRest&&day.state!=="REVIEW"&&day.state!=="NO_MARKINGS").length,0)
+      reviewDays:employees.reduce((sum,item)=>sum+item.days.filter(day=>day.requiresReview===true).length,0),
+      nonWorkDays:employees.reduce((sum,item)=>sum+item.days.filter(day=>!day.eligibleForAutomaticRest&&!day.requiresReview).length,0)
     }
   };
 }
