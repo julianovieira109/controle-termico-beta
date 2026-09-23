@@ -25,6 +25,112 @@ function rawExtractionLines(text,limit=6000){
 }
 
 
+function markingMinutes(value){
+  const match=String(value||'').match(/^(\d{2}):(\d{2})$/);
+  if(!match)return null;
+  const hour=Number(match[1]);
+  const minute=Number(match[2]);
+  if(hour>23||minute>59)return null;
+  return hour*60+minute;
+}
+
+function dayMarkingMoments(day){
+  const markings=Array.isArray(day?.markings)?day.markings:[];
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(day?.date||''))||markings.length<2)return null;
+  const base=Math.floor(Date.parse(`${day.date}T00:00:00Z`)/60000);
+  let rollover=0;
+  let previous=null;
+  const moments=[];
+  for(const marking of markings){
+    const minute=markingMinutes(marking);
+    if(minute==null)return null;
+    if(previous!=null&&minute<previous)rollover+=1440;
+    moments.push(base+rollover+minute);
+    previous=minute;
+  }
+  return moments;
+}
+
+function confirmedJourneyBoundary(day){
+  const markings=Array.isArray(day?.markings)?day.markings:[];
+  const ignored=Array.isArray(day?.ignoredMarkings)?day.ignoredMarkings:[];
+  return day?.state==='WORKED'&&markings.length>=2&&!ignored.length&&day?.requiresReview!==true;
+}
+
+function buildOperationalIndicators(employees){
+  const rows=[];
+  for(const employee of employees||[]){
+    const days=[...(employee.days||[])].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+
+    // A ocorrência "Falta" é apenas interpretada. Conforme o comportamento
+    // observado na Senior, ela pode significar ausência integral (sem batidas)
+    // ou uma jornada com batida de intervalo faltante (existem batidas). O
+    // Controle Térmico não decide qual horário falta e não corrige a ocorrência.
+    for(const day of days){
+      const occurrence=String(day?.occurrence||'');
+      const isAbsence=day?.state==='FALTA'||/\bFALTAS?\b/i.test(occurrence);
+      if(!isAbsence)continue;
+      const markings=Array.isArray(day.markings)?day.markings:[];
+      const partial=markings.length>0;
+      rows.push({
+        category:'ABSENCE',
+        code:partial?'ABSENCE_WITH_PARTIAL_MARKINGS':'ABSENCE_WITHOUT_MARKINGS',
+        priority:partial?'HIGH':'MEDIUM',
+        registration:employee.registration,
+        employeeName:employee.name,
+        page:employee.page||null,
+        line:day.sourceLine||null,
+        date:day.date,
+        scheduleCode:day.scheduleCode,
+        markings,
+        occurrence:day.occurrence||'Falta',
+        label:partial
+          ?'Falta com marcações parciais — possível intervalo incompleto'
+          :'Falta sem marcações no dia — possível ausência integral',
+        evidence:partial
+          ?`A Senior trouxe Falta e ${markings.length} marcação(ões). Conferir se existe batida de intervalo ausente.`
+          :'A Senior trouxe Falta sem marcações no dia. Conferir se corresponde à ausência integral.',
+        guidance:'Conferir e, se necessário, corrigir exclusivamente na Senior. O Controle Térmico não altera o ponto.',
+        sourceText:day.sourceText||null
+      });
+    }
+
+    // Interjornada: somente um indicador calculado a partir de marcações reais
+    // e completas. Não altera ponto, jornada, BH ou repousos. Jornadas
+    // incompletas não são estimadas.
+    const confirmed=days.filter(confirmedJourneyBoundary);
+    for(let index=1;index<confirmed.length;index++){
+      const previous=confirmed[index-1];
+      const current=confirmed[index];
+      const previousMoments=dayMarkingMoments(previous);
+      const currentMoments=dayMarkingMoments(current);
+      if(!previousMoments||!currentMoments)continue;
+      const restMinutes=currentMoments[0]-previousMoments[previousMoments.length-1];
+      if(restMinutes<0||restMinutes>=11*60)continue;
+      rows.push({
+        category:'INTERJOURNEY',
+        code:'INTERJOURNEY_UNDER_11H',
+        priority:'MEDIUM',
+        registration:employee.registration,
+        employeeName:employee.name,
+        page:employee.page||null,
+        date:current.date,
+        previousDate:previous.date,
+        scheduleCode:current.scheduleCode,
+        markings:[previous.markings[previous.markings.length-1],current.markings[0]],
+        occurrence:null,
+        restMinutes,
+        label:'Descanso entre jornadas inferior a 11 horas — aviso informativo',
+        evidence:`Fim anterior ${previous.markings[previous.markings.length-1]} · próxima entrada ${current.markings[0]} · descanso ${Math.floor(restMinutes/60)}h${String(restMinutes%60).padStart(2,'0')}.`,
+        guidance:'Somente aviso. Qualquer análise ou correção deve ser feita na Senior; o Controle Térmico não altera horários.',
+        sourceText:null
+      });
+    }
+  }
+  return rows.sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.employeeName||'').localeCompare(String(b.employeeName||''),'pt-BR'));
+}
+
+
 function reviewReason(day){
   const occurrence=String(day?.occurrence||'').trim();
   const markings=Array.isArray(day?.markings)?day.markings:[];
@@ -165,6 +271,9 @@ function buildReviewRows(employees){
         restPolicyCode:restPolicy.code,
         restPolicy:restPolicy.label,
         automaticRestAllowed:Boolean(restPolicy.allowed),
+        interjourneyValidation:(Array.isArray(day.markings)&&day.markings.length>=2&&day.state==='WORKED'&&!day.requiresReview)
+          ?'Pode ser calculada somente pelas marcações reais da Senior'
+          :'Não foi possível validar a interjornada com segurança neste dia',
         workMinutes:number(day.workMinutes),
         bhNegativeMinutes:number(day.bhNegativeMinutes),
         bhPositiveMinutes:number(day.bhPositiveMinutes),
@@ -223,6 +332,12 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   const nameMismatch=matchedRows.filter(item=>item.employeeId&&item.result==='CONFERIR_NOME').length;
   const reviewDays=number(parsed.totals?.reviewDays);
   const warnings=Array.isArray(parsed.warnings)?parsed.warnings:[];
+  const indicatorRows=buildOperationalIndicators(employees);
+  const indicatorSummary={
+    absenceWithoutMarkings:indicatorRows.filter(item=>item.code==='ABSENCE_WITHOUT_MARKINGS').length,
+    absenceWithPartialMarkings:indicatorRows.filter(item=>item.code==='ABSENCE_WITH_PARTIAL_MARKINGS').length,
+    interjourneyUnder11h:indicatorRows.filter(item=>item.code==='INTERJOURNEY_UNDER_11H').length
+  };
 
   // Para confirmação, a estrutura diária precisa estar integralmente
   // reconstruída e todos os colaboradores precisam ter fechamento Senior
@@ -233,7 +348,7 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   const readingBlocked=structuralCoverage<1||interpretationCoverage<1||employees.length<cardPages||mismatched>0||unverified>0;
   const registryBlocked=notFound>0||nameMismatch>0;
   const blocked=readingBlocked||registryBlocked;
-  const hasAlerts=!blocked&&(reviewDays>0||warnings.length>0||adjusted>0);
+  const hasAlerts=!blocked&&(reviewDays>0||warnings.length>0||indicatorRows.length>0);
   const status=blocked?'BLOCKED':hasAlerts?'WARNING':'TRUSTED';
   const blockingCategory=readingBlocked?'READING_DIVERGENCE':registryBlocked?'REGISTRY_PENDING':null;
   const statusLabel=blockingCategory==='REGISTRY_PENDING'
@@ -265,7 +380,8 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
     const explained=provisionalReviewRows.filter(item=>item.explainedBySenior).length;
     reasons.push(`${reviewDays} dia(s) estão na fila de conferência: ${high} de alta prioridade e ${explained} com ocorrência/lançamento já reconhecido pela Senior.`);
   }
-  if(adjusted)reasons.push(`${adjusted} colaborador(es) tiveram conciliação controlada de pequenos resíduos de BH-.`);
+  if(indicatorSummary.absenceWithPartialMarkings)reasons.push(`${indicatorSummary.absenceWithPartialMarkings} ocorrência(s) de Falta possuem marcações parciais e devem ser conferidas na Senior.`);
+  if(indicatorSummary.interjourneyUnder11h)reasons.push(`${indicatorSummary.interjourneyUnder11h} aviso(s) de descanso entre jornadas abaixo de 11 horas foram identificados. São apenas indicadores; nenhum horário foi alterado.`);
   if(!reasons.length)reasons.push('Estrutura, matrículas, nomes e totais de fechamento foram conciliados.');
 
   // Nunca comparar universos diferentes. Se apenas parte dos rodapés foi
@@ -289,6 +405,8 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
     confidence,
     registryCoverage,
     reasons,
+    sourcePolicy:{sourceOfTruth:'SENIOR',indicatorOnly:true,mutatesPoint:false,label:'Senior é a fonte oficial · Controle Térmico somente lê, confere e sinaliza'},
+    indicators:{summary:indicatorSummary,rows:indicatorRows},
     elapsedMs:number(elapsedMs),
     extraction:{
       readerUsed:extraction.readerUsed||'pdf2json-senior-columns',
@@ -315,4 +433,4 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   };
 }
 
-module.exports={buildTimecardAudit,buildStructuredRows,buildReviewRows,reviewReason,reviewRestPolicy,rawExtractionLines};
+module.exports={buildTimecardAudit,buildStructuredRows,buildReviewRows,buildOperationalIndicators,reviewReason,reviewRestPolicy,rawExtractionLines};

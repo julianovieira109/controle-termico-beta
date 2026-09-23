@@ -185,39 +185,22 @@ function sumReconciliationFields(days){
 
 function reconcileEmployeeBh(days,footerTotals){
   const fields=["workMinutes","bhNegativeMinutes","bhPositiveMinutes","he100Minutes","absenceMinutes"];
-  let sums=sumReconciliationFields(days);
+  const sums=sumReconciliationFields(days);
   if(!footerTotals)return {status:"UNVERIFIED",sums,footerTotals:null,differences:{},adjustments:[]};
-  let differences=Object.fromEntries(fields.map(f=>[f,sums[f]-Number(footerTotals[f]||0)]));
-  const nonNegativeFields=["workMinutes","bhPositiveMinutes","he100Minutes","absenceMinutes"];
-  const otherFieldsOk=nonNegativeFields.every(f=>differences[f]===0);
-  const adjustments=[];
+  const differences=Object.fromEntries(fields.map(f=>[f,sums[f]-Number(footerTotals[f]||0)]));
 
-  // Em três páginas do cartão real a Senior fecha o BH- com um resíduo de poucos
-  // minutos após a normalização noturna. Só conciliamos automaticamente quando:
-  // 1) todos os demais campos já fecham exatamente; 2) a diferença do BH- é de
-  // no máximo 15 min; 3) existe uma linha explicitamente marcada como especial.
-  // O ajuste fica gravado no próprio dia para auditoria; diferenças maiores
-  // continuam bloqueando a importação.
-  if(otherFieldsOk&&differences.bhNegativeMinutes!==0&&Math.abs(differences.bhNegativeMinutes)<=15){
-    const candidate=[...days].reverse().find(day=>day.bhNegativeNormalized===true&&Number(day.bhNegativeMinutes||0)>0);
-    if(candidate){
-      const adjustment=-differences.bhNegativeMinutes;
-      candidate.bhNegativeMinutes=Number(candidate.bhNegativeMinutes||0)+adjustment;
-      candidate.bhNegativeReconciliationAdjustmentMinutes=Number(candidate.bhNegativeReconciliationAdjustmentMinutes||0)+adjustment;
-      candidate.bhSource="SENIOR_COLUMN_RECONCILED";
-      adjustments.push({date:candidate.date,field:"bhNegativeMinutes",minutes:adjustment});
-      sums=sumReconciliationFields(days);
-      differences=Object.fromEntries(fields.map(f=>[f,sums[f]-Number(footerTotals[f]||0)]));
-    }
-  }
-
+  // Beta.85 — princípio de fonte oficial Senior:
+  // a conciliação é estritamente comparativa. Nenhum resíduo é compensado,
+  // nenhuma hora é acrescentada/removida e nenhum dia é alterado para "fazer
+  // fechar" com o rodapé. Se houver diferença, o diagnóstico permanece como
+  // MISMATCH e a correção precisa nascer na Senior e voltar em nova importação.
   const ok=fields.every(f=>differences[f]===0);
   if(ok){
     for(const day of days){
       if(day.bhSource&&day.bhSource!=="LEGACY_TEXT")day.bhValidated=true;
     }
   }
-  return {status:ok?"VALIDATED":"MISMATCH",sums,footerTotals,differences,adjustments};
+  return {status:ok?"VALIDATED":"MISMATCH",sums,footerTotals,differences,adjustments:[]};
 }
 
 function parseDayLine(line,period,scheduleDefinitions=new Map()){

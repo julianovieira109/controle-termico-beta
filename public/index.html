@@ -33,8 +33,8 @@
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
   <link rel="stylesheet" href="/css/base.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.84">
-  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.84">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.85">
+  <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.85">
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
@@ -2114,6 +2114,7 @@
             <div class="full actions"><button type="submit" class="primary">Ler e conferir</button><button type="button" class="secondary" id="point-import-clear">Limpar</button></div>
             <p id="point-import-feedback" class="feedback full" aria-live="polite"></p>
           </form>
+          <div id="point-source-policy" class="point-review-lock-note"><strong>Fonte oficial: Senior</strong><span>O Controle Térmico somente lê, confere, organiza e sinaliza. Nenhuma marcação, jornada, BH, falta ou ocorrência é criada, corrigida ou alterada aqui.</span></div>
           <div id="point-import-preview" class="point-import-preview" hidden>
             <section id="point-audit-status" class="point-audit-status" aria-live="polite">
               <div class="point-audit-status-icon" aria-hidden="true">✓</div>
@@ -2139,6 +2140,7 @@
             <nav class="point-audit-tabs" aria-label="Conferência do Cartão Senior">
               <button type="button" class="active" data-point-audit-tab="summary">Resumo da extração</button>
               <button type="button" data-point-audit-tab="reviews">Dias para revisão <span id="point-review-tab-count" class="point-review-tab-count">0</span></button>
+              <button type="button" data-point-audit-tab="indicators">Indicadores <span id="point-indicator-tab-count" class="point-review-tab-count">0</span></button>
               <button type="button" data-point-audit-tab="structured">Dados estruturados</button>
               <button type="button" data-point-audit-tab="original">Linhas originais</button>
               <button type="button" data-point-audit-tab="matching">Colaboradores</button>
@@ -2160,6 +2162,15 @@
               <p class="hint" id="point-review-count"></p>
               <details id="point-review-resolved-section" class="point-review-resolved" hidden><summary>Pendências resolvidas após nova leitura <strong id="point-review-resolved-count">0</strong></summary><div id="point-review-resolved-body" class="point-review-resolved-body"></div></details>
               <article id="point-review-detail" class="point-review-detail" hidden aria-live="polite"></article>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="indicators" hidden>
+              <div class="point-review-head">
+                <div><span>INDICADORES DO RELATÓRIO SENIOR</span><strong id="point-indicator-title">Nenhum alerta adicional</strong><p>Indicadores informativos gerados somente a partir das marcações e ocorrências do relatório. Eles não alteram o ponto e não bloqueiam a importação quando a leitura está conciliada.</p></div>
+                <div class="point-review-kpis"><div><span>Falta sem marcação</span><strong id="point-indicator-absence-full">0</strong></div><div><span>Falta com marcações</span><strong id="point-indicator-absence-partial">0</strong></div><div><span>Interjornada &lt; 11h</span><strong id="point-indicator-interjourney">0</strong></div><div><span>Fonte oficial</span><strong>Senior</strong></div></div>
+              </div>
+              <div class="point-audit-toolbar"><p>Use estes avisos para localizar situações que precisam ser conferidas ou corrigidas exclusivamente na Senior.</p><input id="point-indicator-search" type="search" placeholder="Buscar colaborador, matrícula, data ou indicador"></div>
+              <div class="table-wrap point-audit-table-wrap point-review-table-wrap"><table><thead><tr><th>Colaborador</th><th>Data</th><th>Indicador</th><th>Marcações / evidência</th><th>Orientação</th></tr></thead><tbody id="point-indicator-body"></tbody></table></div>
+              <p class="hint" id="point-indicator-count"></p>
             </section>
             <section class="point-audit-view" data-point-audit-view="structured" hidden>
               <div class="point-audit-toolbar"><p>Dados identificados antes de alimentar os relatórios.</p><input id="point-audit-structured-search" type="search" placeholder="Buscar matrícula, nome, data ou ocorrência"></div>
@@ -2744,7 +2755,7 @@
   <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
   <script src="/js/rest-audit.js?v=1.0.31-beta.17"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.84"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.85"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>

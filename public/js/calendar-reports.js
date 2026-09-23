@@ -898,6 +898,7 @@ function openPointReviewDetail(index){
       <div><span>BH− / BH+ / Faltas</span><strong>${pointAuditMinutes(row.bhNegativeMinutes)} / ${pointAuditMinutes(row.bhPositiveMinutes)} / ${pointAuditMinutes(row.absenceMinutes)}</strong></div>
       <div><span>Classificação</span><strong>${row.explainedBySenior?"Ocorrência/lançamento reconhecido pela Senior":row.priority==="HIGH"?"Conferência obrigatória":"Atenção operacional"}</strong></div>
       <div><span>Repouso térmico</span><strong>${escapeHtml(row.restPolicy||"Não definido")}</strong></div>
+      <div><span>Interjornada</span><strong>${escapeHtml(row.interjourneyValidation||"Somente pelas marcações reais da Senior")}</strong></div>
     </div>
     ${row.reviewContext?`<div><span class="hint">Interpretação da conferência</span><div class="point-review-source">${escapeHtml(row.reviewContext)}</div></div>`:""}
     <div><span class="hint">Ocorrência identificada</span><div class="point-review-source">${escapeHtml(row.occurrence||"Nenhuma ocorrência textual identificada.")}</div></div>
@@ -911,6 +912,41 @@ function openPointReviewDetail(index){
   $("point-review-detail-close")?.addEventListener("click",()=>{detail.hidden=true;});
   $("point-review-control-save")?.addEventListener("click",()=>savePointReviewControl(Number(index)));
   detail.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+
+function pointIndicatorRows(){
+  return Array.isArray(pointImportPreview?.diagnostic?.indicators?.rows)
+    ?pointImportPreview.diagnostic.indicators.rows
+    :[];
+}
+
+function renderPointIndicators(search=""){
+  const body=$("point-indicator-body");
+  if(!body)return;
+  const rows=pointIndicatorRows();
+  const summary=pointImportPreview?.diagnostic?.indicators?.summary||{};
+  const term=String(search||$("point-indicator-search")?.value||"").trim().toLocaleLowerCase("pt-BR");
+  const filtered=term?rows.filter(row=>[
+    row.registration,row.employeeName,row.date,row.previousDate,row.label,row.evidence,row.guidance,row.occurrence,(row.markings||[]).join(" ")
+  ].some(value=>String(value||"").toLocaleLowerCase("pt-BR").includes(term))):rows;
+  if($("point-indicator-tab-count"))$("point-indicator-tab-count").textContent=rows.length;
+  if($("point-indicator-title"))$("point-indicator-title").textContent=rows.length?`${rows.length} indicador(es) identificado(s)`:'Nenhum alerta adicional';
+  if($("point-indicator-absence-full"))$("point-indicator-absence-full").textContent=Number(summary.absenceWithoutMarkings||0);
+  if($("point-indicator-absence-partial"))$("point-indicator-absence-partial").textContent=Number(summary.absenceWithPartialMarkings||0);
+  if($("point-indicator-interjourney"))$("point-indicator-interjourney").textContent=Number(summary.interjourneyUnder11h||0);
+  body.innerHTML=filtered.length?filtered.map(row=>{
+    const dateLabel=row.previousDate?`${formatApiDate(row.previousDate)} → ${formatApiDate(row.date)}`:(row.date?formatApiDate(row.date):'-');
+    const marks=(row.markings||[]).join(' · ')||'—';
+    return `<tr>
+      <td><strong>${escapeHtml(row.employeeName||'-')}</strong><small>${escapeHtml(row.registration||'Sem matrícula')}${row.page?` · Pág. ${escapeHtml(row.page)}`:''}</small></td>
+      <td>${dateLabel}</td>
+      <td><span class="point-review-reason ${row.priority==='HIGH'?'high':'medium'}">${escapeHtml(row.label||'Indicador')}</span>${row.occurrence?`<small>${escapeHtml(row.occurrence)}</small>`:''}</td>
+      <td><strong>${escapeHtml(marks)}</strong><small>${escapeHtml(row.evidence||'')}</small></td>
+      <td>${escapeHtml(row.guidance||'Conferir na Senior.')}</td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="5" class="muted">Nenhum indicador corresponde à busca.</td></tr>';
+  if($("point-indicator-count"))$("point-indicator-count").textContent=`${filtered.length} de ${rows.length} indicador(es) exibido(s). Somente leitura: nenhuma informação do ponto é alterada pelo Controle Térmico.`;
 }
 
 function renderPointAuditStructured(search=""){
@@ -948,6 +984,10 @@ function renderPointAudit(diagnostic){
     ?"A leitura e a conciliação do Cartão Senior estão corretas. Regularize os colaboradores sem cadastro para liberar a gravação."
     :status==="TRUSTED"?"As colunas e os totais fecharam com o Cartão Senior.":status==="WARNING"?"A leitura fechou, mas existem itens que precisam de conferência.":"Os dados não podem ser gravados enquanto houver divergências.";
   if($("point-audit-confidence"))$("point-audit-confidence").textContent=`${Number(diagnostic.confidence||0)}%`;
+  if($("point-source-policy")){
+    const policy=diagnostic.sourcePolicy||{};
+    $("point-source-policy").innerHTML=`<strong>${escapeHtml(policy.label||"Fonte oficial: Senior")}</strong><span>O Controle Térmico somente lê, confere, organiza e sinaliza. Qualquer correção deve ser feita exclusivamente na Senior e refletida por nova importação.</span>`;
+  }
   const confidenceLabel=$("point-audit-confidence")?.previousElementSibling;
   if(confidenceLabel)confidenceLabel.textContent="Leitura";
   const extraction=diagnostic.extraction||{};
@@ -973,6 +1013,7 @@ function renderPointAudit(diagnostic){
     :registryPending?"Use a Relação de Admitidos acima para cadastrar os novatos. O mesmo Cartão de Ponto será revalidado automaticamente."
     :"Abra o diagnóstico e corrija as divergências antes de importar.";
   renderPointReviewQueue();
+  renderPointIndicators();
   renderPointAuditStructured();
   renderPointAuditOriginal();
 }
@@ -988,6 +1029,7 @@ document.querySelectorAll("[data-point-audit-tab]").forEach(button=>button.addEv
 if($("point-review-search"))$("point-review-search").oninput=()=>renderPointReviewQueue();
 if($("point-review-priority"))$("point-review-priority").onchange=()=>renderPointReviewQueue();
 if($("point-review-tracking-status"))$("point-review-tracking-status").onchange=()=>renderPointReviewQueue();
+if($("point-indicator-search"))$("point-indicator-search").oninput=event=>renderPointIndicators(event.target.value);
 if($("point-audit-structured-search"))$("point-audit-structured-search").oninput=event=>renderPointAuditStructured(event.target.value);
 if($("point-audit-original-search"))$("point-audit-original-search").oninput=event=>renderPointAuditOriginal(event.target.value);
 
