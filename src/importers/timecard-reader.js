@@ -221,8 +221,9 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   ].filter(index=>index>=0).sort((a,b)=>a-b)[0];
   const markingPart=firstEventIndex===undefined?payload:payload.slice(0,firstEventIndex);
   const rawMarkings=markingPart.match(/(?:[01]\d|2[0-3]):[0-5]\d/g)||[];
+  const reportedMarkings=rawMarkings.slice(0,8);
   let occurrence=payload.replace(markingPart,"").trim()||null;
-  let markings=rawMarkings.slice(0,8);
+  let markings=reportedMarkings.slice();
   let ignoredMarkings=[];
   const negativeNormalization=explicitColumns
     ?normalizeSeniorBhNegative(explicitColumns.bhNegativeRawMinutes,payload,rawMarkings.length,explicitColumns.absenceMinutes)
@@ -270,10 +271,20 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   }
 
   const plannedMarkings=scheduleDefinitions.get(scheduleCode)||[];
+  const seniorIncompleteJourney=/JORNADA\s+INCOMPLETA/i.test(occurrence||payload);
+  const seniorClassification=statusMatch?.[0]||(seniorIncompleteJourney?"JORNADA_INCOMPLETA":null);
   const confirmedTwoMarkSchedule=markings.length===2&&plannedMarkings.length===2;
   const confirmedPartial=markings.length===2&&(earlyExit||partialFromOdd);
   let state="WORKED";
+
+  // Beta.86 — a classificação explícita da Senior sempre prevalece sobre a
+  // simples quantidade de batidas. Uma jornada que a Senior chamou de
+  // "Jornada Incompleta" nunca é promovida a WORKED só porque há duas
+  // marcações ou porque o horário-base também possui duas marcações. Do mesmo
+  // modo, uma ocorrência de Falta permanece Falta. O Controle Térmico apenas
+  // preserva e sinaliza; ele não reclassifica o ponto.
   if(statusMatch)state=statusMatch[0];
+  else if(seniorIncompleteJourney)state="REVIEW";
   else if(markings.length===0)state="NO_MARKINGS";
   else if(markings.length!==4&&!confirmedPartial&&!confirmedTwoMarkSchedule)state="REVIEW";
 
@@ -296,9 +307,12 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     weekDay:head[2].toUpperCase(),
     scheduleCode,
     markings:markings.slice(0,8),
+    reportedMarkings,
+    reportedMarkingsCount:reportedMarkings.length,
     ignoredMarkings,
     state,
     occurrence,
+    seniorClassification,
     expectedMarkingsCount,
     incompleteAgainstSchedule,
     hourlyMedical,

@@ -896,7 +896,7 @@ function openPointReviewDetail(index){
       <div><span>Marcações preservadas</span><strong>${escapeHtml(ignored)}</strong></div>
       <div><span>Trabalho</span><strong>${pointAuditMinutes(row.workMinutes)}</strong></div>
       <div><span>BH− / BH+ / Faltas</span><strong>${pointAuditMinutes(row.bhNegativeMinutes)} / ${pointAuditMinutes(row.bhPositiveMinutes)} / ${pointAuditMinutes(row.absenceMinutes)}</strong></div>
-      <div><span>Classificação</span><strong>${row.explainedBySenior?"Ocorrência/lançamento reconhecido pela Senior":row.priority==="HIGH"?"Conferência obrigatória":"Atenção operacional"}</strong></div>
+      <div><span>Classificação</span><strong>${row.explainedBySenior?(row.priority==="HIGH"?"Alta prioridade · reconhecido pela Senior":"Ocorrência/lançamento reconhecido pela Senior"):row.priority==="HIGH"?"Conferência obrigatória":"Atenção operacional"}</strong></div>
       <div><span>Repouso térmico</span><strong>${escapeHtml(row.restPolicy||"Não definido")}</strong></div>
       <div><span>Interjornada</span><strong>${escapeHtml(row.interjourneyValidation||"Somente pelas marcações reais da Senior")}</strong></div>
     </div>
@@ -933,7 +933,9 @@ function renderPointIndicators(search=""){
   if($("point-indicator-tab-count"))$("point-indicator-tab-count").textContent=rows.length;
   if($("point-indicator-title"))$("point-indicator-title").textContent=rows.length?`${rows.length} indicador(es) identificado(s)`:'Nenhum alerta adicional';
   if($("point-indicator-absence-full"))$("point-indicator-absence-full").textContent=Number(summary.absenceWithoutMarkings||0);
+  if($("point-indicator-absence-single"))$("point-indicator-absence-single").textContent=Number(summary.absenceWithSingleMarking||0);
   if($("point-indicator-absence-partial"))$("point-indicator-absence-partial").textContent=Number(summary.absenceWithPartialMarkings||0);
+  if($("point-indicator-incomplete"))$("point-indicator-incomplete").textContent=Number(summary.incompleteJourneySenior||0);
   if($("point-indicator-interjourney"))$("point-indicator-interjourney").textContent=Number(summary.interjourneyUnder11h||0);
   body.innerHTML=filtered.length?filtered.map(row=>{
     const dateLabel=row.previousDate?`${formatApiDate(row.previousDate)} → ${formatApiDate(row.date)}`:(row.date?formatApiDate(row.date):'-');

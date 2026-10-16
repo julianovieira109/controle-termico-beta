@@ -51,10 +51,26 @@ function dayMarkingMoments(day){
   return moments;
 }
 
+function reportedMarkings(day){
+  if(Array.isArray(day?.reportedMarkings))return day.reportedMarkings;
+  const used=Array.isArray(day?.markings)?day.markings:[];
+  const ignored=Array.isArray(day?.ignoredMarkings)?day.ignoredMarkings:[];
+  return [...used,...ignored];
+}
+
 function confirmedJourneyBoundary(day){
   const markings=Array.isArray(day?.markings)?day.markings:[];
+  const original=reportedMarkings(day);
   const ignored=Array.isArray(day?.ignoredMarkings)?day.ignoredMarkings:[];
-  return day?.state==='WORKED'&&markings.length>=2&&!ignored.length&&day?.requiresReview!==true;
+  const occurrence=String(day?.occurrence||'');
+  return day?.state==='WORKED'
+    &&markings.length>=2
+    &&markings.length%2===0
+    &&original.length===markings.length
+    &&!ignored.length
+    &&day?.requiresReview!==true
+    &&day?.incompleteAgainstSchedule!==true
+    &&!/JORNADA\s+INCOMPLETA|\bFALTAS?\b/i.test(occurrence);
 }
 
 function buildOperationalIndicators(employees){
@@ -62,46 +78,85 @@ function buildOperationalIndicators(employees){
   for(const employee of employees||[]){
     const days=[...(employee.days||[])].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
 
-    // A ocorrência "Falta" é apenas interpretada. Conforme o comportamento
-    // observado na Senior, ela pode significar ausência integral (sem batidas)
-    // ou uma jornada com batida de intervalo faltante (existem batidas). O
-    // Controle Térmico não decide qual horário falta e não corrige a ocorrência.
+    // Beta.86 — a ocorrência oficial da Senior vem primeiro. A quantidade de
+    // marcações serve apenas para contextualizar o indicador e nunca para
+    // substituir/reclassificar Falta, Jornada Incompleta, BH- ou outra
+    // ocorrência emitida pela Senior.
     for(const day of days){
       const occurrence=String(day?.occurrence||'');
+      const original=reportedMarkings(day);
+      const count=Number(day?.reportedMarkingsCount??original.length);
       const isAbsence=day?.state==='FALTA'||/\bFALTAS?\b/i.test(occurrence);
-      if(!isAbsence)continue;
-      const markings=Array.isArray(day.markings)?day.markings:[];
-      const partial=markings.length>0;
-      rows.push({
-        category:'ABSENCE',
-        code:partial?'ABSENCE_WITH_PARTIAL_MARKINGS':'ABSENCE_WITHOUT_MARKINGS',
-        priority:partial?'HIGH':'MEDIUM',
-        registration:employee.registration,
-        employeeName:employee.name,
-        page:employee.page||null,
-        line:day.sourceLine||null,
-        date:day.date,
-        scheduleCode:day.scheduleCode,
-        markings,
-        occurrence:day.occurrence||'Falta',
-        label:partial
-          ?'Falta com marcações parciais — possível intervalo incompleto'
-          :'Falta sem marcações no dia — possível ausência integral',
-        evidence:partial
-          ?`A Senior trouxe Falta e ${markings.length} marcação(ões). Conferir se existe batida de intervalo ausente.`
-          :'A Senior trouxe Falta sem marcações no dia. Conferir se corresponde à ausência integral.',
-        guidance:'Conferir e, se necessário, corrigir exclusivamente na Senior. O Controle Térmico não altera o ponto.',
-        sourceText:day.sourceText||null
-      });
+      const isIncomplete=/JORNADA\s+INCOMPLETA/i.test(occurrence)||day?.seniorClassification==='JORNADA_INCOMPLETA';
+
+      if(isAbsence){
+        let code='ABSENCE_WITH_PARTIAL_MARKINGS';
+        let label='Falta com marcações — ocorrência informada pela Senior';
+        let evidence=`A Senior trouxe Falta com ${count} marcação(ões). O Controle Térmico preserva essa classificação.`;
+        let priority='HIGH';
+
+        if(count===0){
+          code='ABSENCE_WITHOUT_MARKINGS';
+          label='Falta sem marcações — informação da Senior';
+          evidence='A Senior trouxe Falta sem nenhuma marcação no dia.';
+          priority='MEDIUM';
+        }else if(count===1){
+          code='ABSENCE_WITH_SINGLE_MARKING';
+          label='Falta com 1 marcação — classificação da Senior';
+          evidence=`A Senior trouxe Falta com a marcação ${original[0]||'registrada'}. O Controle Térmico não transforma essa batida em jornada nem cria a batida ausente.`;
+        }else{
+          evidence=`A Senior trouxe Falta com ${count} marcação(ões). Esse cenário pode estar relacionado a ausência de hora/batida no intervalo ou na jornada, mas somente a Senior define e corrige o ponto.`;
+        }
+
+        rows.push({
+          category:'ABSENCE',
+          code,
+          priority,
+          registration:employee.registration,
+          employeeName:employee.name,
+          page:employee.page||null,
+          line:day.sourceLine||null,
+          date:day.date,
+          scheduleCode:day.scheduleCode,
+          markings:original,
+          occurrence:day.occurrence||'Falta',
+          label,
+          evidence,
+          guidance:'Somente indicador. Se houver necessidade de ajuste, a correção deve ser feita exclusivamente na Senior e validada em nova importação.',
+          sourceText:day.sourceText||null
+        });
+      }
+
+      if(isIncomplete){
+        rows.push({
+          category:'INCOMPLETE_JOURNEY',
+          code:'INCOMPLETE_JOURNEY_SENIOR',
+          priority:'HIGH',
+          registration:employee.registration,
+          employeeName:employee.name,
+          page:employee.page||null,
+          line:day.sourceLine||null,
+          date:day.date,
+          scheduleCode:day.scheduleCode,
+          markings:original,
+          occurrence:day.occurrence||'Jornada Incompleta',
+          bhNegativeMinutes:number(day.bhNegativeMinutes),
+          label:'Jornada Incompleta — classificação da Senior',
+          evidence:`A Senior trouxe Jornada Incompleta com ${count} marcação(ões)${number(day.bhNegativeMinutes)>0?` e BH- de ${Math.floor(number(day.bhNegativeMinutes)/60)}h${String(number(day.bhNegativeMinutes)%60).padStart(2,'0')}`:''}. Os valores são apenas preservados e exibidos.`,
+          guidance:'Não completar batidas e não recalcular BH-. Qualquer correção deve ocorrer na Senior e retornar por nova leitura do relatório.',
+          sourceText:day.sourceText||null
+        });
+      }
     }
 
-    // Interjornada: somente um indicador calculado a partir de marcações reais
-    // e completas. Não altera ponto, jornada, BH ou repousos. Jornadas
-    // incompletas não são estimadas.
-    const confirmed=days.filter(confirmedJourneyBoundary);
-    for(let index=1;index<confirmed.length;index++){
-      const previous=confirmed[index-1];
-      const current=confirmed[index];
+    // Interjornada: somente indicador entre duas jornadas consecutivas que
+    // estejam integralmente confirmadas pelas marcações reais da Senior. Um
+    // dia incompleto nunca é ignorado para "pular" até outra jornada e nunca
+    // fornece entrada/saída presumida.
+    for(let index=1;index<days.length;index++){
+      const previous=days[index-1];
+      const current=days[index];
+      if(!confirmedJourneyBoundary(previous)||!confirmedJourneyBoundary(current))continue;
       const previousMoments=dayMarkingMoments(previous);
       const currentMoments=dayMarkingMoments(current);
       if(!previousMoments||!currentMoments)continue;
@@ -146,8 +201,8 @@ function reviewReason(day){
       code:'INCOMPLETE_JOURNEY',
       label:'Jornada incompleta informada pela Senior',
       priority:'HIGH',
-      explainedBySenior:false,
-      context:'A Senior sinalizou a jornada como incompleta; confira a marcação faltante antes de usar o dia operacionalmente.'
+      explainedBySenior:true,
+      context:'A Senior classificou a jornada como incompleta. O Controle Térmico preserva as marcações e o BH- informado pela Senior, sem completar batidas nem recalcular valores.'
     };
   }
 
@@ -258,8 +313,11 @@ function buildReviewRows(employees){
         date:day.date,
         scheduleCode:day.scheduleCode,
         markings:Array.isArray(day.markings)?day.markings:[],
+        reportedMarkings:reportedMarkings(day),
+        reportedMarkingsCount:Number(day.reportedMarkingsCount??reportedMarkings(day).length),
         ignoredMarkings:Array.isArray(day.ignoredMarkings)?day.ignoredMarkings:[],
         occurrence:day.occurrence||null,
+        seniorClassification:day.seniorClassification||null,
         state:day.state,
         reasonCode:reason.code,
         reason:reason.label,
@@ -271,9 +329,9 @@ function buildReviewRows(employees){
         restPolicyCode:restPolicy.code,
         restPolicy:restPolicy.label,
         automaticRestAllowed:Boolean(restPolicy.allowed),
-        interjourneyValidation:(Array.isArray(day.markings)&&day.markings.length>=2&&day.state==='WORKED'&&!day.requiresReview)
+        interjourneyValidation:confirmedJourneyBoundary(day)
           ?'Pode ser calculada somente pelas marcações reais da Senior'
-          :'Não foi possível validar a interjornada com segurança neste dia',
+          :'Interjornada não validada neste dia: nenhuma entrada ou saída é presumida a partir de jornada incompleta',
         workMinutes:number(day.workMinutes),
         bhNegativeMinutes:number(day.bhNegativeMinutes),
         bhPositiveMinutes:number(day.bhPositiveMinutes),
@@ -294,8 +352,11 @@ function buildStructuredRows(employees){
     date:day.date,
     scheduleCode:day.scheduleCode,
     markings:Array.isArray(day.markings)?day.markings:[],
+    reportedMarkings:reportedMarkings(day),
+    reportedMarkingsCount:Number(day.reportedMarkingsCount??reportedMarkings(day).length),
     ignoredMarkings:Array.isArray(day.ignoredMarkings)?day.ignoredMarkings:[],
     occurrence:day.occurrence||null,
+    seniorClassification:day.seniorClassification||null,
     state:day.state,
     requiresReview:Boolean(day.requiresReview),
     expectedMarkingsCount:number(day.expectedMarkingsCount),
@@ -335,7 +396,9 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
   const indicatorRows=buildOperationalIndicators(employees);
   const indicatorSummary={
     absenceWithoutMarkings:indicatorRows.filter(item=>item.code==='ABSENCE_WITHOUT_MARKINGS').length,
+    absenceWithSingleMarking:indicatorRows.filter(item=>item.code==='ABSENCE_WITH_SINGLE_MARKING').length,
     absenceWithPartialMarkings:indicatorRows.filter(item=>item.code==='ABSENCE_WITH_PARTIAL_MARKINGS').length,
+    incompleteJourneySenior:indicatorRows.filter(item=>item.code==='INCOMPLETE_JOURNEY_SENIOR').length,
     interjourneyUnder11h:indicatorRows.filter(item=>item.code==='INTERJOURNEY_UNDER_11H').length
   };
 
@@ -380,7 +443,9 @@ function buildTimecardAudit({extraction={},parsed={},rows=[],elapsedMs=0}){
     const explained=provisionalReviewRows.filter(item=>item.explainedBySenior).length;
     reasons.push(`${reviewDays} dia(s) estão na fila de conferência: ${high} de alta prioridade e ${explained} com ocorrência/lançamento já reconhecido pela Senior.`);
   }
-  if(indicatorSummary.absenceWithPartialMarkings)reasons.push(`${indicatorSummary.absenceWithPartialMarkings} ocorrência(s) de Falta possuem marcações parciais e devem ser conferidas na Senior.`);
+  if(indicatorSummary.absenceWithSingleMarking)reasons.push(`${indicatorSummary.absenceWithSingleMarking} ocorrência(s) de Falta possuem exatamente 1 marcação e permanecem classificadas conforme a Senior.`);
+  if(indicatorSummary.absenceWithPartialMarkings)reasons.push(`${indicatorSummary.absenceWithPartialMarkings} ocorrência(s) de Falta possuem mais de uma marcação; a ocorrência da Senior é preservada e deve ser conferida nela.`);
+  if(indicatorSummary.incompleteJourneySenior)reasons.push(`${indicatorSummary.incompleteJourneySenior} ocorrência(s) de Jornada Incompleta foram informadas pela Senior; marcações e BH- são exibidos sem qualquer recalculo.`);
   if(indicatorSummary.interjourneyUnder11h)reasons.push(`${indicatorSummary.interjourneyUnder11h} aviso(s) de descanso entre jornadas abaixo de 11 horas foram identificados. São apenas indicadores; nenhum horário foi alterado.`);
   if(!reasons.length)reasons.push('Estrutura, matrículas, nomes e totais de fechamento foram conciliados.');
 
