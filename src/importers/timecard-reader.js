@@ -7,6 +7,8 @@ const NON_WORK_PATTERNS=[
   ["ATESTADO",/\bATESTADO\b/i],
   ["COMPENSADO",/\bCOMPENSADO\b/i],
   ["CURSO",/\bCURSO\b/i],
+  ["REDUCAO_AVISO",/\bREDU[ÇC][ÃA]O\s+AVISO\b/i],
+  ["DEMITIDO",/\bDEMITIDO\b/i],
   ["OBITO",/\b[ÓO]BITO\b/i],
   ["LICENCA",/\bLICEN[ÇC]A\b/i],
   ["SUSPENSAO",/\bSUSPENS[ÃA]O\b/i],
@@ -172,6 +174,25 @@ function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount,absenceMinut
         reason:"SENIOR_SPECIAL_NEGATIVE_MINUS_ABSENCE"
       };
     }
+
+    // Beta.87 — ocorrências explícitas da própria Senior prevalecem sobre a
+    // regra residual de 80% usada em lançamentos especiais sem marcações.
+    // Casos reais encontrados no cartão 19/09/2026 a 13/10/2026:
+    // - Atestado EM HORAS: a Senior exibiu BH- 00:06 e o fechamento também
+    //   exige 00:06; reduzir para 80% criava uma divergência artificial de 1 min.
+    // - BH (-) Saída Antecipada sem marcações: a Senior exibiu Trabalho, BH- e
+    //   Falta consolidados; o BH- deve ser preservado exatamente como informado.
+    // O Controle Térmico continua sem criar ou recalcular ponto: apenas lê as
+    // colunas oficiais e usa o rodapé como reconciliação obrigatória.
+    const explicitSeniorEvent=/ATESTADO.*\bHORAS\b|SA[ÍI]DA\s+ANTECIPADA/i.test(text);
+    if(explicitSeniorEvent){
+      return {
+        minutes:raw,
+        normalized:false,
+        reason:"SENIOR_EXPLICIT_EVENT_RAW_PRESERVED"
+      };
+    }
+
     return {minutes:Math.round(raw*0.8),normalized:true,reason:"SENIOR_SPECIAL_NEGATIVE_80"};
   }
 
@@ -209,7 +230,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   const rawTail=head[3];
   const explicitColumns=parseExplicitColumns(rawTail);
   const tail=explicitColumns?explicitColumns.base:rawTail;
-  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|FERIADO\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|AUX[ÍI]LIO\s+DOEN[ÇC]A|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
+  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|FERIADO\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|REDU[ÇC][ÃA]O\s+AVISO\b|DEMITIDO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|AUX[ÍI]LIO\s+DOEN[ÇC]A|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
   if(!codeMatch)return null;
   const scheduleCode=codeMatch[1];
   const payload=clean(codeMatch[2]);
