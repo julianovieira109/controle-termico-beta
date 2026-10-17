@@ -583,6 +583,7 @@ function showApp(){
   }
   else if(hasPermission("reports.view"))navigate("reports");
   else if(hasPermission("employees.view"))navigate("employees");
+  else if(hasPermission("imports.manage"))navigate("imports");
   else if(hasPermission("settings.view")||hasPermission("calendar.manage"))navigate("settings");
   else navigate("manual");
   loadSupportUserContext().catch(error=>console.error("[SUPPORT_USER_CONTEXT]",error));
@@ -686,7 +687,7 @@ function navigate(view){
   const activeNavigationButton=document.querySelector(`[data-view="${view}"]`);
   activeNavigationButton?.classList.add("active");
   activeNavigationButton?.setAttribute("aria-current","page");
-  const titles={dashboard:"Painel",companies:"Empresas e filiais",users:"Usuários",employees:"Colaboradores",reports:"Relatórios",occurrences:"Controle de Ocorrências",settings:"Configurações",help:"Assistente de Ajuda",manual:"Manual do Sistema"};
+  const titles={dashboard:"Painel",companies:"Empresas e filiais",users:"Usuários",employees:"Colaboradores",reports:"Relatórios",imports:"Importações",occurrences:"Controle de Ocorrências",settings:"Configurações",help:"Assistente de Ajuda",manual:"Manual do Sistema"};
   $("page-title").textContent=titles[view];
   $("page-title").classList.toggle("help-title-contrast",view==="help");
   // Recarrega o Painel sempre que o usuário retornar à visão principal.
@@ -697,6 +698,7 @@ function navigate(view){
   }
   if(view==="companies")loadCompanyBranchAdmin();
   if(view==="users")loadUsers();
+  if(view==="imports")prepareImports();
   if(view==="employees"){
     sanitizeEmployeeSearch();
     loadEmployees();

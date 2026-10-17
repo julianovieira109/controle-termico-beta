@@ -20,7 +20,11 @@ async function loadCatalogs(){
 
 
 async function setEmployeeModule(tab="register",options={}){
-  const valid=new Set(["register","import","shift"]);
+  if(tab==="import"||tab==="shift"){
+    navigate("imports");
+    return setImportModule(tab==="shift"?"shifts":"employees");
+  }
+  const valid=new Set(["register"]);
   const target=valid.has(tab)?tab:"register";
 
   document.querySelectorAll(".employee-tab").forEach(btn=>{
@@ -32,16 +36,7 @@ async function setEmployeeModule(tab="register",options={}){
   });
 
   $("employee-register-area").hidden=target!=="register";
-  $("employee-import-area").hidden=target!=="import";
-  $("shift-import-panel").hidden=target!=="shift";
 
-  if(target==="import"){
-    await preparePdfImport();
-  }
-
-  if(target==="shift"){
-    fillShiftImportCompanies();
-  }
 
   if(options.scroll!==false){
     document.querySelector(".employee-tabs")?.scrollIntoView({
@@ -59,9 +54,11 @@ document.querySelectorAll(".employee-tab").forEach(btn=>{
   };
 });
 
-async function preparePdfImport(){
-  if(!companies.length)await loadCompanies();
-  if(!branches.length)await loadBranches();
+async function preparePdfImport({scopeLoaded=false}={}){
+  if(!scopeLoaded){
+    if(!companies.length)await loadCompanies();
+    if(!branches.length)await loadBranches();
+  }
 
   $("pdf-import-company").innerHTML=companies
     .filter(c=>c.active)
@@ -550,8 +547,7 @@ $("pdf-import-confirm").onclick=async()=>{
     pdfImportPreview=null;
     $("pdf-import-file").value="";
     await loadPdfImportHistory();
-    await loadEmployees();
-    await loadDashboard();
+    await refreshImportRelatedViews();
   }catch(error){
     const message=error?.detail
       ? `${error.message}\n\nDetalhe: ${error.detail}${error.code?`\nCódigo: ${error.code}`:""}`

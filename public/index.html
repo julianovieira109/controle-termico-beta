@@ -39,6 +39,7 @@
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.51">
+  <link rel="stylesheet" href="/css/imports-center.css?v=1.0.31-beta.88">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -249,6 +250,7 @@
       <button class="nav-btn admin-only" data-view="companies" title="Empresas e filiais"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V5h10v15"/><path d="M14 10h6v10"/><path d="M8 9h2M8 13h2M8 17h2M17 14h1M17 17h1"/></svg></span><span class="nav-label">Empresas</span></button>
       <button class="nav-btn admin-only" data-view="users" title="Usuários"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3"/><path d="M4.5 19c.5-3.2 2.3-5 5.5-5 1.4 0 2.5.3 3.4 1"/><path d="M17.5 13.5v6M14.5 16.5h6"/></svg></span><span class="nav-label">Usuários</span></button>
       <button class="nav-btn" data-view="employees" data-permission="employees.view" title="Colaboradores"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M3.5 19c.5-3.3 2.3-5 5.5-5s5 1.7 5.5 5M14 15c.8-.7 1.8-1 3-1 2.3 0 3.6 1.3 4 3.7"/></svg></span><span class="nav-label">Colaboradores</span></button>
+      <button class="nav-btn" data-view="imports" data-permission="imports.manage" title="Importações"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 16v5h16v-5"/></svg></span><span class="nav-label">Importações</span></button>
       <button class="nav-btn" data-view="reports" data-permission="reports.view" title="Relatórios"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h4M9 12h7M9 16h7"/></svg></span><span class="nav-label">Relatórios</span></button>
       <button class="nav-btn" data-view="occurrences" data-special-permission="occurrences.view" title="Controle de ocorrências"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5M8 17h3"/><circle cx="17" cy="16.5" r="2.5"/></svg></span><span class="nav-label">Ocorrências</span></button>
       <button class="nav-btn" data-view="settings" data-permission="settings.view" title="Configurações"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></span><span class="nav-label">Configurações</span></button>
@@ -623,7 +625,7 @@
         </div>
       </section>
 
-    
+
 
     <section id="users" class="view admin-only">
         <div class="users-page-header">
@@ -770,12 +772,6 @@
       <div class="employee-tabs" role="tablist" aria-label="Módulos de colaboradores">
         <button type="button" class="employee-tab active" data-employee-tab="register" role="tab" aria-selected="true">
           <span>Cadastro e lista</span>
-        </button>
-        <button type="button" class="employee-tab" data-employee-tab="import" role="tab" aria-selected="false">
-          <span>Importar PDFs da Senior</span>
-        </button>
-        <button type="button" class="employee-tab" data-employee-tab="shift" id="open-shift-import" role="tab" aria-selected="false">
-          <span>Atualizar turnos dos colaboradores</span>
         </button>
       </div>
 
@@ -924,8 +920,118 @@
         </div>
       </div>
     </div>
+    </section>
 
-      <div id="employee-import-area" class="employee-module-area" data-employee-module="import" hidden>
+    <section id="imports" class="view" data-permission="imports.manage">
+      <div class="employee-module-intro">
+        <span class="eyebrow">Integração Senior</span>
+        <h2>Central de Importações</h2>
+        <p>Selecione o tipo de relatório, leia o arquivo e confira os resultados antes de confirmar. Cada importação mantém seu próprio histórico.</p>
+      </div>
+      <div class="imports-tabs" role="tablist" aria-label="Tipos de importação">
+        <button type="button" class="imports-tab active" id="imports-point-tab" data-import-tab="point" role="tab" aria-controls="imports-point-panel" aria-selected="true">Cartão de Ponto</button>
+        <button type="button" class="imports-tab" id="imports-employees-tab" data-import-tab="employees" role="tab" aria-controls="employee-import-area" aria-selected="false">Colaboradores</button>
+        <button type="button" class="imports-tab" id="imports-shifts-tab" data-import-tab="shifts" role="tab" aria-controls="shift-import-panel" aria-selected="false">Turnos</button>
+      </div>
+      <p id="imports-feedback" class="feedback" role="status"></p>
+      <button type="button" class="secondary" id="imports-retry" hidden>Tentar novamente</button>
+        <div id="imports-point-panel" class="panel no-print point-import-panel" role="tabpanel" aria-labelledby="imports-point-tab" data-permission="imports.manage">
+          <div class="panel-head">
+            <div><h3>Cartão de Ponto Senior</h3><p class="hint">Importe o período do Cartão Senior que será usado nos relatórios automáticos. O arquivo pode ser parcial, mensal ou abranger mais de um mês.</p></div>
+            <span class="point-import-badge">Relatório automático</span>
+          </div>
+          <div class="point-import-steps"><span><b>1</b> Selecione</span><span><b>2</b> Confira</span><span><b>3</b> Confirme</span></div>
+          <form id="point-import-form" class="form-grid">
+            <label>Empresa<select id="point-import-company" required></select></label>
+            <label>Filial<select id="point-import-branch" required></select></label>
+            <label class="full">Arquivo PDF do Cartão Ponto<input id="point-import-file" type="file" accept="application/pdf,.pdf" required></label>
+            <div class="full actions"><button type="submit" class="primary">Ler e conferir</button><button type="button" class="secondary" id="point-import-clear">Limpar</button></div>
+            <p id="point-import-feedback" class="feedback full" aria-live="polite"></p>
+          </form>
+          <div id="point-import-preview" class="point-import-preview" hidden>
+            <section id="point-audit-status" class="point-audit-status" aria-live="polite">
+              <div class="point-audit-status-icon" aria-hidden="true">✓</div>
+              <div><span>Resultado da conferência</span><strong id="point-audit-status-title">Aguardando leitura</strong><p id="point-audit-status-text">O diagnóstico aparecerá depois da extração do PDF.</p></div>
+              <div class="point-audit-confidence"><span>Confiança</span><strong id="point-audit-confidence">—</strong></div>
+            </section>
+            <div id="point-source-policy" class="point-review-lock-note"><strong>Fonte oficial: Senior</strong><span>O Controle Térmico somente lê, confere, organiza e sinaliza. A ocorrência e os valores da Senior sempre prevalecem sobre a simples quantidade de batidas; nenhuma marcação, jornada, BH, falta ou ocorrência é criada, corrigida, recalculada ou alterada aqui.</span></div>
+            <div id="point-import-summary" class="checklist-summary"></div>
+            <section id="point-missing-employees-panel" class="point-missing-employees" hidden>
+              <div class="point-missing-employees-head">
+                <div><span>NOVOS COLABORADORES / CADASTRO PENDENTE</span><strong id="point-missing-employees-title">Regularize as matrículas antes da confirmação</strong><p id="point-missing-employees-help">A leitura do ponto fica preservada. Envie a Relação de Admitidos da Senior para cadastrar somente as matrículas que estão faltando.</p></div>
+                <span id="point-missing-employees-count" class="point-missing-employees-count">0</span>
+              </div>
+              <div id="point-missing-employees-list" class="point-missing-employees-list"></div>
+              <div class="point-missing-employees-actions">
+                <label>Relação de Admitidos da Senior
+                  <input id="point-admitted-file" type="file" accept="application/pdf,.pdf">
+                  <small>Somente os colaboradores pendentes deste Cartão de Ponto serão cadastrados/vinculados.</small>
+                </label>
+                <button type="button" id="point-resolve-new-hires" class="primary">Cadastrar novatos e revalidar</button>
+              </div>
+              <p id="point-missing-employees-feedback" class="feedback" aria-live="polite"></p>
+            </section>
+            <nav class="point-audit-tabs" aria-label="Conferência do Cartão Senior">
+              <button type="button" class="active" data-point-audit-tab="summary">Resumo da extração</button>
+              <button type="button" data-point-audit-tab="reviews">Dias para revisão <span id="point-review-tab-count" class="point-review-tab-count">0</span></button>
+              <button type="button" data-point-audit-tab="indicators">Indicadores <span id="point-indicator-tab-count" class="point-review-tab-count">0</span></button>
+              <button type="button" data-point-audit-tab="structured">Dados estruturados</button>
+              <button type="button" data-point-audit-tab="original">Linhas originais</button>
+              <button type="button" data-point-audit-tab="matching">Colaboradores</button>
+            </nav>
+            <section class="point-audit-view active" data-point-audit-view="summary">
+              <div id="point-audit-metrics" class="point-audit-metrics"></div>
+              <div class="point-audit-grid">
+                <article><header><span>Conciliação com a Senior</span><strong id="point-audit-reconciliation-badge">—</strong></header><div id="point-audit-reconciliation"></div></article>
+                <article><header><span>Pontos de conferência</span><strong>Diagnóstico</strong></header><ul id="point-audit-reasons"></ul></article>
+              </div>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="reviews" hidden>
+              <div class="point-review-head">
+                <div><span>FILA DE CONFERÊNCIA DO DP</span><strong id="point-review-title">Nenhum dia pendente</strong><p>Esses registros foram preservados como vieram da Senior. A fila serve somente para acompanhar e conferir exceções; horários, jornada, BH e faltas só podem ser corrigidos na Senior.</p></div>
+                <div class="point-review-kpis"><div><span>Total</span><strong id="point-review-total">0</strong></div><div><span>Alta prioridade</span><strong id="point-review-high">0</strong></div><div><span>Senior reconhecido</span><strong id="point-review-explained">0</strong></div><div><span>Aguardando Senior</span><strong id="point-review-pending-senior">0</strong></div><div><span>Colaboradores</span><strong id="point-review-employees">0</strong></div></div>
+              </div>
+              <div class="point-audit-toolbar point-review-toolbar"><p>Filtre por colaborador, matrícula, data, motivo, horário ou acompanhamento.</p><div><select id="point-review-priority"><option value="">Todas as prioridades</option><option value="HIGH">Alta prioridade</option><option value="MEDIUM">Atenção</option></select><select id="point-review-tracking-status"><option value="">Todos os acompanhamentos</option><option value="UNREVIEWED">Não analisado</option><option value="REVIEWED">Conferido</option><option value="PENDING_SENIOR_CORRECTION">Aguardando correção na Senior</option><option value="SENIOR_CORRECTED_WAITING_IMPORT">Senior corrigida — aguardando nova importação</option></select><input id="point-review-search" type="search" placeholder="Buscar na fila de revisão"></div></div>
+              <div class="table-wrap point-audit-table-wrap point-review-table-wrap"><table><thead><tr><th>Colaborador</th><th>Data</th><th>Horário Senior</th><th>Motivo</th><th>Marcações</th><th>Ocorrência</th><th>BH−</th><th>BH+</th><th>Faltas</th><th>Acompanhamento</th><th>Ação</th></tr></thead><tbody id="point-review-body"></tbody></table></div>
+              <p class="hint" id="point-review-count"></p>
+              <details id="point-review-resolved-section" class="point-review-resolved" hidden><summary>Pendências resolvidas após nova leitura <strong id="point-review-resolved-count">0</strong></summary><div id="point-review-resolved-body" class="point-review-resolved-body"></div></details>
+              <article id="point-review-detail" class="point-review-detail" hidden aria-live="polite"></article>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="indicators" hidden>
+              <div class="point-review-head">
+                <div><span>INDICADORES DO RELATÓRIO SENIOR</span><strong id="point-indicator-title">Nenhum alerta adicional</strong><p>Indicadores informativos gerados somente a partir das marcações e ocorrências do relatório. Eles não alteram o ponto e não bloqueiam a importação quando a leitura está conciliada.</p></div>
+                <div class="point-review-kpis"><div><span>Falta sem marcação</span><strong id="point-indicator-absence-full">0</strong></div><div><span>Falta com 1 marcação</span><strong id="point-indicator-absence-single">0</strong></div><div><span>Falta com outras marcações</span><strong id="point-indicator-absence-partial">0</strong></div><div><span>Jornada incompleta</span><strong id="point-indicator-incomplete">0</strong></div><div><span>Interjornada &lt; 11h</span><strong id="point-indicator-interjourney">0</strong></div><div><span>Fonte oficial</span><strong>Senior</strong></div></div>
+              </div>
+              <div class="point-audit-toolbar"><p>Use estes avisos para localizar situações que precisam ser conferidas ou corrigidas exclusivamente na Senior.</p><input id="point-indicator-search" type="search" placeholder="Buscar colaborador, matrícula, data ou indicador"></div>
+              <div class="table-wrap point-audit-table-wrap point-review-table-wrap"><table><thead><tr><th>Colaborador</th><th>Data</th><th>Indicador</th><th>Marcações / evidência</th><th>Orientação</th></tr></thead><tbody id="point-indicator-body"></tbody></table></div>
+              <p class="hint" id="point-indicator-count"></p>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="structured" hidden>
+              <div class="point-audit-toolbar"><p>Dados identificados antes de alimentar os relatórios.</p><input id="point-audit-structured-search" type="search" placeholder="Buscar matrícula, nome, data ou ocorrência"></div>
+              <div class="table-wrap point-audit-table-wrap"><table><thead><tr><th>Origem</th><th>Matrícula / colaborador</th><th>Data</th><th>Marcações</th><th>Ocorrência</th><th>Trabalho</th><th>BH−</th><th>BH+</th><th>Faltas</th><th>Validação</th></tr></thead><tbody id="point-audit-structured-body"></tbody></table></div>
+              <p class="hint" id="point-audit-structured-count"></p>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="original" hidden>
+              <div class="point-audit-toolbar"><p>Texto preservado para localizar a origem de cada informação.</p><input id="point-audit-original-search" type="search" placeholder="Buscar no texto extraído"></div>
+              <div class="table-wrap point-audit-table-wrap"><table><thead><tr><th>Página</th><th>Linha</th><th>Texto original extraído</th></tr></thead><tbody id="point-audit-original-body"></tbody></table></div>
+              <p class="hint" id="point-audit-original-count"></p>
+            </section>
+            <section class="point-audit-view" data-point-audit-view="matching" hidden>
+              <div class="table-wrap"><table><thead><tr><th>Matrícula</th><th>Colaborador no PDF</th><th>Cadastro localizado</th><th>Dias aptos</th><th>Revisar</th><th>Sem jornada</th><th>Situação</th></tr></thead><tbody id="point-import-body"></tbody></table></div>
+            </section>
+            <div class="point-audit-confirm-bar"><div><strong id="point-audit-confirm-title">Confira os dados antes de confirmar</strong><span id="point-audit-confirm-help">A confirmação grava somente os dados validados.</span></div><button type="button" id="point-import-confirm" class="primary">Confirmar importação do ponto</button></div>
+          </div>
+          <details class="import-history-details"><summary>Histórico de cartões de ponto importados</summary><div class="table-wrap"><table><thead><tr><th>Data</th><th>Arquivo</th><th>Período</th><th>Filial</th><th>Localizados</th><th>Usuário</th></tr></thead><tbody id="point-import-history"></tbody></table></div></details>
+          <details class="import-history-details master-only" id="point-cleanup-details">
+            <summary>Limpeza controlada dos pontos do ambiente Beta</summary>
+            <div class="point-cleanup-box">
+              <p class="hint"><strong>Uso exclusivo para testes.</strong> Remove as marcações importadas e o histórico de Cartão de Ponto Senior da empresa/filial selecionada acima. A função é bloqueada automaticamente no ambiente Oficial.</p>
+              <div class="actions"><button type="button" class="danger" id="point-data-cleanup">Limpar pontos de teste</button></div>
+              <p id="point-cleanup-feedback" class="feedback" aria-live="polite"></p>
+            </div>
+          </details>
+        </div>
+      <div id="employee-import-area" class="employee-module-area" data-employee-module="import" role="tabpanel" aria-labelledby="imports-employees-tab" hidden>
         <div class="employee-module-intro">
           <span class="eyebrow">Integração Senior</span>
           <h2>Importar PDFs da Senior</h2>
@@ -1014,8 +1120,7 @@
           </div>
         </details>
       </div>
-    
-        <div id="shift-import-panel" class="employee-module-area senior-shift-import" data-employee-module="shift" hidden>
+        <div id="shift-import-panel" class="employee-module-area senior-shift-import" data-employee-module="shift" role="tabpanel" aria-labelledby="imports-shifts-tab" hidden>
           <div class="employee-module-intro">
             <span class="eyebrow">Integração Senior</span>
             <h2>Atualizar turnos dos colaboradores</h2>
@@ -1075,9 +1180,7 @@
           <p id="shift-import-feedback" class="feedback"></p>
           </div>
         </div>
-</section>
-
-    
+    </section>
 
     <section id="reports" class="view">
       <div class="panel no-print">
@@ -1340,7 +1443,7 @@
             <summary><span class="manual-number">6</span><span><strong>Importação de PDFs da Senior</strong><small>Leitura, conferência, checklist e atualização automática</small></span></summary>
             <div class="manual-body">
               <div class="manual-flow import-flow" aria-label="Etapas da importação"><span>1. PDF</span><i>→</i><span>2. Conferir</span><i>→</i><span>3. Checklist</span><i>→</i><span>4. Confirmar</span></div>
-              <h4>Passo a passo</h4><ol><li>Abra <strong>Colaboradores → Importar PDFs da Senior</strong>.</li><li>Escolha o tipo ou deixe o sistema detectar; selecione empresa/filial e carregue o PDF.</li><li>Clique em <strong>Ler e conferir PDF</strong>.</li><li>Revise confiança, registros montados, não reconhecidos e o <strong>Checklist Sistema × Lista Senior</strong>.</li><li>Marque somente os registros corretos e confirme.</li></ol>
+              <h4>Passo a passo</h4><ol><li>Abra <strong>Importações → Colaboradores</strong>.</li><li>Escolha o tipo ou deixe o sistema detectar; selecione empresa/filial e carregue o PDF.</li><li>Clique em <strong>Ler e conferir PDF</strong>.</li><li>Revise confiança, registros montados, não reconhecidos e o <strong>Checklist Sistema × Lista Senior</strong>.</li><li>Marque somente os registros corretos e confirme.</li></ol>
               <div class="manual-import-types"><article><b>Admitidos</b><span>Cadastra novos vínculos.</span></article><article><b>Demitidos</b><span>Atualiza a situação.</span></article><article><b>Relação de Colaboradores</b><span>Cadastra ausentes e atualiza nome, cargo e função.</span></article></div>
               <h4>Resultado</h4><ul><li><strong>Cadastrado:</strong> matrícula nova incluída.</li><li><strong>Atualizado:</strong> cadastro existente corrigido.</li><li><strong>Não processado:</strong> registro bloqueado ou incompleto.</li><li><strong>Possível readmissão:</strong> mesmo nome encontrado com matrícula nova.</li></ul>
               <div class="manual-note warning"><strong>Readmissão:</strong> o sistema preserva a matrícula antiga e cria a nova. Confira se o vínculo anterior deve ser marcado como Demitido/Inativo.</div>
@@ -1354,7 +1457,7 @@
               <div class="manual-shift-clock" aria-label="Exemplo de horário"><span>06:00</span><i></i><b>1º TURNO</b><i></i><span>14:20</span></div>
               <h4 data-help-permission="admin">Cadastrar ou editar</h4><p data-help-permission="admin">Em <strong>Configurações → Turnos</strong>, selecione a empresa e informe nome, código Senior, descrição/horário e situação. O código permite a associação automática em futuras importações.</p>
               <h4 data-help-permission="admin">Folga padrão</h4><p data-help-permission="admin">Na lista de turnos cadastrados, marque os dias da semana e clique em <strong>Salvar folga</strong>, sem precisar abrir o turno em Editar. A configuração inicial usa domingo para 1º, 2º, ADM e Comercial e sábado para o 3º turno. As fichas dos colaboradores que seguem a regra do turno são atualizadas automaticamente.</p>
-              <h4 data-help-permission="imports.manage">Atualizar por PDF</h4><ol data-help-permission="imports.manage"><li>Em Colaboradores, clique em <strong>Atualizar turnos dos colaboradores</strong>.</li><li>Selecione empresa/filial e o PDF da escala.</li><li>Clique em <strong>Ler e conferir turnos</strong>.</li><li>Confira cada matrícula e turno identificado.</li><li>Confirme somente os itens selecionados.</li></ol>
+              <h4 data-help-permission="imports.manage">Atualizar por PDF</h4><ol data-help-permission="imports.manage"><li>Abra <strong>Importações → Turnos</strong>.</li><li>Selecione empresa/filial e o PDF da escala.</li><li>Clique em <strong>Ler e conferir turnos</strong>.</li><li>Confira cada matrícula e turno identificado.</li><li>Confirme somente os itens selecionados.</li></ol>
               <p>Quando identifica um turno inexistente com código e horários completos, o leitor apresenta uma proposta de cadastro e associação.</p>
               <div class="manual-note danger"><strong>Proteção:</strong> a atualização deve ocorrer por matrícula e item selecionado. Não aplique um único turno para toda a lista.</div>
             </div>
@@ -1404,7 +1507,7 @@
       </div>
     </section>
 
-    
+
     <section id="occurrences" class="view">
       <div class="occurrences-print-header">
         <div><span class="eyebrow">Controle Térmico</span><h2>Relatório de Controle de Ocorrências</h2><p id="occurrences-print-reference">Período e escopo selecionados</p></div>
@@ -1996,7 +2099,7 @@
       </div>
 
 
-      
+
       <div id="settings-shifts" class="admin-only" hidden>
         <div class="admin-two-column">
           <div class="panel">
@@ -2076,7 +2179,7 @@
 
       <div id="settings-thermal-rest" class="admin-only master-only" hidden>
         <div class="panel thermal-command-panel">
-          <div class="panel-head"><div><h3>Repouso automático</h3><p class="hint">Configure a geração das fichas e acompanhe o Cartão de Ponto Senior em um único fluxo.</p></div><span class="thermal-status-badge">Configuração principal</span></div>
+          <div class="panel-head"><div><h3>Repouso automático</h3><p class="hint">Configure as regras de geração das fichas. Para enviar arquivos da Senior, use o menu Importações.</p></div><span class="thermal-status-badge">Configuração principal</span></div>
           <div class="thermal-overview" aria-label="Resumo das regras atuais">
             <div><span>Jornada normal</span><strong>Até 3 repousos</strong><small>Conforme o ponto real</small></div>
             <div><span>Ciclo máximo</span><strong>100 minutos</strong><small>20 minutos de repouso</small></div>
@@ -2115,102 +2218,7 @@
             <p id="thermal-rest-feedback" class="feedback"></p>
           </form>
         </div>
-        <div class="panel no-print point-import-panel" data-permission="imports.manage">
-          <div class="panel-head">
-            <div><h3>Cartão de Ponto Senior</h3><p class="hint">Importe o período do Cartão Senior que será usado nos relatórios automáticos. O arquivo pode ser parcial, mensal ou abranger mais de um mês.</p></div>
-            <span class="point-import-badge">Relatório automático</span>
-          </div>
-          <div class="point-import-steps"><span><b>1</b> Selecione</span><span><b>2</b> Confira</span><span><b>3</b> Confirme</span></div>
-          <form id="point-import-form" class="form-grid">
-            <label>Empresa<select id="point-import-company" required></select></label>
-            <label>Filial<select id="point-import-branch" required></select></label>
-            <label class="full">Arquivo PDF do Cartão Ponto<input id="point-import-file" type="file" accept="application/pdf,.pdf" required></label>
-            <div class="full actions"><button type="submit" class="primary">Ler e conferir</button><button type="button" class="secondary" id="point-import-clear">Limpar</button></div>
-            <p id="point-import-feedback" class="feedback full" aria-live="polite"></p>
-          </form>
-          <div id="point-import-preview" class="point-import-preview" hidden>
-            <section id="point-audit-status" class="point-audit-status" aria-live="polite">
-              <div class="point-audit-status-icon" aria-hidden="true">✓</div>
-              <div><span>Resultado da conferência</span><strong id="point-audit-status-title">Aguardando leitura</strong><p id="point-audit-status-text">O diagnóstico aparecerá depois da extração do PDF.</p></div>
-              <div class="point-audit-confidence"><span>Confiança</span><strong id="point-audit-confidence">—</strong></div>
-            </section>
-            <div id="point-source-policy" class="point-review-lock-note"><strong>Fonte oficial: Senior</strong><span>O Controle Térmico somente lê, confere, organiza e sinaliza. A ocorrência e os valores da Senior sempre prevalecem sobre a simples quantidade de batidas; nenhuma marcação, jornada, BH, falta ou ocorrência é criada, corrigida, recalculada ou alterada aqui.</span></div>
-            <div id="point-import-summary" class="checklist-summary"></div>
-            <section id="point-missing-employees-panel" class="point-missing-employees" hidden>
-              <div class="point-missing-employees-head">
-                <div><span>NOVOS COLABORADORES / CADASTRO PENDENTE</span><strong id="point-missing-employees-title">Regularize as matrículas antes da confirmação</strong><p id="point-missing-employees-help">A leitura do ponto fica preservada. Envie a Relação de Admitidos da Senior para cadastrar somente as matrículas que estão faltando.</p></div>
-                <span id="point-missing-employees-count" class="point-missing-employees-count">0</span>
-              </div>
-              <div id="point-missing-employees-list" class="point-missing-employees-list"></div>
-              <div class="point-missing-employees-actions">
-                <label>Relação de Admitidos da Senior
-                  <input id="point-admitted-file" type="file" accept="application/pdf,.pdf">
-                  <small>Somente os colaboradores pendentes deste Cartão de Ponto serão cadastrados/vinculados.</small>
-                </label>
-                <button type="button" id="point-resolve-new-hires" class="primary">Cadastrar novatos e revalidar</button>
-              </div>
-              <p id="point-missing-employees-feedback" class="feedback" aria-live="polite"></p>
-            </section>
-            <nav class="point-audit-tabs" aria-label="Conferência do Cartão Senior">
-              <button type="button" class="active" data-point-audit-tab="summary">Resumo da extração</button>
-              <button type="button" data-point-audit-tab="reviews">Dias para revisão <span id="point-review-tab-count" class="point-review-tab-count">0</span></button>
-              <button type="button" data-point-audit-tab="indicators">Indicadores <span id="point-indicator-tab-count" class="point-review-tab-count">0</span></button>
-              <button type="button" data-point-audit-tab="structured">Dados estruturados</button>
-              <button type="button" data-point-audit-tab="original">Linhas originais</button>
-              <button type="button" data-point-audit-tab="matching">Colaboradores</button>
-            </nav>
-            <section class="point-audit-view active" data-point-audit-view="summary">
-              <div id="point-audit-metrics" class="point-audit-metrics"></div>
-              <div class="point-audit-grid">
-                <article><header><span>Conciliação com a Senior</span><strong id="point-audit-reconciliation-badge">—</strong></header><div id="point-audit-reconciliation"></div></article>
-                <article><header><span>Pontos de conferência</span><strong>Diagnóstico</strong></header><ul id="point-audit-reasons"></ul></article>
-              </div>
-            </section>
-            <section class="point-audit-view" data-point-audit-view="reviews" hidden>
-              <div class="point-review-head">
-                <div><span>FILA DE CONFERÊNCIA DO DP</span><strong id="point-review-title">Nenhum dia pendente</strong><p>Esses registros foram preservados como vieram da Senior. A fila serve somente para acompanhar e conferir exceções; horários, jornada, BH e faltas só podem ser corrigidos na Senior.</p></div>
-                <div class="point-review-kpis"><div><span>Total</span><strong id="point-review-total">0</strong></div><div><span>Alta prioridade</span><strong id="point-review-high">0</strong></div><div><span>Senior reconhecido</span><strong id="point-review-explained">0</strong></div><div><span>Aguardando Senior</span><strong id="point-review-pending-senior">0</strong></div><div><span>Colaboradores</span><strong id="point-review-employees">0</strong></div></div>
-              </div>
-              <div class="point-audit-toolbar point-review-toolbar"><p>Filtre por colaborador, matrícula, data, motivo, horário ou acompanhamento.</p><div><select id="point-review-priority"><option value="">Todas as prioridades</option><option value="HIGH">Alta prioridade</option><option value="MEDIUM">Atenção</option></select><select id="point-review-tracking-status"><option value="">Todos os acompanhamentos</option><option value="UNREVIEWED">Não analisado</option><option value="REVIEWED">Conferido</option><option value="PENDING_SENIOR_CORRECTION">Aguardando correção na Senior</option><option value="SENIOR_CORRECTED_WAITING_IMPORT">Senior corrigida — aguardando nova importação</option></select><input id="point-review-search" type="search" placeholder="Buscar na fila de revisão"></div></div>
-              <div class="table-wrap point-audit-table-wrap point-review-table-wrap"><table><thead><tr><th>Colaborador</th><th>Data</th><th>Horário Senior</th><th>Motivo</th><th>Marcações</th><th>Ocorrência</th><th>BH−</th><th>BH+</th><th>Faltas</th><th>Acompanhamento</th><th>Ação</th></tr></thead><tbody id="point-review-body"></tbody></table></div>
-              <p class="hint" id="point-review-count"></p>
-              <details id="point-review-resolved-section" class="point-review-resolved" hidden><summary>Pendências resolvidas após nova leitura <strong id="point-review-resolved-count">0</strong></summary><div id="point-review-resolved-body" class="point-review-resolved-body"></div></details>
-              <article id="point-review-detail" class="point-review-detail" hidden aria-live="polite"></article>
-            </section>
-            <section class="point-audit-view" data-point-audit-view="indicators" hidden>
-              <div class="point-review-head">
-                <div><span>INDICADORES DO RELATÓRIO SENIOR</span><strong id="point-indicator-title">Nenhum alerta adicional</strong><p>Indicadores informativos gerados somente a partir das marcações e ocorrências do relatório. Eles não alteram o ponto e não bloqueiam a importação quando a leitura está conciliada.</p></div>
-                <div class="point-review-kpis"><div><span>Falta sem marcação</span><strong id="point-indicator-absence-full">0</strong></div><div><span>Falta com 1 marcação</span><strong id="point-indicator-absence-single">0</strong></div><div><span>Falta com outras marcações</span><strong id="point-indicator-absence-partial">0</strong></div><div><span>Jornada incompleta</span><strong id="point-indicator-incomplete">0</strong></div><div><span>Interjornada &lt; 11h</span><strong id="point-indicator-interjourney">0</strong></div><div><span>Fonte oficial</span><strong>Senior</strong></div></div>
-              </div>
-              <div class="point-audit-toolbar"><p>Use estes avisos para localizar situações que precisam ser conferidas ou corrigidas exclusivamente na Senior.</p><input id="point-indicator-search" type="search" placeholder="Buscar colaborador, matrícula, data ou indicador"></div>
-              <div class="table-wrap point-audit-table-wrap point-review-table-wrap"><table><thead><tr><th>Colaborador</th><th>Data</th><th>Indicador</th><th>Marcações / evidência</th><th>Orientação</th></tr></thead><tbody id="point-indicator-body"></tbody></table></div>
-              <p class="hint" id="point-indicator-count"></p>
-            </section>
-            <section class="point-audit-view" data-point-audit-view="structured" hidden>
-              <div class="point-audit-toolbar"><p>Dados identificados antes de alimentar os relatórios.</p><input id="point-audit-structured-search" type="search" placeholder="Buscar matrícula, nome, data ou ocorrência"></div>
-              <div class="table-wrap point-audit-table-wrap"><table><thead><tr><th>Origem</th><th>Matrícula / colaborador</th><th>Data</th><th>Marcações</th><th>Ocorrência</th><th>Trabalho</th><th>BH−</th><th>BH+</th><th>Faltas</th><th>Validação</th></tr></thead><tbody id="point-audit-structured-body"></tbody></table></div>
-              <p class="hint" id="point-audit-structured-count"></p>
-            </section>
-            <section class="point-audit-view" data-point-audit-view="original" hidden>
-              <div class="point-audit-toolbar"><p>Texto preservado para localizar a origem de cada informação.</p><input id="point-audit-original-search" type="search" placeholder="Buscar no texto extraído"></div>
-              <div class="table-wrap point-audit-table-wrap"><table><thead><tr><th>Página</th><th>Linha</th><th>Texto original extraído</th></tr></thead><tbody id="point-audit-original-body"></tbody></table></div>
-              <p class="hint" id="point-audit-original-count"></p>
-            </section>
-            <section class="point-audit-view" data-point-audit-view="matching" hidden>
-              <div class="table-wrap"><table><thead><tr><th>Matrícula</th><th>Colaborador no PDF</th><th>Cadastro localizado</th><th>Dias aptos</th><th>Revisar</th><th>Sem jornada</th><th>Situação</th></tr></thead><tbody id="point-import-body"></tbody></table></div>
-            </section>
-            <div class="point-audit-confirm-bar"><div><strong id="point-audit-confirm-title">Confira os dados antes de confirmar</strong><span id="point-audit-confirm-help">A confirmação grava somente os dados validados.</span></div><button type="button" id="point-import-confirm" class="primary">Confirmar importação do ponto</button></div>
-          </div>
-          <details class="import-history-details"><summary>Histórico de cartões de ponto importados</summary><div class="table-wrap"><table><thead><tr><th>Data</th><th>Arquivo</th><th>Período</th><th>Filial</th><th>Localizados</th><th>Usuário</th></tr></thead><tbody id="point-import-history"></tbody></table></div></details>
-          <details class="import-history-details master-only" id="point-cleanup-details">
-            <summary>Limpeza controlada dos pontos do ambiente Beta</summary>
-            <div class="point-cleanup-box">
-              <p class="hint"><strong>Uso exclusivo para testes.</strong> Remove as marcações importadas e o histórico de Cartão de Ponto Senior da empresa/filial selecionada acima. A função é bloqueada automaticamente no ambiente Oficial.</p>
-              <div class="actions"><button type="button" class="danger" id="point-data-cleanup">Limpar pontos de teste</button></div>
-              <p id="point-cleanup-feedback" class="feedback" aria-live="polite"></p>
-            </div>
-          </details>
-        </div>
+
         <details class="panel thermal-reference-details">
           <summary><span><strong>Consultar turnos cadastrados</strong><small>Visualizar códigos, horários e repousos-base</small></span></summary>
           <div class="table-wrap"><table><thead><tr><th>Código</th><th>Turno</th><th>Horário</th><th>Repousos-base</th><th>Situação</th></tr></thead><tbody id="thermal-shifts-list"></tbody></table></div>
@@ -2761,18 +2769,19 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.31-beta.42"></script>
+  <script src="/js/core.js?v=1.0.31-beta.88"></script>
   <script src="/js/help-manual.js?v=1.0.31-beta.17"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
-  <script src="/js/employees-imports.js?v=1.0.31-beta.17"></script>
+  <script src="/js/employees-imports.js?v=1.0.31-beta.88"></script>
   <script src="/js/thermal-schedule.js?v=1.0.31-beta.18"></script>
   <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
   <script src="/js/rest-audit.js?v=1.0.31-beta.17"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.87"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.88"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
-  <script src="/js/settings-system.js?v=1.0.31-beta.17"></script>
+  <script src="/js/settings-system.js?v=1.0.31-beta.88"></script>
+  <script src="/js/imports-center.js?v=1.0.31-beta.88"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
   <script src="/js/occurrences-control.js?v=1.0.31-beta.57"></script>
 </body>

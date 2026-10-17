@@ -592,8 +592,6 @@ async function prepareReports(){
 
   reportEmployees=(await api("/api/reports/employees"))
     .filter(employeeCanGenerateReports);
-  preparePointImportSelectors();
-  await loadPointImportHistory();
 
   const companyOptions=[...new Set(
     reportEmployees.map(e=>e.company_name).filter(Boolean)
@@ -1133,11 +1131,12 @@ if($("point-import-confirm"))$("point-import-confirm").onclick=async()=>{
     if(typeof invalidateOccurrencesControl==="function")invalidateOccurrencesControl();
     await Promise.all([
       loadPointImportHistory(),
-      typeof loadDashboard==="function" ? loadDashboard() : Promise.resolve()
+      (currentUser?.role==="ADMIN"||currentUser?.permissions?.["dashboard.view"]===true) && typeof loadDashboard==="function" ? loadDashboard() : Promise.resolve()
     ]);
 
     try{
-      const refresh=await refreshReportsAfterPointImport(data);
+      const canReports=currentUser?.role==="ADMIN"||currentUser?.permissions?.["reports.view"]===true;
+      const refresh=canReports?await refreshReportsAfterPointImport(data):{};
       if(refresh.regenerated){
         toast("As fichas exibidas foram atualizadas com o novo Cartão de Ponto.","success");
       }else if(refresh.differentMonth){
@@ -1195,7 +1194,7 @@ if($("point-data-cleanup"))$("point-data-cleanup").onclick=async()=>{
     if(typeof invalidateOccurrencesControl==="function")invalidateOccurrencesControl();
     await Promise.all([
       loadPointImportHistory(),
-      typeof loadDashboard==="function" ? loadDashboard() : Promise.resolve()
+      (currentUser?.role==="ADMIN"||currentUser?.permissions?.["dashboard.view"]===true) && typeof loadDashboard==="function" ? loadDashboard() : Promise.resolve()
     ]);
     pointCompetenceInfo={month:null,imports:[]};
     pointCompetenceBranches=new Set();

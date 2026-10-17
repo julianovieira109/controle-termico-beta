@@ -1,0 +1,9 @@
+.imports-tabs{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}
+.imports-tab{border:1px solid var(--line);border-radius:10px;padding:12px 18px;background:var(--card);color:var(--heading);font-weight:800;cursor:pointer}
+.imports-tab.active{background:var(--p);border-color:var(--p);color:#fff}
+.imports-tab:focus-visible{outline:3px solid var(--p);outline-offset:3px}
+#imports [role="tabpanel"][hidden]{display:none!important}
+#imports .employee-module-intro p{max-width:900px}
+#imports #imports-feedback:empty{display:none}
+@media(max-width:650px){.imports-tabs{display:grid;grid-template-columns:1fr}.imports-tab{text-align:left}}
+@media(max-width:650px){#imports .actions{flex-wrap:wrap}#imports .actions>button{flex:1 1 140px;min-width:0}}

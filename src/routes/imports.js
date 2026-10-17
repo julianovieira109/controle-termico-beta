@@ -45,6 +45,21 @@ const upload=multer({
 
 router.use(authenticate,applyScope,requirePermission("imports.manage"));
 
+router.get("/scope-options",async(req,res,next)=>{
+  try{
+    const companyParams=req.scope.isAdmin?[]:[req.scope.companyId];
+    const branchParams=req.scope.isAdmin?[]:[req.scope.companyId,req.scope.branchIds];
+    const [companyRows,branchRows]=await Promise.all([
+      pool.query(`SELECT id,trade_name,legal_name,active FROM companies
+        WHERE active=TRUE ${req.scope.isAdmin?"":"AND id=$1"} ORDER BY trade_name`,companyParams),
+      pool.query(`SELECT id,company_id,name,active FROM branches
+        WHERE active=TRUE ${req.scope.isAdmin?"":"AND company_id=$1 AND id=ANY($2::uuid[])"} ORDER BY name`,branchParams)
+    ]);
+    res.json({companies:companyRows.rows,branches:branchRows.rows});
+  }catch(error){next(error);}
+});
+
+
 function decodePdf2JsonText(value){
   try{
     return decodeURIComponent(value||"");

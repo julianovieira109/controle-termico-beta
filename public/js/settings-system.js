@@ -1173,8 +1173,6 @@ async function loadThermalRestSettings(){
   renderThermalAuthorization(config);
   document.documentElement.style.setProperty("--thermal-time-font-size",`${config.fontSizePt}pt`);
   renderThermalShiftList(config);
-  if(typeof preparePointImportSelectors==="function")preparePointImportSelectors();
-  if(typeof loadPointImportHistory==="function")await loadPointImportHistory();
 }
 
 function renderThermalAuthorization(config=window.thermalRestSettings||{}){
@@ -1774,8 +1772,8 @@ if($("open-shift-import")){
 if($("shift-import-close")){
   $("shift-import-close").onclick=async()=>{
     clearShiftImport();
-    if(typeof window.setEmployeeModule==="function"){
-      await window.setEmployeeModule("register");
+    if(typeof window.setImportModule==="function"){
+      await window.setImportModule("point");
     }else{
       $("shift-import-panel").hidden=true;
     }
@@ -1948,8 +1946,7 @@ if($("shift-import-confirm")){
       });
 
       toast(result.message,"success");
-      await loadEmployees();
-      await loadDashboard();
+      await refreshImportRelatedViews();
       clearShiftImport();
     }catch(error){
       toast(error.message,"error");
