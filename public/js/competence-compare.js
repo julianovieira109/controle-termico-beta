@@ -69,14 +69,15 @@
   }
 
   function init(){
-    const current=$("report-month")?.value||new Date().toISOString().slice(0,7);
+    const current=$("dashboard-alert-month")?.value||$("report-month")?.value||new Date().toISOString().slice(0,7);
     if($("competence-compare-b"))$("competence-compare-b").value=current;
     if($("competence-compare-a"))$("competence-compare-a").value=monthBefore(current);
     if($("competence-compare-toggle"))$("competence-compare-toggle").onclick=()=>{
       const body=$("competence-compare-body");
       body.hidden=!body.hidden;
+      $("competence-compare-toggle").setAttribute("aria-expanded",String(!body.hidden));
       if(!body.hidden){
-        const reportMonth=$("report-month")?.value;
+        const reportMonth=$("dashboard-alert-month")?.value||$("report-month")?.value;
         if(reportMonth){
           $("competence-compare-b").value=reportMonth;
           $("competence-compare-a").value=monthBefore(reportMonth);

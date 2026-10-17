@@ -27,13 +27,13 @@ test("ficha sempre exibe competência mensal e intervalo mensal considerado",()=
 });
 
 test("prévia da importação mostra período Senior e competências alcançadas",()=>{
-  assert.match(client,/Período do Cartão de Ponto Senior:<\/strong>/);
-  assert.match(client,/Competências alcançadas:<\/strong>/);
+  assert.match(client,/Período identificado no arquivo:<\/strong>/);
+  assert.match(client,/Meses alcançados:<\/strong>/);
 });
 
 test("controle de ocorrências continua exibindo o período Senior",()=>{
   assert.match(dashboard,/LEFT\(i\.details->'period'->>'end',7\)=\$1/);
-  assert.match(occ,/Período do Cartão de Ponto Senior/);
+  assert.match(occ,/Cartão Senior \$\{formatDate\(period\.start\)\} a \$\{formatDate\(period\.end\)\}/);
 });
 
 test("refresh considera todas as competências sobrepostas pelo período importado",()=>{

@@ -3,17 +3,19 @@ const assert=require('node:assert/strict');
 const {buildOperationalIndicators}=require('../src/importers/timecard-audit');
 const {reconcileEmployeeBh}=require('../src/importers/timecard-reader');
 
-test('Falta sem marcações vira indicador de possível ausência integral',()=>{
+test('Falta sem marcações preserva a classificação oficial da Senior',()=>{
   const rows=buildOperationalIndicators([{registration:'1',name:'TESTE',days:[{
     date:'2026-09-10',state:'FALTA',occurrence:'FALTA',markings:[],ignoredMarkings:[],sourceLine:1,sourceText:'10/09 QUI 0046 FALTA 07:20'
   }]}]);
   assert.equal(rows.length,1);
   assert.equal(rows[0].code,'ABSENCE_WITHOUT_MARKINGS');
   assert.equal(rows[0].priority,'MEDIUM');
-  assert.match(rows[0].label,/possível ausência integral/i);
+  assert.match(rows[0].label,/Falta sem marcações.*Senior/i);
+  assert.equal(rows[0].occurrence,"FALTA");
+  assert.deepEqual(rows[0].markings,[]);
 });
 
-test('Falta com marcações vira indicador de possível intervalo incompleto sem inferir batida',()=>{
+test('Falta com marcações mantém ocorrência Senior sem inferir intervalo incompleto',()=>{
   const rows=buildOperationalIndicators([{registration:'2',name:'TESTE DOIS',days:[{
     date:'2026-09-11',state:'FALTA',occurrence:'FALTA',markings:['06:00','12:00','14:20'],ignoredMarkings:[],sourceLine:2,sourceText:'11/09 SEX 0046 06:00 12:00 14:20 FALTA'
   }]}]);
@@ -21,7 +23,10 @@ test('Falta com marcações vira indicador de possível intervalo incompleto sem
   assert.equal(rows[0].code,'ABSENCE_WITH_PARTIAL_MARKINGS');
   assert.equal(rows[0].priority,'HIGH');
   assert.deepEqual(rows[0].markings,['06:00','12:00','14:20']);
-  assert.match(rows[0].label,/intervalo incompleto/i);
+  assert.match(rows[0].label,/Falta com marcações.*Senior/i);
+  assert.doesNotMatch(rows[0].label,/intervalo incompleto/i);
+  assert.equal(rows[0].occurrence,"FALTA");
+  assert.match(rows[0].guidance,/exclusivamente na Senior/);
 });
 
 test('interjornada abaixo de 11h é somente aviso calculado pelas marcações reais',()=>{

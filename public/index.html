@@ -406,6 +406,20 @@
         </div>
         <div id="dashboard-alert-list" class="dashboard-alert-list"></div>
       </section>
+      <section class="panel competence-compare-panel" aria-labelledby="competence-compare-title">
+        <div class="panel-head"><div><h3 id="competence-compare-title">Comparar competências</h3><p class="hint">Compare os indicadores de duas competências do Cartão de Ponto.</p></div><button type="button" class="secondary" id="competence-compare-toggle" aria-expanded="false" aria-controls="competence-compare-body">Abrir comparação</button></div>
+        <div id="competence-compare-body" hidden>
+          <div class="competence-compare-controls">
+            <label>Competência anterior<input type="month" id="competence-compare-a"></label>
+            <span class="competence-compare-arrow" aria-hidden="true">→</span>
+            <label>Competência atual<input type="month" id="competence-compare-b"></label>
+            <button type="button" id="competence-compare-run">Comparar</button>
+          </div>
+          <p id="competence-compare-status" class="feedback" role="status"></p>
+          <div id="competence-compare-summary" class="competence-compare-summary"></div>
+          <div id="competence-compare-alerts" class="competence-compare-alerts"></div>
+        </div>
+      </section>
     </section>
 
     <section id="companies" class="view admin-only">
@@ -2750,6 +2764,7 @@
   <script src="/js/core.js?v=1.0.31-beta.42"></script>
   <script src="/js/help-manual.js?v=1.0.31-beta.17"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
+  <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.17"></script>
   <script src="/js/thermal-schedule.js?v=1.0.31-beta.18"></script>
   <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>

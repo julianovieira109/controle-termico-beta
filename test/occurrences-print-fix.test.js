@@ -21,10 +21,13 @@ test("janela própria imprime após carregar",()=>{
   assert.match(template,/window\.addEventListener\("load"/);
   assert.match(template,/window\.print\(\)/);
 });
-test("relatório impresso usa todas as linhas carregadas",()=>{
+test("relatório impresso respeita escopo e categorias sem limitar às linhas visíveis",()=>{
   const start=js.indexOf("function buildPrintDocument");
   const block=js.slice(start,start+6000);
-  assert.match(block,/rows\.map/);
+  assert.match(block,/scopeRows=dashboardRows\(\)/);
+  assert.match(block,/reportRows=scopeRows\.filter/);
+  assert.match(block,/categories\]\.some\(category=>rowMatches\(row,category\)\)/);
+  assert.match(block,/reportRows\.map/);
   assert.doesNotMatch(block,/visibleRows\(\)/);
 });
 test("bloqueio de pop-up gera orientação",()=>{

@@ -11,7 +11,10 @@ test('BH gerencial usa tempo acumulado e separa positivo e negativo',()=>{
   assert.match(route,/row\.bh_positive_minutes=bhPositiveMinutes/);
   assert.match(route,/row\.bh_negative_minutes=bhNegativeMinutes/);
   assert.match(route,/row\.bh_net_minutes=bhNetMinutes/);
-  assert.match(html,/BH líquido/);
+  assert.match(html,/id="occ-kpi-bank-hours"/);
+  assert.match(html,/id="occ-kpi-bank-hours-positive"/);
+  assert.match(html,/id="occ-kpi-bank-hours-negative"/);
+  assert.match(ui,/summary\.bh_net\|\|formatDuration\(summary\.bh_net_minutes/);
   assert.match(html,/BH \(\+ \/ -\)/);
   assert.match(ui,/bh_positive_minutes/);
   assert.match(ui,/bh_negative_minutes/);

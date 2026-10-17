@@ -19,6 +19,6 @@ test('dashboard não apresenta zero como substituto de falha',()=>{
 
 test('dashboard só encerra carregamento após resumo operações e alertas',()=>{
   const js=fs.readFileSync(path.join(__dirname,'../public/js/admin-access.js'),'utf8');
-  assert.match(js,/await Promise\.all\(\[loadDashboardOperations\(\),loadDashboardAlerts\(\)\]\)/);
+  assert.match(js,/await Promise\.allSettled\(\[\s*loadSummary\(\),\s*loadDashboardOperations\(\),\s*loadDashboardAlerts\(\)/);
   assert.match(js,/setDashboardLoading\(false\)/);
 });
