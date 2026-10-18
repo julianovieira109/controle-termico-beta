@@ -585,10 +585,6 @@
 
     if(!header||!summary||!charts)return false;
 
-    [header,summary,charts].forEach(root=>{
-      root.querySelectorAll("[id]").forEach(el=>el.removeAttribute("id"));
-    });
-
     const scopeRows=dashboardRows(),scopeIds=new Set(scopeRows.map(row=>String(row.employee_id)));
     const scopedDays=(journeyDays||[]).filter(day=>scopeIds.has(String(day.employee_id)));
     const intervalCountByEmployee=new Map();
@@ -647,6 +643,10 @@
 
     summary.classList.add('compact');
     summary.innerHTML=selectedDefs.map(([key,def])=>`<article><span>${esc(def.label)}</span><strong class="${key==='bh-positive'?'positive':key==='bh-negative'?'negative':''}">${esc(categoryStats[key].display)}</strong><small>${esc(categoryStats[key].caption)}</small></article>`).join('');
+    const printedEmployees=charts.querySelector('#occurrences-kpi-employees');
+    const printedOccurrences=charts.querySelector('#occurrences-kpi-total');
+    if(printedEmployees)printedEmployees.textContent=String(reportRows.length);
+    if(printedOccurrences)printedOccurrences.textContent=String(totalOccurrences);
     charts.querySelector('.occurrences-charts-head h3')?.replaceChildren(document.createTextNode('Análise do período importado'));
     charts.querySelector('.occurrences-charts-head p')?.replaceChildren(document.createTextNode('Distribuição somente das categorias escolhidas para esta impressão.'));
     const maxCount=Math.max(1,...selectedDefs.map(([key])=>categoryStats[key].count));
@@ -654,6 +654,10 @@
     const donutCard=charts.querySelector('.occurrences-chart-card + .occurrences-chart-card');if(donutCard)donutCard.remove();
 
     const journeyAppendix=buildJourneyPrintAppendix(scopedDays,categories);
+    [header,summary,charts].forEach(root=>{
+      root.querySelectorAll("[id]").forEach(el=>el.removeAttribute("id"));
+    });
+
     holder.replaceChildren(header,context,periodNotice,summary,charts,detail,...(journeyAppendix?[journeyAppendix]:[]));
     holder.setAttribute("aria-hidden","false");
     return true;
