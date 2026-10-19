@@ -641,12 +641,14 @@ function renderPointImportPreview(data){
   pointImportPreview=data;
   $("point-import-preview").hidden=false;
   const period=data.period?`${formatApiDate(data.period.start)} a ${formatApiDate(data.period.end)}`:"não identificado";
-  const coveredMonths=monthsCoveredByPeriod(data.period).map(reportMonthLabel).join(" e ")||"não identificadas";
+  const importedPeriods=Array.isArray(data.periods)&&data.periods.length?data.periods:[data.period].filter(Boolean);
+  const coveredMonths=[...new Set(importedPeriods.flatMap(monthsCoveredByPeriod))].sort().map(reportMonthLabel).join(" e ")||"não identificadas";
+  const periodsNote=importedPeriods.length>1?`<br><strong>Intervalos presentes no arquivo:</strong> ${importedPeriods.map(item=>`${formatApiDate(item.start)} a ${formatApiDate(item.end)}`).join("; ")}`:"";
   const context=data.periodContext||{};
   const periodTypeLabel=({FULL_CLOSING:"Fechamento completo",PARTIAL_CLOSING:"Período parcial do fechamento",FULL_MONTH:"Mês inteiro",MULTIPLE_CLOSINGS:"Período atravessa mais de um fechamento",PERIOD_RANGE:"Período informado"})[context.type]||"Período informado";
   const cycles=Array.isArray(context.cycles)?context.cycles:[];
   const closingReference=cycles.length===1?`${formatApiDate(cycles[0].start)} a ${formatApiDate(cycles[0].end)}`:cycles.length>1?`${formatApiDate(cycles[0].start)} a ${formatApiDate(cycles[cycles.length-1].end)}`:"—";
-  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias aptos</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Período identificado no arquivo:</strong> ${period}<br><strong>Classificação:</strong> ${escapeHtml(periodTypeLabel)} · <strong>Fechamento de referência:</strong> ${escapeHtml(closingReference)}<br><strong>Meses alcançados:</strong> ${escapeHtml(coveredMonths)}</p>`;
+  $("point-import-summary").innerHTML=`<div><strong>${data.totals.employees}</strong><span>colaboradores</span></div><div><strong>${data.totals.located}</strong><span>localizados</span></div><div><strong>${data.totals.eligibleDays}</strong><span>dias aptos</span></div><div><strong>${data.totals.reviewDays}</strong><span>dias para revisão</span></div><div><strong>${data.totals.notFound}</strong><span>não localizados</span></div><p class="full hint"><strong>Período identificado no arquivo:</strong> ${period}<br><strong>Classificação:</strong> ${escapeHtml(periodTypeLabel)} · <strong>Fechamento de referência:</strong> ${escapeHtml(closingReference)}<br><strong>Meses alcançados:</strong> ${escapeHtml(coveredMonths)}${periodsNote}</p>`;
   $("point-import-body").innerHTML=data.rows.map(row=>`<tr><td>${escapeHtml(row.registration)}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.systemName||"-")}</td><td>${row.eligibleDays}</td><td>${row.reviewDays}</td><td>${row.nonWorkDays}</td><td><span class="import-result ${row.result}">${escapeHtml(row.result.replaceAll("_"," "))}</span></td></tr>`).join("");
   renderPointMissingEmployees(data);
   renderPointAudit(data.diagnostic||{});

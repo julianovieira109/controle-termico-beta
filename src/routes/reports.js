@@ -76,14 +76,18 @@ router.get("/point-competence",async(req,res,next)=>{
     }
     const {rows}=await pool.query(`
       SELECT DISTINCT i.company_id,i.branch_id,i.file_name,i.created_at,
-             i.details->'period'->>'start' period_start,
-             i.details->'period'->>'end' period_end
+             ip.period->>'start' period_start,
+             ip.period->>'end' period_end
       FROM employee_imports i
+      CROSS JOIN LATERAL jsonb_array_elements(
+        CASE WHEN jsonb_typeof(i.details->'periods')='array' THEN i.details->'periods'
+        ELSE jsonb_build_array(i.details->'period') END
+      ) ip(period)
       WHERE i.import_type='PONTO_SENIOR'
-        AND COALESCE(i.details->'period'->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
-        AND COALESCE(i.details->'period'->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
-        AND (i.details->'period'->>'start')::date < ($1::date + INTERVAL '1 month')
-        AND (i.details->'period'->>'end')::date >= ($1::date - INTERVAL '1 day')
+        AND COALESCE(ip.period->>'start','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND COALESCE(ip.period->>'end','') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+        AND (ip.period->>'start')::date < ($1::date + INTERVAL '1 month')
+        AND (ip.period->>'end')::date >= ($1::date - INTERVAL '1 day')
         ${scope}
       ORDER BY i.created_at DESC
     `,params);

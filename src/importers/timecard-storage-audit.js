@@ -22,9 +22,10 @@ function buildExpectedStorageSnapshot(rows=[]){
     totals:Object.fromEntries(TOTAL_FIELDS.map(field=>[field,0]))
   };
 
+  const employeeIds=new Set();
   for(const row of rows){
     if(!row?.employeeId)continue;
-    snapshot.employees++;
+    employeeIds.add(row.employeeId);
     for(const day of row.days||[]){
       snapshot.days++;
       const date=String(day?.date||'').slice(0,10)||null;
@@ -35,6 +36,7 @@ function buildExpectedStorageSnapshot(rows=[]){
       for(const field of TOTAL_FIELDS)snapshot.totals[field]+=number(day?.[field]);
     }
   }
+  snapshot.employees=employeeIds.size;
   return snapshot;
 }
 

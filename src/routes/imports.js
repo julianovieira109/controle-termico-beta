@@ -1,5 +1,5 @@
 const express=require("express");
-const multer=require("multer");
+const {createPdfUpload}=require("../middleware/pdf-upload");
 const pdfParse=require("pdf-parse");
 const PDFParser=require("pdf2json");
 const zlib=require("zlib");
@@ -7,7 +7,8 @@ const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
-const {parseSeniorTimecard}=require("../importers/timecard-reader");
+const {parseSeniorTimecard,canContinueTimecard}=require("../importers/timecard-reader");
+const {timecardPeriods,timecardPeriod,coversTimecardDate,replacementRanges}=require("../importers/timecard-periods");
 const {buildTimecardAudit}=require("../importers/timecard-audit");
 const {buildExpectedStorageSnapshot,normalizeStoredSnapshot,compareStorageSnapshots}=require("../importers/timecard-storage-audit");
 const {REVIEW_CONTROL_STATUSES,normalizeReviewControlStatus,reviewControlStatusLabel,reviewControlKey,nextStatusWhenIssueSeen}=require("../importers/timecard-review-control");
@@ -34,14 +35,8 @@ function isBlockedEmployeeRole(value){
   return BLOCKED_EMPLOYEE_ROLES.has(normalizeBlockedRole(value));
 }
 
-const upload=multer({
-  storage:multer.memoryStorage(),
-  limits:{fileSize:8*1024*1024},
-  fileFilter:(_req,file,cb)=>{
-    if(file.mimetype!=="application/pdf")return cb(new Error("Envie um arquivo PDF."));
-    cb(null,true);
-  }
-});
+const upload=createPdfUpload(8);
+const timecardUpload=createPdfUpload(32);
 
 router.use(authenticate,applyScope,requirePermission("imports.manage"));
 
@@ -117,6 +112,8 @@ function pdf2JsonDataToSeniorText(data){
   let structuredRows=0;
   let footerRows=0;
   let cardPages=0;
+  let previousCardText="";
+  let previousAnchors=null;
   for(const page of pages){
     const decoded=(page.Texts||[]).map(item=>({
       x:Number(item.x||0),
@@ -124,7 +121,9 @@ function pdf2JsonDataToSeniorText(data){
       text:(item.R||[]).map(run=>decodePdf2JsonText(run.T)).join("").replace(/\s+/g," ").trim()
     })).filter(item=>item.text);
     const ordered=groupPdf2JsonRows(decoded,0.12).map(row=>row.items);
-    if(decoded.some(item=>/Cart[ãa]o\s+Ponto/i.test(item.text)))cardPages++;
+    const rawPageText=ordered.map(items=>items.map(item=>item.text).join(" ")).join("\n");
+    const continuation=canContinueTimecard(previousCardText,rawPageText);
+    if(decoded.some(item=>/Cart[ãa]o\s+Ponto/i.test(item.text))&&!continuation)cardPages++;
 
     let anchors=detectSeniorColumnAnchorsFromPage(decoded);
     if(!anchors){
@@ -136,7 +135,10 @@ function pdf2JsonDataToSeniorText(data){
         }
       }
     }
+    if(!anchors&&continuation)anchors=previousAnchors;
     if(anchors)safePages++;
+    previousCardText=continuation?previousCardText+"\n"+rawPageText:rawPageText;
+    previousAnchors=anchors;
 
     // Beta.62: as linhas diárias são reconstruídas pela faixa vertical entre
     // duas datas consecutivas. Isso evita perder Trabalho/BH-/BH+ quando o
@@ -190,7 +192,8 @@ function extractSeniorWithPdf2Json(buffer,{allowIncomplete=false}={}){
       cleanup();
       try{
         const result=pdf2JsonDataToSeniorText(data);
-        if(!result.text.trim()||!result.safePages)throw new Error("Não foi possível identificar com segurança as colunas Trabalho/BH-/BH+ do cartão Senior.");
+        if(!result.text.trim())throw new Error("Não foi encontrado texto extraível neste PDF. O arquivo não preserva uma camada de texto que o leitor consiga reconhecer. Exporte o PDF original diretamente da Senior, com texto selecionável, em vez de usar impressão ou digitalização.");
+        if(!result.safePages)throw new Error("Não foi possível identificar com segurança as colunas Trabalho/BH-/BH+ do cartão Senior.");
         const coverage=result.dateRows?result.structuredRows/result.dateRows:0;
         if(!result.dateRows)throw new Error("Nenhuma linha diária do Cartão Senior foi localizada.");
         if(coverage<1&&!allowIncomplete)throw new Error(`Leitura estrutural incompleta das linhas do cartão Senior (${result.structuredRows}/${result.dateRows} linhas reconstruídas). A confirmação exige 100% das linhas estruturadas.`);
@@ -4093,9 +4096,18 @@ async function readAndMatchTimecard(req,{allowBlocked=false}={}){
     const reason=(diagnostic.reasons||[]).slice(0,4).join(" ");
     throw Object.assign(new Error(`Importação bloqueada pela Central de Conferência. ${reason}`),{status:422});
   }
-  const period=parsed.employees[0]?.period||null;
+  const seenDays=new Set();
+  for(const row of rows){
+    for(const day of row.days){
+      const key=`${row.registration}|${day.date}`;
+      if(seenDays.has(key))throw Object.assign(new Error(`O arquivo contém cartões sobrepostos para a matrícula ${row.registration} em ${day.date}. Envie períodos sem dias repetidos para evitar substituir valores de forma ambígua.`),{status:422});
+      seenDays.add(key);
+    }
+  }
+  const period=timecardPeriod(rows);
+  const periods=timecardPeriods(rows);
   const periodContext=describePointPeriod(period);
-  return {companyId,branchId,extraction,parsed,rows,diagnostic,periodContext};
+  return {companyId,branchId,extraction,parsed,rows,diagnostic,periodContext,period,periods};
 }
 
 async function enrichTimecardReviewTracking(result){
@@ -4108,7 +4120,7 @@ async function enrichTimecardReviewTracking(result){
     employeeId:employeeByRegistration.get(normalizePointRegistration(row.registration))||null
   }));
 
-  const period=result?.parsed?.employees?.[0]?.period||null;
+  const period=result?.period||timecardPeriod(result?.rows||[]);
   const employeeIds=[...new Set((result?.rows||[]).map(row=>row.employeeId).filter(Boolean))];
   let controls=[];
   let resolvedInPeriod=0;
@@ -4124,7 +4136,7 @@ async function enrichTimecardReviewTracking(result){
         AND c.employee_id=ANY($3::uuid[])
         AND c.work_date BETWEEN $4::date AND $5::date
     `,[result.companyId,result.branchId,employeeIds,period.start,period.end]);
-    controls=controlResult.rows;
+    controls=controlResult.rows.filter(item=>coversTimecardDate(result.rows,item.employee_id,item.work_date));
     resolvedInPeriod=controls.filter(item=>item.status==='RESOLVED_BY_NEW_IMPORT').length;
   }
   const byKey=new Map(controls.map(item=>[reviewControlKey(item.employee_id,item.work_date),item]));
@@ -4186,7 +4198,7 @@ function currentReviewControlItems(result){
 }
 
 async function syncTimecardReviewControls(client,{result,importId,sourceFile}){
-  const period=result?.parsed?.employees?.[0]?.period||null;
+  const period=result?.period||timecardPeriod(result?.rows||[]);
   if(!period?.start||!period?.end)return {current:0,autoResolved:0,reopened:0};
   const locatedIds=[...new Set((result.rows||[]).map(row=>row.employeeId).filter(Boolean))];
   if(!locatedIds.length)return {current:0,autoResolved:0,reopened:0};
@@ -4200,7 +4212,8 @@ async function syncTimecardReviewControls(client,{result,importId,sourceFile}){
       AND employee_id=ANY($3::uuid[])
       AND work_date BETWEEN $4::date AND $5::date
   `,[result.companyId,result.branchId,locatedIds,period.start,period.end]);
-  const existingByKey=new Map(existingResult.rows.map(row=>[reviewControlKey(row.employee_id,row.work_date),row]));
+  const coveredControls=existingResult.rows.filter(item=>coversTimecardDate(result.rows,item.employee_id,item.work_date));
+  const existingByKey=new Map(coveredControls.map(row=>[reviewControlKey(row.employee_id,row.work_date),row]));
 
   let reopened=0;
   for(const item of current){
@@ -4221,7 +4234,7 @@ async function syncTimecardReviewControls(client,{result,importId,sourceFile}){
   }
 
   let autoResolved=0;
-  for(const existing of existingResult.rows){
+  for(const existing of coveredControls){
     const key=reviewControlKey(existing.employee_id,existing.work_date);
     if(currentKeys.has(key)||existing.status==='RESOLVED_BY_NEW_IMPORT')continue;
     await client.query(`
@@ -4326,7 +4339,7 @@ router.post("/timecard-cleanup",requireMasterAdmin,async(req,res,next)=>{
   }
 });
 
-router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
+router.post("/timecard-preview",timecardUpload.single("file"),async(req,res,next)=>{
   try{
     const result=await readAndMatchTimecard(req,{allowBlocked:true});
     const located=result.rows.filter(row=>row.employeeId).length;
@@ -4337,7 +4350,8 @@ router.post("/timecard-preview",upload.single("file"),async(req,res,next)=>{
       readerUsed:result.extraction.readerUsed,
       companyId:result.companyId,
       branchId:result.branchId,
-      period:result.parsed.employees[0]?.period||null,
+      period:result.period,
+      periods:result.periods,
       periodContext:result.periodContext,
       totals:{...result.parsed.totals,located,notFound:result.rows.length-located,bhValidation:result.diagnostic.status},
       bhValidation:{status:result.diagnostic.status,method:"SENIOR_COLUMN_RECONCILIATION",employees:result.parsed.employees.length,canConfirm:result.diagnostic.canConfirm},
@@ -4413,7 +4427,7 @@ router.post("/timecard-review-control",async(req,res,next)=>{
 });
 
 
-router.post("/timecard-resolve-new-hires",upload.single("file"),async(req,res,next)=>{
+router.post("/timecard-resolve-new-hires",timecardUpload.single("file"),async(req,res,next)=>{
   const client=await pool.connect();
   try{
     if(!req.file)return res.status(400).json({error:"Selecione o PDF da Relação de Admitidos da Senior."});
@@ -4601,7 +4615,7 @@ router.post("/timecard-resolve-new-hires",upload.single("file"),async(req,res,ne
   }
 });
 
-router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
+router.post("/timecard-confirm",timecardUpload.single("file"),async(req,res,next)=>{
   const client=await pool.connect();
   try{
     const result=await readAndMatchTimecard(req);
@@ -4613,27 +4627,26 @@ router.post("/timecard-confirm",upload.single("file"),async(req,res,next)=>{
         user_id,company_id,branch_id,import_type,file_name,total_found,total_created,total_updated,total_not_found,details
       ) VALUES($1,$2,$3,'PONTO_SENIOR',$4,$5,0,$6,$7,$8::jsonb)
       RETURNING id,created_at
-    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.parsed.employees[0]?.period,periodContext:result.periodContext,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays,bhValidation:"VALIDATED",bhValidationMethod:"SENIOR_COLUMN_RECONCILIATION",audit:{status:result.diagnostic.status,confidence:result.diagnostic.confidence,totalPages:result.diagnostic.extraction.totalPages,dateRows:result.diagnostic.extraction.dateRows,structuredRows:result.diagnostic.extraction.structuredRows,structuralCoverage:result.diagnostic.extraction.structuralCoverage,validatedEmployees:result.diagnostic.reconciliation.validated,elapsedMs:result.diagnostic.elapsedMs}})]);
+    `,[req.user.sub,result.companyId,result.branchId,req.file.originalname,result.rows.length,located.length,result.rows.length-located.length,JSON.stringify({period:result.period,periods:result.periods,periodContext:result.periodContext,readerUsed:result.extraction.readerUsed,eligibleDays:result.parsed.totals.eligibleDays,reviewDays:result.parsed.totals.reviewDays,bhValidation:"VALIDATED",bhValidationMethod:"SENIOR_COLUMN_RECONCILIATION",audit:{status:result.diagnostic.status,confidence:result.diagnostic.confidence,totalPages:result.diagnostic.extraction.totalPages,dateRows:result.diagnostic.extraction.dateRows,structuredRows:result.diagnostic.extraction.structuredRows,structuralCoverage:result.diagnostic.extraction.structuralCoverage,validatedEmployees:result.diagnostic.reconciliation.validated,elapsedMs:result.diagnostic.elapsedMs}})]);
     const importId=importResult.rows[0].id;
-    const importedPeriod=result.parsed.employees[0]?.period||null;
+    const importedPeriod=result.period;
 
     // A importação mais recente passa a ser a fonte oficial do período informado.
     // Isso evita que dias/ocorrências de uma importação anterior permaneçam nas fichas
     // quando deixaram de existir ou foram corrigidos no novo Cartão de Ponto.
     let replacedDays=0;
-    if(importedPeriod?.start&&importedPeriod?.end){
-      const locatedIds=located.map(row=>row.employeeId).filter(Boolean);
-      if(locatedIds.length){
-        const replaced=await client.query(`
-          DELETE FROM employee_point_days
-          WHERE employee_id=ANY($1::uuid[])
-            AND company_id=$2
-            AND branch_id=$3
-            AND work_date BETWEEN $4::date AND $5::date
-          RETURNING id
-        `,[locatedIds,result.companyId,result.branchId,importedPeriod.start,importedPeriod.end]);
-        replacedDays=replaced.rowCount||0;
-      }
+    for(const range of replacementRanges(located)){
+      const importedPeriod=range.period;
+      const locatedIds=range.employeeIds;
+      const replaced=await client.query(`
+        DELETE FROM employee_point_days
+        WHERE employee_id=ANY($1::uuid[])
+          AND company_id=$2
+          AND branch_id=$3
+          AND work_date BETWEEN $4::date AND $5::date
+        RETURNING id
+      `,[locatedIds,result.companyId,result.branchId,importedPeriod.start,importedPeriod.end]);
+      replacedDays+=replaced.rowCount||0;
     }
 
     const expectedStorage=buildExpectedStorageSnapshot(located);

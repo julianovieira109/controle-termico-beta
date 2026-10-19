@@ -114,7 +114,7 @@ function buildOperationalIndicators(employees){
           priority,
           registration:employee.registration,
           employeeName:employee.name,
-          page:employee.page||null,
+          page:day.sourcePage||employee.page||null,
           line:day.sourceLine||null,
           date:day.date,
           scheduleCode:day.scheduleCode,
@@ -134,7 +134,7 @@ function buildOperationalIndicators(employees){
           priority:'HIGH',
           registration:employee.registration,
           employeeName:employee.name,
-          page:employee.page||null,
+          page:day.sourcePage||employee.page||null,
           line:day.sourceLine||null,
           date:day.date,
           scheduleCode:day.scheduleCode,
@@ -168,7 +168,7 @@ function buildOperationalIndicators(employees){
         priority:'MEDIUM',
         registration:employee.registration,
         employeeName:employee.name,
-        page:employee.page||null,
+        page:current.sourcePage||employee.page||null,
         date:current.date,
         previousDate:previous.date,
         scheduleCode:current.scheduleCode,
@@ -306,7 +306,7 @@ function buildReviewRows(employees){
       const reason=reviewReason(day);
       const restPolicy=reviewRestPolicy(day);
       rows.push({
-        page:employee.page||null,
+        page:day.sourcePage||employee.page||null,
         line:day.sourceLine||null,
         registration:employee.registration,
         employeeName:employee.name,
@@ -345,7 +345,7 @@ function buildReviewRows(employees){
 
 function buildStructuredRows(employees){
   return employees.flatMap(employee=>(employee.days||[]).map(day=>({
-    page:employee.page||null,
+    page:day.sourcePage||employee.page||null,
     line:day.sourceLine||null,
     registration:employee.registration,
     employeeName:employee.name,

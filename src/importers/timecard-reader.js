@@ -145,7 +145,7 @@ function parseFooterTotals(block){
   return {workMinutes:durationToMinutes(m[1]),bhNegativeMinutes:durationToMinutes(m[2]),bhPositiveMinutes:durationToMinutes(m[3]),he100Minutes:durationToMinutes(m[4]),absenceMinutes:durationToMinutes(m[5])};
 }
 
-function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount,absenceMinutes=0){
+function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount,absenceMinutes=0,nightAdditionalMinutes=0){
   const raw=Number(rawMinutes||0);
   if(raw<=0)return {minutes:0,normalized:false,reason:null};
   const text=clean(payload).toUpperCase();
@@ -166,6 +166,16 @@ function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount,absenceMinut
   // Falta 01:06 => BH- efetivo 06:13. Isso elimina o resíduo de -00:22 do
   // fechamento 19/08/2026 a 17/09/2026 sem criar tolerância artificial.
   if(specialWithoutNormalMarkings){
+    // Independent of footer reconciliation: a BH 50% posting without punches
+    // uses the night base only when the official night column is populated.
+    // Daytime BH postings retain their exact official minutes.
+    if(/\bBH\s*50\s*%|ADICIONAL\s+NOTURNO/i.test(text)){
+      const night=Number(nightAdditionalMinutes)>0||/NOTURN/i.test(text);
+      return night
+        ?{minutes:Math.round(raw*0.8),normalized:true,reason:"SENIOR_NIGHT_POSTING_80"}
+        :{minutes:raw,normalized:false,reason:"SENIOR_DAY_POSTING_RAW_PRESERVED"};
+    }
+
     const absence=Math.max(0,Number(absenceMinutes||0));
     if(absence>0&&absence<raw){
       return {
@@ -247,7 +257,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   let markings=reportedMarkings.slice();
   let ignoredMarkings=[];
   const negativeNormalization=explicitColumns
-    ?normalizeSeniorBhNegative(explicitColumns.bhNegativeRawMinutes,payload,rawMarkings.length,explicitColumns.absenceMinutes)
+    ?normalizeSeniorBhNegative(explicitColumns.bhNegativeRawMinutes,payload,rawMarkings.length,explicitColumns.absenceMinutes,explicitColumns.nightAdditionalMinutes)
     :{minutes:null,normalized:false,reason:null};
 
   // Em algumas extrações do PDF, quando não há texto de ocorrência entre as
@@ -358,16 +368,39 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   };
 }
 
+// Continuation is allowed only inside the same unfinished card and employer.
+function canContinueTimecard(previous,current){
+  if(!previous||parseFooterTotals(previous))return false;
+  const before=parsePeriod(previous),after=parsePeriod(current);
+  if(!before||!after||before.start!==after.start||before.end!==after.end)return false;
+  const employee=parseEmployee(previous),nextEmployee=parseEmployee(current);
+  if(!employee)return false;
+  if(nextEmployee&&nextEmployee.registration!==employee.registration)return false;
+  if(/Empregado\s*:/i.test(current)&&!nextEmployee)return false;
+  const employer=text=>String(text).match(/(?:CGC|CNPJ)\s*:\s*([\d./-]+)/i)?.[1];
+  if(!employer(previous)||employer(previous)!==employer(current))return false;
+  const pageNumbers=text=>[...String(text).matchAll(/P[áa]g\.?\s*:\s*(\d+)/gi)].map(item=>Number(item[1]));
+  const oldNumbers=pageNumbers(previous),newNumbers=pageNumbers(current);
+  if(!oldNumbers.length||!newNumbers.length||newNumbers[0]!==oldNumbers.at(-1)+1)return false;
+  return true;
+}
+
 function splitBlocks(text){
   const source=String(text||"");
 
-  // A extração estrutural preserva o separador físico de páginas. Como o
-  // Cartão Ponto Senior usa um colaborador por página, essa é a fronteira mais
-  // segura e impede tanto contaminação entre rodapés quanto perda da última
-  // página do arquivo.
+  // Physical pages stay separate until continuation identity is verified.
+  // A single employee card may span several pages; a closed card is never
+  // joined to a subsequent report, even for the same registration.
   const physicalPages=source.split(/\f/).map(page=>page.trim()).filter(Boolean);
   const cardPages=physicalPages.filter(page=>/Cart[ãa]o\s*Ponto/i.test(page));
-  if(cardPages.length)return cardPages;
+  if(cardPages.length){
+    const cards=[];
+    for(const page of cardPages){
+      if(cards.length&&canContinueTimecard(cards.at(-1),page))cards[cards.length-1]+="\n"+page;
+      else cards.push(page);
+    }
+    return cards;
+  }
 
   // Compatibilidade com textos legados sem form-feed.
   const indexes=[];
@@ -381,22 +414,26 @@ function parseSeniorTimecard(text){
   const employees=[];
   const warnings=[];
   for(const [pageIndex,block] of splitBlocks(text).entries()){
+    const sourcePage=Number(block.match(/P[áa]g\.?\s*:\s*(\d+)/i)?.[1]||pageIndex+1);
     const period=parsePeriod(block);
     const employee=parseEmployee(block);
     if(!period||!employee){
-      warnings.push({page:pageIndex+1,message:"Cabeçalho do colaborador ou período não reconhecido."});
+      warnings.push({page:sourcePage,message:"Cabeçalho do colaborador ou período não reconhecido."});
       continue;
     }
     const scheduleDefinitions=parseScheduleDefinitions(block);
+    let currentPage=sourcePage;
     const days=block.split(/\r?\n/).map((line,index)=>{
+      const printedPage=line.match(/P[áa]g\.?\s*:\s*(\d+)/i);
+      if(printedPage)currentPage=Number(printedPage[1]);
       const day=parseDayLine(line,period,scheduleDefinitions);
-      return day?{...day,sourceLine:index+1,sourceText:clean(line)}:null;
+      return day?{...day,sourcePage:currentPage,sourceLine:index+1,sourceText:clean(line)}:null;
     }).filter(Boolean);
     const footerTotals=parseFooterTotals(block);
     const bhReconciliation=reconcileEmployeeBh(days,footerTotals);
-    if(bhReconciliation.status!=="VALIDATED")warnings.push({page:pageIndex+1,registration:employee.registration,message:bhReconciliation.status==="MISMATCH"?"Totais diários não conferem com o fechamento oficial da Senior.":"Fechamento da Senior não pôde ser validado pelas colunas do PDF."});
-    else if(bhReconciliation.adjustments?.length)warnings.push({page:pageIndex+1,registration:employee.registration,message:`BH- conciliado com o fechamento Senior (${bhReconciliation.adjustments.map(item=>`${item.date}: ${item.minutes>0?"+":""}${item.minutes} min`).join(", ")}).`});
-    employees.push({...employee,period,days,page:pageIndex+1,footerTotals,bhReconciliation});
+    if(bhReconciliation.status!=="VALIDATED")warnings.push({page:sourcePage,registration:employee.registration,message:bhReconciliation.status==="MISMATCH"?"Totais diários não conferem com o fechamento oficial da Senior.":"Fechamento da Senior não pôde ser validado pelas colunas do PDF."});
+    else if(bhReconciliation.adjustments?.length)warnings.push({page:sourcePage,registration:employee.registration,message:`BH- conciliado com o fechamento Senior (${bhReconciliation.adjustments.map(item=>`${item.date}: ${item.minutes>0?"+":""}${item.minutes} min`).join(", ")}).`});
+    employees.push({...employee,period,days,page:sourcePage,footerTotals,bhReconciliation});
   }
   return {
     reportType:"SENIOR_TIMECARD",
@@ -412,4 +449,4 @@ function parseSeniorTimecard(text){
   };
 }
 
-module.exports={parseSeniorTimecard,parseDayLine,parseScheduleDefinitions,parseFooterTotals,reconcileEmployeeBh,durationToMinutes,normalizeSeniorBhNegative};
+module.exports={canContinueTimecard,parseSeniorTimecard,parseDayLine,parseScheduleDefinitions,parseFooterTotals,reconcileEmployeeBh,durationToMinutes,normalizeSeniorBhNegative};

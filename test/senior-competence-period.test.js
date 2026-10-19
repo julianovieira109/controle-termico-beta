@@ -31,8 +31,10 @@ test("prévia da importação mostra período Senior e competências alcançadas
   assert.match(client,/Meses alcançados:<\/strong>/);
 });
 
-test("controle de ocorrências continua exibindo o período Senior",()=>{
-  assert.match(dashboard,/LEFT\(i\.details->'period'->>'end',7\)=\$1/);
+test("controle de ocorrências reconhece meses com dias gravados e exibe o período Senior",()=>{
+  assert.match(dashboard,/coverage\.import_id=i\.id/);
+  assert.match(dashboard,/coverage\.work_date/);
+  assert.doesNotMatch(dashboard,/LEFT\(i\.details->'period'->>'end',7\)=\$1/);
   assert.match(occ,/Cartão Senior \$\{formatDate\(period\.start\)\} a \$\{formatDate\(period\.end\)\}/);
 });
 

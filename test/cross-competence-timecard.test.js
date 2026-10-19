@@ -10,8 +10,8 @@ const ui=fs.readFileSync(path.join(__dirname,"../public/js/calendar-reports.js")
 test("cartões Senior são reconhecidos por sobreposição com a competência mensal",()=>{
   const start=reports.indexOf('router.get("/point-competence"');
   const block=reports.slice(start,start+3500);
-  assert.match(block,/period'->>'start'\)::date < \(\$1::date \+ INTERVAL '1 month'\)/);
-  assert.match(block,/period'->>'end'\)::date >= \(\$1::date - INTERVAL '1 day'\)/);
+  assert.match(block,/ip\.period->>'start'\)::date < \(\$1::date \+ INTERVAL '1 month'\)/);
+  assert.match(block,/ip\.period->>'end'\)::date >= \(\$1::date - INTERVAL '1 day'\)/);
   assert.doesNotMatch(block,/LEFT\(i\.details->'period'->>'end',7\)=\$1/);
 });
 
@@ -35,10 +35,11 @@ test("fichas abertas podem ser regeneradas após nova importação",()=>{
   assert.match(block,/report-generate/);
 });
 
-test("controle de ocorrências mantém sua regra própria de competência Senior",()=>{
+test("controle de ocorrências reconhece cada competência com ponto gravado",()=>{
   const start=dashboard.indexOf('router.get("/occurrences"');
   const block=dashboard.slice(start,start+13000);
-  assert.match(block,/LEFT\(i\.details->'period'->>'end',7\)=\$1/);
+  assert.match(block,/coverage\.import_id=i\.id/);
+  assert.match(block,/coverage\.work_date/);
   assert.match(block,/period_start/);
   assert.match(block,/period_end/);
 });
