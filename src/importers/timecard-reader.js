@@ -304,6 +304,12 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   const plannedMarkings=scheduleDefinitions.get(scheduleCode)||[];
   const seniorIncompleteJourney=/JORNADA\s+INCOMPLETA/i.test(occurrence||payload);
   const seniorClassification=statusMatch?.[0]||(seniorIncompleteJourney?"JORNADA_INCOMPLETA":null);
+  // For thermal planning, the user's rule permits the actual two-punch span
+  // even when the registered schedule normally has a meal break. No missing
+  // meal punches or hours are created. Explicit Senior non-work events and
+  // Jornada Incompleta still retain their own classification below.
+  const confirmedTwoMarkSpan=reportedMarkings.length===2&&markings.length===2
+    &&ignoredMarkings.length===0&&markings[0]!==markings[1];
   const confirmedTwoMarkSchedule=markings.length===2&&plannedMarkings.length===2;
   const confirmedPartial=markings.length===2&&(earlyExit||partialFromOdd);
   let state="WORKED";
@@ -317,7 +323,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   if(statusMatch)state=statusMatch[0];
   else if(seniorIncompleteJourney)state="REVIEW";
   else if(markings.length===0)state="NO_MARKINGS";
-  else if(markings.length!==4&&!confirmedPartial&&!confirmedTwoMarkSchedule)state="REVIEW";
+  else if(markings.length!==4&&!confirmedPartial&&!confirmedTwoMarkSchedule&&!confirmedTwoMarkSpan)state="REVIEW";
 
   // Beta.83: a fila do DP diferencia falha de leitura de uma exceção já
   // explicada pela própria Senior. Saída antecipada e atestado em horas podem
@@ -349,7 +355,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     hourlyMedical,
     explicitEarlyExit,
     requiresReview,
-    eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule),
+    eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule||confirmedTwoMarkSpan),
     workMinutes:explicitColumns?.workMinutes??null,
     bhNegativeMinutes:explicitColumns?negativeNormalization.minutes:null,
     bhNegativeRawMinutes:explicitColumns?.bhNegativeRawMinutes??null,
