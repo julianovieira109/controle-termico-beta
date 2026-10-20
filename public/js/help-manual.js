@@ -73,6 +73,7 @@ const helpTopics=[
   {id:"settings",label:"Configurar cargos e o sistema",permission:"settings.view",view:"settings",chapter:"manual-settings",answer:"Abra Configurações e escolha a área disponível no seu perfil. Cargos novos importados ficam Pendentes até que a regra de relatórios seja conferida."},
   {id:"companies",label:"Empresas e filiais",permission:"admin",view:"companies",chapter:"manual-companies",answer:"Abra Empresas para cadastrar ou editar a empresa e suas filiais. Confira CNPJ, código interno e vínculos antes de inativar qualquer registro."},
   {id:"users",label:"Usuários e perfis",permission:"admin",view:"users",chapter:"manual-users",answer:"Abra Usuários para cadastrar acessos e vincular filiais. Em Configurações → Perfis de usuário, libere somente as funções necessárias. O conteúdo de ajuda seguirá essas permissões."},
+  {id:"backup_history",label:"Backup do ponto, BH e acompanhamentos",permission:"admin",view:"settings",chapter:"manual-settings",answer:"Em Configurações → Backup e dados, gere um novo backup após atualizar. Ele preserva dias e marcações do ponto, valores de BH, acompanhamentos de revisão e relatórios de BH. Arquivos antigos sem esses históricos não conseguem recuperá-los: reimporte os PDFs originais e refaça acompanhamentos ausentes. Restaurar é exclusivo do Master, substitui os dados atuais e exige baixar primeiro um backup de segurança. Depois da restauração, confira os históricos e execute os testes do sistema."},
   {id:"safety",label:"Duplicidade, readmissão ou erro",permission:"",view:"manual",chapter:"manual-safety",answer:"Compare sempre as matrículas. Matrículas diferentes podem indicar readmissão; matrícula igual pode ser duplicidade. Não exclua histórico válido e não confirme importações incompletas."}
 ];
 
@@ -85,7 +86,7 @@ const helpCategories=[
   {id:"imports",label:"Importação Senior e turnos",topics:["timecard","import","shifts","cleanup","historical_dismissed","bh_import","period_compare","import_error"]},
   {id:"reports",label:"Relatórios e fichas",topics:["reports","missing_report","two_punches","occurrence_print"]},
   {id:"settings",label:"Configurações e calendário",topics:["calendar","settings"]},
-  {id:"admin",label:"Administração do sistema",topics:["companies","users"]}
+  {id:"admin",label:"Administração do sistema",topics:["companies","users","backup_history"]}
 ];
 
 function allowedHelpTopics(){

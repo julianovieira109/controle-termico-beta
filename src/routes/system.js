@@ -33,6 +33,8 @@ const BACKUP_TABLES=[
   "user_recovery_codes",
   "employee_imports",
   "senior_bh_imports",
+  "employee_point_days",
+  "timecard_review_controls",
   "audit_logs",
   "users"
 ];
@@ -56,10 +58,14 @@ const RESTORE_ORDER=[
   "system_settings",
   "employee_imports",
   "senior_bh_imports",
+  "employee_point_days",
+  "timecard_review_controls",
   "audit_logs"
 ];
 
 const CLEAR_ORDER=[
+  "timecard_review_controls",
+  "employee_point_days",
   "employee_days_off",
   "employee_imports",
   "senior_bh_imports",
@@ -126,7 +132,7 @@ async function collectBackup(client,req){
 
   return attachIntegrity({
     format:"controle-termico-backup",
-    version:"1.0.31-beta.87",
+    version:require("../../package.json").version,
     generatedAt:new Date().toISOString(),
     generatedBy:{
       id:req.user.sub,
@@ -145,7 +151,7 @@ router.get("/tests",async(req,res)=>{
     const required=[
       "users","user_profiles","profile_permissions","companies","branches","shifts","job_roles","job_role_branch_report_policies","employees",
       "holidays","system_settings","user_branches","user_permissions",
-      "user_recovery_codes","employee_days_off","employee_imports","audit_logs"
+      "user_recovery_codes","employee_days_off","employee_imports","employee_point_days","timecard_review_controls","senior_bh_imports","audit_logs"
     ];
     const missing=required.filter(table=>!tables.has(table));
 
@@ -153,7 +159,10 @@ router.get("/tests",async(req,res)=>{
       users:["id","email","password_hash","role","company_id","branch_id","active","must_change_password"],
       employees:["id","company_id","branch_id","shift_id","job_role_id","full_name","registration","status","termination_date"],
       holidays:["holiday_date","description","automatic"],
-      employee_imports:["import_type","file_name","total_found","created_at"]
+      employee_imports:["import_type","file_name","total_found","created_at"],
+      employee_point_days:["employee_id","work_date","markings","work_minutes","bh_validated"],
+      timecard_review_controls:["employee_id","work_date","status","note"],
+      senior_bh_imports:["report_type","period_start","period_end","records","confirmed_at"]
     };
 
     const columnProblems=[];
@@ -186,7 +195,7 @@ router.get("/tests",async(req,res)=>{
       {
         name:"Colunas críticas do banco",
         success:columnProblems.length===0,
-        detail:columnProblems.length?`Ausentes: ${columnProblems.join(" | ")}`:"Estrutura compatível com a V1.0.26 Beta."
+        detail:columnProblems.length?`Ausentes: ${columnProblems.join(" | ")}`:"Estrutura atual de ponto, BH e revisão encontrada."
       },
       {
         name:"Administrador atual",
@@ -224,9 +233,14 @@ router.get("/tests",async(req,res)=>{
 
 router.get("/backup",async(req,res,next)=>{
   const client=await pool.connect();
+  let readingSnapshot=false;
   try{
     cleanupTokens();
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    readingSnapshot=true;
     const backup=await collectBackup(client,req);
+    await client.query("COMMIT");
+    readingSnapshot=false;
     const token=crypto.randomBytes(24).toString("hex");
 
     backupTokens.set(token,{
@@ -251,6 +265,7 @@ router.get("/backup",async(req,res,next)=>{
     res.setHeader("X-Reset-Token-Expires",tokenExpiresAt);
     res.send(JSON.stringify(backup,null,2));
   }catch(error){
+    if(readingSnapshot)await client.query("ROLLBACK");
     next(error);
   }finally{
     client.release();
@@ -322,6 +337,8 @@ router.post("/reset",requireMasterAdmin,async(req,res,next)=>{
 
     // Remove primeiro tabelas-filhas.
     for(const table of [
+      "timecard_review_controls",
+      "employee_point_days",
       "employee_days_off",
       "employee_imports",
       "senior_bh_imports",
@@ -445,12 +462,15 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
       if(!rows.length)continue;
 
       const validColumns=new Set(await tableColumns(client,table));
+      const {rows:jsonColumns}=await client.query(`SELECT column_name FROM information_schema.columns
+        WHERE table_schema='public' AND table_name=$1 AND data_type IN ('json','jsonb')`,[table]);
+      const jsonNames=new Set(jsonColumns.map(row=>row.column_name));
 
       for(const row of rows){
         const columns=Object.keys(row).filter(column=>validColumns.has(column));
         if(!columns.length)continue;
 
-        const values=columns.map(column=>table==="senior_bh_imports"&&["records","errors"].includes(column)?JSON.stringify(row[column]):row[column]);
+        const values=columns.map(column=>jsonNames.has(column)&&row[column]!==null?JSON.stringify(row[column]):row[column]);
         const placeholders=columns.map((_,index)=>`$${index+1}`).join(",");
         const sql=`
           INSERT INTO ${quoteIdentifier(table)}
