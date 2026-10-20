@@ -437,6 +437,8 @@ function renderPdfImportPreview(){
   }
   $("pdf-import-summary").textContent=`${p.total} colaborador(es) encontrados em ${p.fileName}.${p.possibleReadmissions?` ${p.possibleReadmissions} possível(is) readmissão(ões) identificada(s) — será criada nova matrícula sem alterar o vínculo antigo.`:""}`;
 
+  $("pdf-import-create-dismissed-option").hidden=p.type!=="DEMITIDOS";
+  $("pdf-import-create-dismissed").checked=false;
   if(p.type==="ADMITIDOS"||p.type==="COLABORADORES"){
     $("pdf-import-head").innerHTML=`<tr><th><input type="checkbox" id="pdf-import-select-all" checked></th><th>Matrícula</th>${p.type==="COLABORADORES"?"<th>Tipo</th>":""}<th>Nome</th><th>Admissão</th><th>Cargo</th>${p.type==="ADMITIDOS"?"<th>Cartão</th>":""}<th>Resultado</th><th>Turno</th></tr>`;
     $("pdf-import-body").innerHTML=p.rows.map((r,i)=>`<tr>
@@ -460,14 +462,14 @@ function renderPdfImportPreview(){
     $("pdf-import-head").innerHTML=`<tr><th><input type="checkbox" id="pdf-import-select-all" checked></th><th>Matrícula</th><th>Colaborador localizado</th><th>Demissão</th><th>Causa</th><th>Cargo cadastrado</th><th>Resultado</th></tr>`;
     $("pdf-import-body").innerHTML=p.rows.map((r,i)=>`<tr>
       <td><input class="import-check" type="checkbox" data-import-index="${i}" ${
-        r.result==="NAO_LOCALIZADO" || p.intelligence?.requiresReview ? "" : "checked"
+        r.result==="NAO_LOCALIZADO" ? "disabled" : p.intelligence?.requiresReview ? "" : "checked"
       }></td>
       <td>${escapeHtml(r.registration)}</td>
       <td>${escapeHtml(r.currentName||r.fullName||"Não localizado")}</td>
       <td>${formatApiDate(r.terminationDate)}</td>
       <td>${escapeHtml(r.causeCode)}</td>
       <td>${escapeHtml(r.currentJobTitle||r.jobTitle||r.rawDescription||"-")}</td>
-      <td><span class="import-result ${escapeHtml(r.result)}">${escapeHtml(r.result.replaceAll("_"," "))}</span></td>
+      <td><span class="import-result ${escapeHtml(r.result)}">${r.canCreateHistorical?"CADASTRO HISTÓRICO DISPONÍVEL — habilite a opção acima":escapeHtml(r.result.replaceAll("_"," "))}</span></td>
     </tr>`).join("");
   }
 
@@ -482,11 +484,20 @@ function renderPdfImportPreview(){
       </tr>`).join("")
     : "";
 
+  $("pdf-import-create-dismissed").onchange=()=>{
+    document.querySelectorAll("#pdf-import-body .import-check").forEach(check=>{
+      const row=p.rows[Number(check.dataset.importIndex)];
+      if(row.systemMatch===false){
+        check.disabled=!($("pdf-import-create-dismissed").checked&&row.canCreateHistorical);
+        if(check.disabled)check.checked=false;
+      }
+    });
+  };
   $("pdf-import-select-all").onchange=()=>{
     document.querySelectorAll("#pdf-import-body .import-check").forEach(x=>{
       const index=Number(x.dataset.importIndex);
       const row=pdfImportPreview?.rows?.[index];
-      x.checked=$("pdf-import-select-all").checked && Boolean(row);
+      x.checked=$("pdf-import-select-all").checked && Boolean(row) && !x.disabled;
     });
   };
 }
@@ -505,7 +516,7 @@ $("pdf-import-confirm").onclick=async()=>{
   const isDismissed=pdfImportPreview.type==="DEMITIDOS";
   const confirmed=await confirmAction(
     isDismissed
-      ? "Todos os colaboradores selecionados serão marcados como DEMITIDOS, sairão da aba Ativos e ficarão disponíveis na aba Demitidos. O histórico será preservado. Deseja continuar?"
+      ? "Todos os colaboradores selecionados serão marcados como DEMITIDOS, sairão da aba Ativos e ficarão disponíveis na aba Demitidos. O histórico será preservado. Se habilitada a opção de cadastro histórico, os não localizados selecionados serão criados como demitidos, sem inventar a data de admissão. Deseja continuar?"
       : "Os colaboradores selecionados serão cadastrados ou atualizados pela MATRÍCULA. Se existir o mesmo nome com outra matrícula, será criado um novo vínculo e o cadastro antigo será preservado. Deseja continuar?",
     isDismissed?"Processar demitidos":"Confirmar importação"
   );
@@ -521,6 +532,7 @@ $("pdf-import-confirm").onclick=async()=>{
       method:"POST",
       body:JSON.stringify({
         type:pdfImportPreview.type,
+        createMissingDismissed:isDismissed && $("pdf-import-create-dismissed").checked,
         fileName:pdfImportPreview.fileName,
         companyId:$("pdf-import-company").value,
         branchId:$("pdf-import-branch").value,
@@ -538,7 +550,7 @@ $("pdf-import-confirm").onclick=async()=>{
     $("pdf-import-detection").innerHTML=`
       <div class="import-success">
         ${pdfImportPreview.type==="DEMITIDOS"
-          ? `Processamento concluído: ${result.demitted||0} colaborador(es) movido(s) para a aba DEMITIDOS e ${result.notFound} não processado(s).`
+          ? `Processamento concluído: ${result.created||0} histórico(s) cadastrado(s) como demitidos, ${result.updated||0} cadastro(s) atualizado(s), ${result.notFound} não processado(s) e ${result.failed||0} com erro(s).`
           : `Importação concluída: ${result.created} cadastrado(s), ${result.updated} corrigido(s), ${result.unchanged||0} conferido(s) sem alteração e ${result.notFound} não processado(s)${result.readmissions?`, ${result.readmissions} possível(is) readmissão(ões) criada(s) com nova matrícula e histórico anterior preservado`:""}${result.failed?` e ${result.failed} com erro(s)`:''}.`
         }
       </div>`;

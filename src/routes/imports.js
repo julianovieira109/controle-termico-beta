@@ -6,7 +6,7 @@ const zlib=require("zlib");
 const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
-const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
+const {normalizeDismissedCause,reconcileDismissedWithEmployee,canCreateHistoricalDismissed}=require("../importers/dismissed-reader");
 const {readSeniorPdfPages}=require("../importers/senior-pdf-text");
 const {parseSeniorTimecard,canContinueTimecard}=require("../importers/timecard-reader");
 const {timecardPeriods,timecardPeriod,coversTimecardDate,replacementRanges}=require("../importers/timecard-periods");
@@ -1720,7 +1720,7 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
     ).map(normalizeImportItem);
 
     if(type==="DEMITIDOS"){
-      rows=rows.map(normalizeDismissedCause);
+      rows=rows.map(row=>reconcileDismissedWithEmployee(row,null));
       try{
         const registrations=[...new Set(rows.map(row=>row.registration).filter(Boolean))];
         const currentEmployees=registrations.length
@@ -1729,15 +1729,15 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
                      COALESCE(jr.name,e.job_title,'') effective_job_title
               FROM employees e
               LEFT JOIN job_roles jr ON jr.id=e.job_role_id
-              WHERE e.registration=ANY($1::text[])
+              WHERE LTRIM(e.registration,'0')=ANY($1::text[])
               ORDER BY e.created_at
-            `,[registrations])
+            `,[registrations.map(value=>value.replace(/^0+/,''))])
           : {rows:[]};
         const employeesByRegistration=new Map(
-          currentEmployees.rows.map(employee=>[String(employee.registration),employee])
+          currentEmployees.rows.map(employee=>[String(employee.registration).replace(/^0+/,''),employee])
         );
         rows=rows.map(row=>reconcileDismissedWithEmployee(
-          row,employeesByRegistration.get(String(row.registration))||null
+          row,employeesByRegistration.get(String(row.registration).replace(/^0+/,''))||null
         ));
       }catch(error){
         console.warn("[IMPORT_DISMISSED_RECONCILIATION]",error.message);
@@ -3379,7 +3379,7 @@ router.post("/confirm",async(req,res,next)=>{
 
   try{
     const {
-      type,fileName,companyId,branchId,
+      type,fileName,companyId,branchId,createMissingDismissed=false,
       detectedCompany,detectedBranch,detectedOperationalBranch,
       previewCompanyId,previewBranchId,
       readerUsed=null,
@@ -3452,12 +3452,13 @@ router.post("/confirm",async(req,res,next)=>{
          LEFT JOIN companies c ON c.id=e.company_id
          LEFT JOIN branches b ON b.id=e.branch_id
          LEFT JOIN job_roles jr ON jr.id=e.job_role_id
-         WHERE e.registration=$1
+         WHERE ${type==="DEMITIDOS" ? "LTRIM(e.registration,'0')=LTRIM($1,'0')" : "e.registration=$1"}
          ORDER BY e.created_at
-         LIMIT 1`,
+         LIMIT ${type==="DEMITIDOS"?2:1}`,
         [registration]
       );
 
+      if(current.rows.length>1)throw new Error("Matrícula ambígua: confira os cadastros antes de importar.");
       const existing=current.rows[0]||null;
       const sameUnit=Boolean(existing) &&
         String(existing.company_id)===String(companyId) &&
@@ -3600,8 +3601,25 @@ router.post("/confirm",async(req,res,next)=>{
         }
       }else{
         if(!current.rows[0]){
-          notFound++;
-          results.push({registration,result:"NAO_LOCALIZADO"});
+          if(createMissingDismissed===true){
+            if(!canCreateHistoricalDismissed(item)){
+              throw new Error("Cadastro histórico exige matrícula, nome completo e data de demissão válidos no relatório.");
+            }
+            const inserted=await client.query(`
+              INSERT INTO employees(company_id,branch_id,full_name,registration,job_title,
+                admission_date,termination_date,status,source,last_imported_at)
+              VALUES($1,$2,$3,$4,$5,NULL,$6,'DEMITIDO','SENIOR_PDF_DEMITIDOS',NOW())
+              RETURNING id
+            `,[companyId,branchId,item.fullName,registration,item.jobTitle||"",item.terminationDate]);
+            created++;
+            demitted++;
+            results.push({registration,result:"CADASTRADO_DEMITIDO",id:inserted.rows[0].id,
+              terminationDate:item.terminationDate,admissionDate:null,causeCode:item.causeCode||null});
+          }else{
+            notFound++;
+            results.push({registration,result:"NAO_LOCALIZADO"});
+          }
+          await client.query(`RELEASE SAVEPOINT ${savepoint}`);
           continue;
         }
         await client.query(`
@@ -3663,6 +3681,7 @@ router.post("/confirm",async(req,res,next)=>{
         blockedByRole,
         unchanged,
         readmissions,
+        createMissingDismissed:type==="DEMITIDOS" && createMissingDismissed===true,
         submittedRows:rows.length,
         sanitizedRows:sanitizedRows.length,
         readerUsed,
@@ -3687,7 +3706,7 @@ router.post("/confirm",async(req,res,next)=>{
       unchanged,
       readmissions,
       action:type==="DEMITIDOS"
-        ?"INATIVAR_COMO_DEMITIDO"
+        ?(createMissingDismissed===true?"CADASTRAR_HISTORICO_E_INATIVAR_COMO_DEMITIDO":"INATIVAR_COMO_DEMITIDO")
         : (type==="ADMITIDOS"?"CADASTRAR_OU_REATIVAR":"ATUALIZAR")
     });
 

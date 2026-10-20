@@ -1067,6 +1067,7 @@
             <div>
               <h3>Conferência da importação</h3>
               <p id="pdf-import-summary" class="hint"></p>
+              <label id="pdf-import-create-dismissed-option" hidden><input id="pdf-import-create-dismissed" type="checkbox"> Permitir cadastrar os selecionados não localizados como demitidos (histórico). A admissão ficará sem data até ser informada pela Senior.</label>
             </div>
             <button type="button" class="primary" id="pdf-import-confirm">Confirmar importação</button>
           </div>
@@ -1449,7 +1450,8 @@
               <p><strong>Arquivos grandes:</strong> aguarde a leitura. Se a resposta for interrompida ou não puder ser interpretada, confira o histórico antes de repetir uma confirmação. PDFs sem texto reconhecível precisam ser exportados novamente da Senior. Se os totais do rodapé estiverem truncados ou diferentes da soma dos dias, confira o relatório de origem; o sistema não completa valores para forçar a conciliação.</p>
               <div class="manual-note warning" data-help-permission="master"><strong>Limpar pontos de teste:</strong> remove somente os pontos, o histórico de importação de ponto e os acompanhamentos da empresa/filial selecionada no ambiente Beta. Empresas, filiais e colaboradores são mantidos. Alertas cadastrais continuam aparecendo e filiais sem ponto podem voltar a ser sinalizadas. Esta opção é diferente de <strong>Zerar sistema</strong>.</div>
               <h4>Passo a passo</h4><ol><li>Abra <strong>Importações → Colaboradores</strong>.</li><li>Escolha o tipo ou deixe o sistema detectar; selecione empresa/filial e carregue o PDF.</li><li>Clique em <strong>Ler e conferir PDF</strong>.</li><li>Revise confiança, registros montados, não reconhecidos e o <strong>Checklist Sistema × Lista Senior</strong>.</li><li>Marque somente os registros corretos e confirme.</li></ol>
-              <div class="manual-import-types"><article><b>Admitidos</b><span>Cadastra novos vínculos.</span></article><article><b>Demitidos</b><span>Atualiza a situação.</span></article><article><b>Relação de Colaboradores</b><span>Cadastra ausentes e atualiza nome, cargo e função.</span></article></div>
+              <div class="manual-import-types"><article><b>Admitidos</b><span>Cadastra novos vínculos.</span></article><article><b>Demitidos</b><span>Atualiza a situação e permite cadastrar históricos ausentes.</span></article><article><b>Relação de Colaboradores</b><span>Cadastra ausentes e atualiza nome, cargo e função.</span></article></div>
+              <h4>Demitidos ausentes do cadastro</h4><p>Com permissão de importação, abra <strong>Importações → Colaboradores</strong> e leia o relatório de Demitidos da Senior na empresa/filial correta. Habilite <strong>Permitir cadastrar os selecionados não localizados como demitidos (histórico)</strong>, selecione os registros conferidos e confirme. São exigidos matrícula, nome completo e data de demissão válidos. O vínculo nasce como Demitido, com admissão sem data; nenhum dado é inventado. Matrículas de outra unidade ou ambíguas não são processadas. Depois, leia novamente o Cartão de Ponto para reconhecer os cadastros históricos. Reimportar a mesma matrícula atualiza o vínculo existente.</p>
               <h4>Resultado</h4><ul><li><strong>Cadastrado:</strong> matrícula nova incluída.</li><li><strong>Atualizado:</strong> cadastro existente corrigido.</li><li><strong>Não processado:</strong> registro bloqueado ou incompleto.</li><li><strong>Possível readmissão:</strong> mesmo nome encontrado com matrícula nova.</li></ul>
               <div class="manual-note warning"><strong>Readmissão:</strong> o sistema preserva a matrícula antiga e cria a nova. Confira se o vínculo anterior deve ser marcado como Demitido/Inativo.</div>
               <div class="manual-note danger"><strong>Nunca confirme às cegas:</strong> mesmo com confiança alta, confira matrícula, nome, cargo e situação.</div>
@@ -2780,10 +2782,10 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.91"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.92"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
-  <script src="/js/employees-imports.js?v=1.0.31-beta.88"></script>
+  <script src="/js/employees-imports.js?v=1.0.31-beta.92"></script>
   <script src="/js/thermal-schedule.js?v=1.0.31-beta.18"></script>
   <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
