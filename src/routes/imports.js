@@ -7,6 +7,7 @@ const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee}=require("../importers/dismissed-reader");
+const {readSeniorPdfPages}=require("../importers/senior-pdf-text");
 const {parseSeniorTimecard,canContinueTimecard}=require("../importers/timecard-reader");
 const {timecardPeriods,timecardPeriod,coversTimecardDate,replacementRanges}=require("../importers/timecard-periods");
 const {buildTimecardAudit}=require("../importers/timecard-audit");
@@ -104,7 +105,7 @@ function pdf2JsonDataToText(data){
 }
 
 
-function pdf2JsonDataToSeniorText(data){
+function pdf2JsonDataToSeniorText(data,state={}){
   const pages=data?.Pages||data?.pages||[];
   const pageTexts=[];
   let safePages=0;
@@ -112,8 +113,8 @@ function pdf2JsonDataToSeniorText(data){
   let structuredRows=0;
   let footerRows=0;
   let cardPages=0;
-  let previousCardText="";
-  let previousAnchors=null;
+  let previousCardText=state.previousCardText||"";
+  let previousAnchors=state.previousAnchors||null;
   for(const page of pages){
     const decoded=(page.Texts||[]).map(item=>({
       x:Number(item.x||0),
@@ -180,28 +181,25 @@ function pdf2JsonDataToSeniorText(data){
     }
     pageTexts.push(lines.join("\n"));
   }
+  state.previousCardText=previousCardText;
+  state.previousAnchors=previousAnchors;
   return {text:pageTexts.join("\n\f\n"),safePages,totalPages:pages.length,cardPages,dateRows,structuredRows,footerRows};
 }
 
-function extractSeniorWithPdf2Json(buffer,{allowIncomplete=false}={}){
-  return new Promise((resolve,reject)=>{
-    const parser=new PDFParser(null,1);
-    const cleanup=()=>{parser.removeAllListeners("pdfParser_dataError");parser.removeAllListeners("pdfParser_dataReady");};
-    parser.on("pdfParser_dataError",error=>{cleanup();reject(new Error(String(error?.parserError?.message||error?.parserError||error?.message||"Falha no leitor estrutural da Senior.")));});
-    parser.on("pdfParser_dataReady",data=>{
-      cleanup();
-      try{
-        const result=pdf2JsonDataToSeniorText(data);
-        if(!result.text.trim())throw new Error("Não foi encontrado texto extraível neste PDF. O arquivo não preserva uma camada de texto que o leitor consiga reconhecer. Exporte o PDF original diretamente da Senior, com texto selecionável, em vez de usar impressão ou digitalização.");
-        if(!result.safePages)throw new Error("Não foi possível identificar com segurança as colunas Trabalho/BH-/BH+ do cartão Senior.");
-        const coverage=result.dateRows?result.structuredRows/result.dateRows:0;
-        if(!result.dateRows)throw new Error("Nenhuma linha diária do Cartão Senior foi localizada.");
-        if(coverage<1&&!allowIncomplete)throw new Error(`Leitura estrutural incompleta das linhas do cartão Senior (${result.structuredRows}/${result.dateRows} linhas reconstruídas). A confirmação exige 100% das linhas estruturadas.`);
-        resolve(result);
-      }catch(error){reject(error);}
-    });
-    try{parser.parseBuffer(buffer);}catch(error){cleanup();reject(error);}
+async function extractSeniorWithPdf2Json(buffer,{allowIncomplete=false}={}){
+  const state={},texts=[];
+  const result={safePages:0,totalPages:0,cardPages:0,dateRows:0,structuredRows:0,footerRows:0};
+  await readSeniorPdfPages(buffer,page=>{
+    const current=pdf2JsonDataToSeniorText({Pages:[page]},state);
+    texts.push(current.text);
+    for(const key of Object.keys(result))result[key]+=current[key];
   });
+  result.text=texts.join("\n\f\n");
+  if(!result.text.trim())throw new Error("Não foi encontrado texto extraível neste PDF. O arquivo não preserva uma camada de texto que o leitor consiga reconhecer. Exporte o PDF original diretamente da Senior, com texto selecionável, em vez de usar impressão ou digitalização.");
+  if(!result.safePages)throw new Error("Não foi possível identificar com segurança as colunas Trabalho/BH-/BH+ do cartão Senior.");
+  if(!result.dateRows)throw new Error("Nenhuma linha diária do Cartão Senior foi localizada.");
+  if(result.structuredRows/result.dateRows<1&&!allowIncomplete)throw new Error(`Leitura estrutural incompleta das linhas do cartão Senior (${result.structuredRows}/${result.dateRows} linhas reconstruídas). A confirmação exige 100% das linhas estruturadas.`);
+  return result;
 }
 
 function extractWithPdf2Json(buffer){
@@ -4060,7 +4058,7 @@ async function readAndMatchTimecard(req,{allowBlocked=false}={}){
   let extraction;
   try{
     const structured=await extractSeniorWithPdf2Json(req.file.buffer,{allowIncomplete:allowBlocked});
-    extraction={...structured,readerUsed:"pdf2json-senior-columns",attempts:[{reader:"pdf2json-senior-columns",success:true}]};
+    extraction={...structured,readerUsed:"pdfjs-senior-columns",attempts:[{reader:"pdfjs-senior-columns",success:true}]};
   }catch(error){
     throw Object.assign(new Error(`Leitura segura do BH bloqueada: ${error.message||error}. O cartão não será importado para evitar valores incorretos.`),{status:422});
   }

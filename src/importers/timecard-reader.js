@@ -107,7 +107,7 @@ function hhmmDuration(minutes){
 
 
 function durationToMinutes(value){
-  const match=String(value||"").trim().match(/^(\d{1,3}):(\d{2})$/);
+  const match=String(value||"").trim().match(/^(\d{1,5}):(\d{2})$/);
   if(!match)return 0;
   return Number(match[1])*60+Number(match[2]);
 }
@@ -150,7 +150,7 @@ function normalizeSeniorBhNegative(rawMinutes,payload,markingsCount,absenceMinut
   if(raw<=0)return {minutes:0,normalized:false,reason:null};
   const text=clean(payload).toUpperCase();
   const isNightAbsence=/FALTAS?\s+NOTURNAS?/.test(text);
-  const isBhDayOff=/FOLGA\s+BH/.test(text);
+  const isBhDayOff=/FOLGA\s+(?:BH|ABONADA)/.test(text);
   const specialWithoutNormalMarkings=Number(markingsCount||0)<2&&!isBhDayOff;
 
   // "Faltas Noturnas" tem uma base própria da Senior e permanece em 80%.
@@ -240,7 +240,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   const rawTail=head[3];
   const explicitColumns=parseExplicitColumns(rawTail);
   const tail=explicitColumns?explicitColumns.base:rawTail;
-  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|FERIADO\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|REDU[ÇC][ÃA]O\s+AVISO\b|DEMITIDO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|AUX[ÍI]LIO\s+DOEN[ÇC]A|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
+  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|FERIADO\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|REDU[ÇC][ÃA]O\s+AVISO\b|DEMITIDO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|AUX[ÍI]LIO\s+DOEN[ÇC]A|TRABALHANDO\b|JORNADA\s+INCOMPLETA\b|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
   if(!codeMatch)return null;
   const scheduleCode=codeMatch[1];
   const payload=clean(codeMatch[2]);

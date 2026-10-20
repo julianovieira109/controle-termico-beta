@@ -1439,10 +1439,15 @@
             </div>
           </details>
 
-          <details class="manual-chapter" id="manual-import" data-help-permission="imports.manage" data-manual-keywords="pdf senior importação admitidos demitidos relação colaboradores checklist lista sistema atualizar cargo função readmissão nova matrícula histórico confiança">
+          <details class="manual-chapter" id="manual-import" data-help-permission="imports.manage" data-manual-keywords="pdf senior importação admitidos demitidos relação colaboradores checklist lista sistema atualizar cargo função readmissão nova matrícula histórico confiança cartão ponto períodos parciais continuação 32 MB limpeza">
             <summary><span class="manual-number">6</span><span><strong>Importação de PDFs da Senior</strong><small>Leitura, conferência, checklist e atualização automática</small></span></summary>
             <div class="manual-body">
               <div class="manual-flow import-flow" aria-label="Etapas da importação"><span>1. PDF</span><i>→</i><span>2. Conferir</span><i>→</i><span>3. Checklist</span><i>→</i><span>4. Confirmar</span></div>
+              <h4>Central de Importações</h4><p>O menu <strong>Importações</strong> reúne as abas <strong>Cartão de Ponto</strong>, <strong>Colaboradores</strong> (admitidos, demitidos e relação completa) e <strong>Turnos</strong>. O acesso depende da permissão de importação. A seleção e a prévia são mantidas ao trocar de aba; atualizar a página exige selecionar o arquivo novamente.</p>
+              <h4>Cartão de Ponto: ler, conferir e confirmar</h4><ol><li>Abra <strong>Importações → Cartão de Ponto</strong> e selecione empresa, filial e PDF original da Senior, com texto selecionável (até <strong>32 MB</strong>).</li><li>Clique em <strong>Ler e conferir</strong>. Um arquivo pode abranger vários fechamentos, períodos parciais e páginas de continuação. Confira os intervalos apresentados.</li><li>Verifique a conciliação dos dias com o fechamento da Senior, as matrículas, os nomes e os avisos. Localizar todos os colaboradores não garante que os totais estejam corretos.</li><li>Confirme somente quando a leitura estiver liberada. Dias para revisão e indicadores são distintos de divergências que bloqueiam a gravação.</li></ol>
+              <p><strong>Reimportação:</strong> o novo cartão substitui os pontos dos colaboradores e períodos enviados, sem duplicar os dias. Intervalos não enviados permanecem preservados. Cartões sobrepostos para a mesma matrícula e data no mesmo arquivo são bloqueados para evitar escolher valores arbitrariamente.</p>
+              <p><strong>Arquivos grandes:</strong> aguarde a leitura. Se a resposta for interrompida ou não puder ser interpretada, confira o histórico antes de repetir uma confirmação. PDFs sem texto reconhecível precisam ser exportados novamente da Senior. Se os totais do rodapé estiverem truncados ou diferentes da soma dos dias, confira o relatório de origem; o sistema não completa valores para forçar a conciliação.</p>
+              <div class="manual-note warning" data-help-permission="master"><strong>Limpar pontos de teste:</strong> remove somente os pontos, o histórico de importação de ponto e os acompanhamentos da empresa/filial selecionada no ambiente Beta. Empresas, filiais e colaboradores são mantidos. Alertas cadastrais continuam aparecendo e filiais sem ponto podem voltar a ser sinalizadas. Esta opção é diferente de <strong>Zerar sistema</strong>.</div>
               <h4>Passo a passo</h4><ol><li>Abra <strong>Importações → Colaboradores</strong>.</li><li>Escolha o tipo ou deixe o sistema detectar; selecione empresa/filial e carregue o PDF.</li><li>Clique em <strong>Ler e conferir PDF</strong>.</li><li>Revise confiança, registros montados, não reconhecidos e o <strong>Checklist Sistema × Lista Senior</strong>.</li><li>Marque somente os registros corretos e confirme.</li></ol>
               <div class="manual-import-types"><article><b>Admitidos</b><span>Cadastra novos vínculos.</span></article><article><b>Demitidos</b><span>Atualiza a situação.</span></article><article><b>Relação de Colaboradores</b><span>Cadastra ausentes e atualiza nome, cargo e função.</span></article></div>
               <h4>Resultado</h4><ul><li><strong>Cadastrado:</strong> matrícula nova incluída.</li><li><strong>Atualizado:</strong> cadastro existente corrigido.</li><li><strong>Não processado:</strong> registro bloqueado ou incompleto.</li><li><strong>Possível readmissão:</strong> mesmo nome encontrado com matrícula nova.</li></ul>
@@ -1463,10 +1468,15 @@
             </div>
           </details>
 
-          <details class="manual-chapter" id="manual-reports" data-help-permission="reports.view" data-manual-keywords="relatório ficha impressão repouso térmico refeição refeitório mês turno todos colaboradores cargo permitido pendente imprimir">
+          <details class="manual-chapter" id="manual-reports" data-help-permission="reports.view" data-manual-keywords="relatório ficha impressão repouso térmico refeição refeitório mês turno todos colaboradores cargo permitido pendente imprimir duas marcações ocorrências parcial revisão reimportar">
             <summary><span class="manual-number">8</span><span><strong>Relatórios e impressão</strong><small>Repouso térmico e Refeitório</small></span></summary>
             <div class="manual-body">
               <div class="manual-report-preview" aria-label="Exemplo de ficha mensal"><b>FICHA MENSAL</b><span>Empresa • Filial • Colaborador • Matrícula</span><i></i><i></i><i></i><small>Assinatura do colaborador</small></div>
+              <h4>Duas marcações e repouso térmico</h4><p>Duas batidas reais distintas podem delimitar o período usado para calcular os repousos, mesmo quando a escala prevê quatro marcações. Os repousos só são inseridos se houver tempo suficiente e ficam dentro do intervalo registrado, inclusive quando ele atravessa a meia-noite. O sistema não cria batidas de refeição nem altera Trabalho, BH ou faltas da Senior.</p>
+              <p>Uma batida sem par, ausência de batidas e ocorrências explícitas de Falta, Atestado ou Jornada Incompleta continuam recebendo o tratamento correspondente. O aviso <strong>Revisar marcações do ponto</strong> exige conferir o motivo; ele não significa necessariamente que o PDF inteiro foi lido incorretamente.</p>
+              <p><strong>Após uma atualização do leitor:</strong> reimporte o PDF pela Central de Importações, confira e confirme os dados; depois gere as fichas novamente. Atualizar o navegador não recalcula os pontos já salvos.</p>
+              <h4>Controle de Ocorrências</h4><p>Use os filtros de período, empresa, filial, turno, coordenador e colaborador. A impressão utiliza as categorias selecionadas; resumo, cabeçalho dos gráficos e tabela devem apresentar os mesmos totais desse recorte. Quantidades de ocorrências não são quantidades de colaboradores ou de dias únicos: um dia pode ter mais de uma categoria.</p>
+              <p><strong>Relatório parcial:</strong> confira o intervalo do Cartão Senior e a cobertura do mês selecionado. Uma importação de vários meses não transforma um mês parcialmente coberto em fechamento mensal completo. A área de Ocorrências apenas consulta e sinaliza; correções do ponto devem ser feitas na Senior e refletidas por nova importação.</p>
               <h4>Gerar ficha</h4><ol><li>Escolha empresa e filial.</li><li>Selecione um colaborador ou <strong>Todos os colaboradores</strong>.</li><li>Se desejar, filtre por turno.</li><li>Escolha o mês/ano.</li><li>Clique em <strong>Gerar ficha</strong>, confira o resumo e depois clique em <strong>Imprimir</strong>.</li></ol>
               <p>A ficha mostra empresa, filial, colaborador, matrícula, cargo, turno, dias, folgas/sem jornada e assinaturas.</p>
               <div class="manual-note info"><strong>Tipo automático:</strong> não é necessário escolher “Tipo de ficha”. O sistema aplica a prioridade <strong>exceção individual → regra da filial → regra geral do cargo/função</strong> e gera Repouso Térmico, Refeição ou as duas fichas.</div>
@@ -2770,7 +2780,7 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.17"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.91"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.88"></script>
@@ -2778,7 +2788,7 @@
   <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
   <script src="/js/rest-audit.js?v=1.0.31-beta.17"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.90"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.91"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.88"></script>
   <script src="/js/imports-center.js?v=1.0.31-beta.88"></script>

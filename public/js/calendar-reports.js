@@ -632,7 +632,10 @@ async function sendPointImport(path){
   form.append("companyId",$("point-import-company").value);
   form.append("branchId",$("point-import-branch").value);
   const response=await fetch(path,{method:"POST",headers:{Authorization:`Bearer ${token}`},body:form});
-  const data=await response.json().catch(()=>({error:"Resposta inválida do servidor."}));
+  let data;
+  try{data=await response.json();}catch{
+    throw new Error(`O servidor interrompeu a leitura ou retornou uma resposta inesperada (HTTP ${response.status}). Tente novamente após alguns instantes. Se persistir, consulte os logs do serviço. Não foi possível confirmar o resultado da solicitação. Confira o histórico antes de repetir uma confirmação.`);
+  }
   if(!response.ok)throw new Error(data.error||"Não foi possível processar o cartão de ponto.");
   return data;
 }

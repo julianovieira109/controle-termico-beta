@@ -51,11 +51,10 @@ test('todos os envios do Cartão de Ponto usam o limite maior',()=>{
 });
 
 test('PDF sem texto extraível informa como obter um arquivo compatível',async()=>{
-  const fs=require('node:fs'),vm=require('node:vm'),{EventEmitter}=require('node:events');
+  const fs=require('node:fs'),vm=require('node:vm');
   const source=fs.readFileSync('src/routes/imports.js','utf8');
-  const fn=source.slice(source.indexOf('function extractSeniorWithPdf2Json('),source.indexOf('function extractWithPdf2Json('));
-  class Parser extends EventEmitter{parseBuffer(){this.emit('pdfParser_dataReady',{});}}
-  const context={PDFParser:Parser,pdf2JsonDataToSeniorText:()=>({text:'\n\f\n',safePages:0})};
+  const fn=source.slice(source.indexOf('async function extractSeniorWithPdf2Json('),source.indexOf('function extractWithPdf2Json('));
+  const context={readSeniorPdfPages:async(buffer,onPage)=>onPage({}),pdf2JsonDataToSeniorText:()=>({text:'\n\f\n',safePages:0,totalPages:1,cardPages:0,dateRows:0,structuredRows:0,footerRows:0})};
   vm.createContext(context);vm.runInContext(fn,context);
   await assert.rejects(context.extractSeniorWithPdf2Json(Buffer.alloc(0)),error=>{
     assert.match(error.message,/Não foi encontrado texto extraível/);
