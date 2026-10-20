@@ -267,6 +267,27 @@ CREATE TABLE IF NOT EXISTS employee_imports (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- BH source snapshots: confirmed imports are immutable; latest coverage wins on comparison.
+CREATE TABLE IF NOT EXISTS senior_bh_imports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+  report_type VARCHAR(12) NOT NULL CHECK(report_type IN ('ANALYTIC','SYNTHETIC')),
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL CHECK(period_end>=period_start),
+  file_name VARCHAR(255) NOT NULL,
+  file_hash VARCHAR(64) NOT NULL,
+  company_name TEXT NOT NULL DEFAULT '',
+  records JSONB NOT NULL,
+  errors JSONB NOT NULL DEFAULT '[]'::jsonb,
+  confirmed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(company_id,branch_id,file_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_senior_bh_imports_scope_period
+  ON senior_bh_imports(company_id,branch_id,period_start,period_end,confirmed_at);
+
 -- V1.0.4 Beta: marcações reais importadas do Cartão Ponto da Senior.
 CREATE TABLE IF NOT EXISTS employee_point_days (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -32,6 +32,7 @@ const BACKUP_TABLES=[
   "user_branches",
   "user_recovery_codes",
   "employee_imports",
+  "senior_bh_imports",
   "audit_logs",
   "users"
 ];
@@ -54,12 +55,14 @@ const RESTORE_ORDER=[
   "holidays",
   "system_settings",
   "employee_imports",
+  "senior_bh_imports",
   "audit_logs"
 ];
 
 const CLEAR_ORDER=[
   "employee_days_off",
   "employee_imports",
+  "senior_bh_imports",
   "audit_logs",
   "user_permissions",
   "user_branches",
@@ -321,6 +324,7 @@ router.post("/reset",requireMasterAdmin,async(req,res,next)=>{
     for(const table of [
       "employee_days_off",
       "employee_imports",
+      "senior_bh_imports",
       "audit_logs",
       "user_permissions",
       "user_branches",
@@ -446,7 +450,7 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
         const columns=Object.keys(row).filter(column=>validColumns.has(column));
         if(!columns.length)continue;
 
-        const values=columns.map(column=>row[column]);
+        const values=columns.map(column=>table==="senior_bh_imports"&&["records","errors"].includes(column)?JSON.stringify(row[column]):row[column]);
         const placeholders=columns.map((_,index)=>`$${index+1}`).join(",");
         const sql=`
           INSERT INTO ${quoteIdentifier(table)}

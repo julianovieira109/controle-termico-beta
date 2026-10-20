@@ -33,6 +33,7 @@ app.use("/api/dashboard",require("./routes/dashboard"));
 app.use("/api/admin",require("./routes/admin"));
 app.use("/api/employees",require("./routes/employees"));
 app.use("/api/imports",require("./routes/imports"));
+app.use("/api/reconciliation",require("./routes/reconciliation"));
 app.use("/api/catalogs",require("./routes/catalogs"));
 app.use("/api/settings",require("./routes/settings"));
 app.use("/api/reports",require("./routes/reports"));

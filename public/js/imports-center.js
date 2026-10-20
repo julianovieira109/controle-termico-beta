@@ -10,7 +10,7 @@ async function setImportModule(tab=activeImportModule){
     toast("Seu perfil não possui permissão para importar relatórios.","error");
     return;
   }
-  const panels={point:"imports-point-panel",employees:"employee-import-area",shifts:"shift-import-panel"};
+  const panels={bh:"bh-import-panel",point:"imports-point-panel",employees:"employee-import-area",shifts:"shift-import-panel"};
   const target=Object.hasOwn(panels,tab)?tab:"point";
   activeImportModule=target;
   document.querySelectorAll("[data-import-tab]").forEach(button=>{
@@ -32,6 +32,8 @@ async function setImportModule(tab=activeImportModule){
       await loadPointImportHistory();
     }else if(target==="employees"){
       await preparePdfImport({scopeLoaded:true});
+    }else if(target==="bh"){
+      await window.prepareBhImport();
     }else{
       fillShiftImportCompanies();
     }

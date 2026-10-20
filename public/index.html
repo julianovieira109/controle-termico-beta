@@ -40,6 +40,7 @@
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.51">
   <link rel="stylesheet" href="/css/imports-center.css?v=1.0.31-beta.88">
+  <link rel="stylesheet" href="/css/bh-comparison.css?v=1.0.31-beta.93">
 </head>
 <body>
 <section id="login-screen" class="login-screen">
@@ -931,10 +932,21 @@
       <div class="imports-tabs" role="tablist" aria-label="Tipos de importação">
         <button type="button" class="imports-tab active" id="imports-point-tab" data-import-tab="point" role="tab" aria-controls="imports-point-panel" aria-selected="true">Cartão de Ponto</button>
         <button type="button" class="imports-tab" id="imports-employees-tab" data-import-tab="employees" role="tab" aria-controls="employee-import-area" aria-selected="false">Colaboradores</button>
+        <button type="button" class="imports-tab" data-import-tab="bh" id="imports-bh-tab" role="tab" aria-controls="bh-import-panel" aria-selected="false">Banco de Horas</button>
         <button type="button" class="imports-tab" id="imports-shifts-tab" data-import-tab="shifts" role="tab" aria-controls="shift-import-panel" aria-selected="false">Turnos</button>
       </div>
       <p id="imports-feedback" class="feedback" role="status"></p>
       <button type="button" class="secondary" id="imports-retry" hidden>Tentar novamente</button>
+        <div class="panel no-print" id="bh-import-panel" role="tabpanel" aria-labelledby="imports-bh-tab" hidden>
+          <h3>Banco de Horas Senior</h3><p>Importe o Analítico para conferir movimentos ou o Sintético para conferir saldo na data. O BH não altera o ponto nem libera divergências de horas trabalhadas.</p>
+          <div class="bh-controls"><label>Empresa<select id="bh-company"></select></label><label>Filial<select id="bh-branch"></select></label><label>PDF de BH (até 32 MB)<input id="bh-file" type="file" accept="application/pdf"></label><button id="bh-read" type="button">Ler e conferir BH</button></div>
+          <p id="bh-status" role="status"></p>
+          <div id="bh-preview" hidden><p id="bh-detection"></p><p class="hint">Confira as matrículas e saldos. O relatório não identifica a filial operacional; não misture filiais no mesmo arquivo.</p>
+            <label class="bh-ack"><input id="bh-scope-confirmed" type="checkbox"> Confirmo que os vínculos deste relatório pertencem à empresa/filial selecionada.</label>
+            <div class="table-wrap"><table><thead><tr><th>Matrícula</th><th>Colaborador</th><th>Banco</th><th>Saldo inicial</th><th>Saldo final</th><th>Movimentos</th><th>Conferência</th><th>Página</th></tr></thead><tbody id="bh-records"></tbody></table></div>
+            <button id="bh-confirm" type="button">Confirmar BH</button></div>
+          <details><summary>Histórico de BH confirmado</summary><button type="button" id="bh-history-refresh">Atualizar histórico</button><div id="bh-history"></div></details>
+        </div>
         <div id="imports-point-panel" class="panel no-print point-import-panel" role="tabpanel" aria-labelledby="imports-point-tab" data-permission="imports.manage">
           <div class="panel-head">
             <div><h3>Cartão de Ponto Senior</h3><p class="hint">Importe o período do Cartão Senior que será usado nos relatórios automáticos. O arquivo pode ser parcial, mensal ou abranger mais de um mês.</p></div>
@@ -1451,9 +1463,11 @@
               <div class="manual-note warning" data-help-permission="master"><strong>Limpar pontos de teste:</strong> remove somente os pontos, o histórico de importação de ponto e os acompanhamentos da empresa/filial selecionada no ambiente Beta. Empresas, filiais e colaboradores são mantidos. Alertas cadastrais continuam aparecendo e filiais sem ponto podem voltar a ser sinalizadas. Esta opção é diferente de <strong>Zerar sistema</strong>.</div>
               <h4>Passo a passo</h4><ol><li>Abra <strong>Importações → Colaboradores</strong>.</li><li>Escolha o tipo ou deixe o sistema detectar; selecione empresa/filial e carregue o PDF.</li><li>Clique em <strong>Ler e conferir PDF</strong>.</li><li>Revise confiança, registros montados, não reconhecidos e o <strong>Checklist Sistema × Lista Senior</strong>.</li><li>Marque somente os registros corretos e confirme.</li></ol>
               <div class="manual-import-types"><article><b>Admitidos</b><span>Cadastra novos vínculos.</span></article><article><b>Demitidos</b><span>Atualiza a situação e permite cadastrar históricos ausentes.</span></article><article><b>Relação de Colaboradores</b><span>Cadastra ausentes e atualiza nome, cargo e função.</span></article></div>
+              <h4>Banco de Horas Senior</h4><p>Em <strong>Importações → Banco de Horas</strong>, com permissão <strong>imports.manage</strong>, selecione empresa/filial e envie o <strong>Banco de Horas Analítico (HRBH008)</strong> ou <strong>Sintético (HRBH009)</strong>, em PDF até 32 MB. Clique em <strong>Ler e conferir BH</strong>, confira o período impresso (não apenas o nome do arquivo), matrículas, saldos e páginas. O relatório não identifica a filial operacional: exporte uma filial por arquivo e confirme o vínculo à filial antes de <strong>Confirmar BH</strong>. Linhas incompletas bloqueiam a confirmação.</p><p>O Analítico preserva saldo inicial e todos os movimentos; o Sintético registra saldo na data de referência. Arquivo repetido na mesma unidade não duplica dados. Em coberturas sobrepostas, a confirmação mais recente vale por matrícula, banco e data; uma revisão precisa conter todos os movimentos do período informado. O histórico original é mantido no backup. Importar BH não altera o ponto, as ocorrências ou a situação cadastral e não libera divergências de horas trabalhadas. Para dados de ponto já importados, basta confirmar o BH e executar novamente a comparação; não é necessário reimportar o ponto.</p>
               <h4>Demitidos ausentes do cadastro</h4><p>Com permissão de importação, abra <strong>Importações → Colaboradores</strong> e leia o relatório de Demitidos da Senior na empresa/filial correta. Habilite <strong>Permitir cadastrar os selecionados não localizados como demitidos (histórico)</strong>, selecione os registros conferidos e confirme. São exigidos matrícula, nome completo e data de demissão válidos. O vínculo nasce como Demitido, com admissão sem data; nenhum dado é inventado. Matrículas de outra unidade ou ambíguas não são processadas. Depois, leia novamente o Cartão de Ponto para reconhecer os cadastros históricos. Reimportar a mesma matrícula atualiza o vínculo existente.</p>
               <h4>Resultado</h4><ul><li><strong>Cadastrado:</strong> matrícula nova incluída.</li><li><strong>Atualizado:</strong> cadastro existente corrigido.</li><li><strong>Não processado:</strong> registro bloqueado ou incompleto.</li><li><strong>Possível readmissão:</strong> mesmo nome encontrado com matrícula nova.</li></ul>
               <div class="manual-note warning"><strong>Readmissão:</strong> o sistema preserva a matrícula antiga e cria a nova. Confira se o vínculo anterior deve ser marcado como Demitido/Inativo.</div>
+              <h4>Comparar Ponto, BH e Ocorrências</h4><p>Abra <strong>Ocorrências → Comparar períodos</strong>, disponível ao Master ou administrador autorizado para Ocorrências e com acesso ao painel (<strong>dashboard.view</strong>). Escolha meses ou anos, empresa, filial e colaborador. O padrão é fechamento de <strong>19 a 18</strong>: outubro/2026 corresponde a 19/09 a 18/10; o ano de 2026 corresponde a 19/12/2025 a 18/12/2026. A alternativa calendário usa meses/anos civis. A comparação antiga do painel permanece disponível para indicadores básicos de ponto.</p><p>Créditos e débitos são comparados separadamente por matrícula/data, usando movimentos de origem A. Fechamentos, origem G e outras origens ficam preservados, mas fora da comparação diária. Ocorrências são derivadas dos dias do ponto confirmado e usam as categorias do Controle de Ocorrências (faltas, BH, atestados, férias, DSR, folgas e demais situações). Cada categoria conta um dia uma vez; um dia pode aparecer em várias categorias, por exemplo BH e saída antecipada. Compare sempre os mesmos filtros e a mesma base de datas. Ocorrências junto a uma diferença não comprovam sua causa.</p><p>Saldo é a posição do Sintético exatamente na data final e nunca é somado entre meses. A conferência do saldo exige Analítico encerrado na mesma data. Meses sem ponto, BH ausente, BH do ponto não validado e cobertura parcial são sinalizados, sem transformar ausência em zero. O detalhe anual mostra meses calendário dentro do intervalo selecionado. O assistente usa regras verificáveis e fontes; não altera a Senior, não oferece diagnóstico causal sem evidência e não envia dados a uma IA externa. Após novas importações, clique novamente em <strong>Comparar períodos</strong>.</p>
               <div class="manual-note danger"><strong>Nunca confirme às cegas:</strong> mesmo com confiança alta, confira matrícula, nome, cargo e situação.</div>
             </div>
           </details>
@@ -1521,6 +1535,15 @@
 
 
     <section id="occurrences" class="view">
+      <section class="panel no-print" id="period-comparison">
+        <div class="panel-head"><div><h3>Comparar períodos: Ponto, BH e Ocorrências</h3><p>Compare meses ou anos usando os dados confirmados. Fechamento de 19 a 18 como padrão.</p></div><button id="period-open" type="button" aria-expanded="false" aria-controls="period-body">Abrir comparação</button></div>
+        <div id="period-body" hidden>
+          <div class="bh-controls"><label>Comparar<select id="period-mode"><option value="month">Meses</option><option value="year">Anos</option></select></label><label>Base<select id="period-basis"><option value="closing">Fechamento 19 a 18</option><option value="calendar">Mês/ano calendário</option></select></label><label>Período A<input type="month" id="period-a"></label><label>Período B<input type="month" id="period-b"></label></div>
+          <div class="bh-controls"><label>Empresa<select id="period-company"><option value="">Todas</option></select></label><label>Filial<select id="period-branch"><option value="">Todas</option></select></label><label>Colaborador<select id="period-employee"><option value="">Todos</option></select></label><button type="button" id="period-run">Comparar períodos</button></div>
+          <p id="period-status" role="status"></p><div id="period-summary"></div><div id="period-guidance" class="bh-guidance"></div><div id="period-detail"></div>
+        </div>
+      </section>
+
       <div class="occurrences-print-header">
         <div><span class="eyebrow">Controle Térmico</span><h2>Relatório de Controle de Ocorrências</h2><p id="occurrences-print-reference">Período e escopo selecionados</p></div>
         <div class="occurrences-print-meta"><strong id="occurrences-print-company">Todas as empresas</strong><span id="occurrences-print-branch">Todas as filiais</span><small id="occurrences-print-generated"></small></div>
@@ -2782,7 +2805,7 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.92"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.93"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.92"></script>
@@ -2793,7 +2816,8 @@
   <script src="/js/calendar-reports.js?v=1.0.31-beta.91"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.88"></script>
-  <script src="/js/imports-center.js?v=1.0.31-beta.88"></script>
+  <script src="/js/bh-comparison.js?v=1.0.31-beta.93"></script>
+  <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
   <script src="/js/occurrences-control.js?v=1.0.31-beta.89"></script>
 </body>
