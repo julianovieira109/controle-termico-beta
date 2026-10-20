@@ -14,3 +14,30 @@ body.theme-dark #app :is(#period-comparison,#bh-import-panel) th{background:#132
 body.theme-dark #app :is(#period-comparison,#bh-import-panel) td{border-color:#526879}
 body.theme-dark #app :is(#period-comparison,#bh-import-panel) tbody tr:hover{background:#263b49}
 body.theme-dark #app :is(#period-comparison,#bh-import-panel) :is(summary,button,input,select):focus-visible{outline:2px solid #85cfff;outline-offset:3px}
+
+/* Comparison follows the same panel, form and action hierarchy as the other modules. */
+#period-comparison .period-panel-head{align-items:flex-start;gap:20px}
+#period-comparison .period-panel-head h3{margin:0 0 7px}
+#period-comparison .period-panel-head p{margin:0;line-height:1.5;max-width:720px}
+#period-comparison #period-open{min-height:42px;padding:10px 16px;flex:0 0 auto;white-space:nowrap;border-radius:10px}
+#period-body{border-top:1px solid var(--line);margin-top:20px;padding-top:18px}
+#period-body[hidden]{display:none}
+#period-comparison .period-filter-group{margin-bottom:18px}
+#period-comparison .period-filter-group h4{margin:0 0 10px;color:var(--heading);font-size:13px;font-weight:800}
+#period-comparison .period-filter-grid{display:grid;gap:14px}
+#period-comparison .period-date-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+#period-comparison .period-scope-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+#period-comparison .period-filter-grid label{display:grid;gap:7px;min-width:0;font-size:12px}
+#period-comparison .period-filter-grid :is(select,input){width:100%;min-width:0;height:44px;padding:10px 12px;border-radius:10px;box-sizing:border-box}
+#period-comparison .period-actions{display:flex;justify-content:flex-end;border-top:1px solid var(--line);padding-top:16px;margin:4px 0 16px}
+#period-comparison #period-run{min-height:44px;padding:11px 20px;border-radius:10px}
+#period-comparison #period-run:disabled{opacity:.65;cursor:wait}
+#period-comparison :is(#period-status,#period-summary,#period-guidance,#period-detail):empty{display:none}
+#period-comparison #period-status{margin:12px 0;line-height:1.5;color:var(--text)}
+@media(max-width:1100px){#period-comparison .period-date-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){
+  #period-comparison .period-panel-head{flex-direction:column;gap:14px}
+  #period-comparison #period-open{width:100%}
+  #period-comparison :is(.period-date-grid,.period-scope-grid){grid-template-columns:1fr}
+  #period-comparison .period-actions,#period-comparison #period-run{width:100%}
+}

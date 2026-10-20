@@ -69,6 +69,7 @@
   }
   $('period-open').onclick=async()=>{
     $('period-body').hidden=!$('period-body').hidden;$('period-open').setAttribute('aria-expanded',String(!$('period-body').hidden));
+    $('period-open').textContent=$('period-body').hidden?'Abrir comparação':'Fechar comparação';
     if($('period-body').hidden||options)return;
     try{options=await api('/api/reconciliation/options');$('period-company').innerHTML=opt(options.companies,'Todas as empresas');refillFilters();modes();}
     catch(e){options=null;$('period-status').textContent=e.message;}
@@ -91,10 +92,10 @@
     }).join('');
   }
   $('period-run').onclick=async()=>{
-    const button=$('period-run');button.disabled=true;$('period-status').textContent='Comparando dados confirmados...';
+    const button=$('period-run');button.disabled=true;button.textContent='Comparando...';button.setAttribute('aria-busy','true');$('period-status').textContent='Comparando dados confirmados...';
     try{
       const params=new URLSearchParams();for(const key of ['mode','basis','a','b','company','branch','employee']){const apiKey={company:'companyId',branch:'branchId',employee:'employeeId'}[key]||key;if($('period-'+key).value)params.set(apiKey,$('period-'+key).value);}
       const result=await api('/api/reconciliation/compare?'+params);render(result);$('period-status').textContent='Comparação concluída. Confira a cobertura de cada período antes de interpretar as variações.';
-    }catch(e){$('period-status').textContent=e.message;$('period-summary').innerHTML='';$('period-guidance').innerHTML='';$('period-detail').innerHTML='';}finally{button.disabled=false;}
+    }catch(e){$('period-status').textContent=e.message;$('period-summary').innerHTML='';$('period-guidance').innerHTML='';$('period-detail').innerHTML='';}finally{button.disabled=false;button.textContent='Comparar períodos';button.setAttribute('aria-busy','false');}
   };
 })();
