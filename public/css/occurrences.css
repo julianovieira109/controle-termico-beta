@@ -675,3 +675,18 @@ body.occ-analysis-specialized:has(#occ-analysis-tabs [data-occ-tab="intervals"].
 .occ-print-selector-dialog>footer{align-items:center;justify-content:space-between;padding:16px 26px 22px;border-top:1px solid rgba(210,229,239,.8)}.occ-print-selector-dialog>footer>span{color:var(--muted);font-size:10px}.occ-print-selector-dialog>footer>div{display:flex;gap:9px}.occ-print-select-all,.occ-print-confirm{min-height:39px;padding:8px 14px;border-radius:11px;font-size:11px;font-weight:780;cursor:pointer}.occ-print-select-all{border:0;background:transparent;color:#397b9f}.occ-print-confirm{border:1px solid #2d8ab8;background:linear-gradient(135deg,#176c9e,#258fc1);color:#fff;box-shadow:0 8px 20px rgba(20,109,155,.19)}.occ-print-confirm span{margin-left:12px}.occ-print-confirm:hover{filter:brightness(1.04);transform:translateY(-1px)}
 .theme-dark #app .occ-print-selector-dialog{background:linear-gradient(145deg,#132a36,#10232d);border-color:#315769}.theme-dark #app .occ-print-selector-options label{background:rgba(21,48,61,.7);border-color:#31505f}.theme-dark #app .occ-print-selector-options label:has(input:checked){background:linear-gradient(135deg,#183849,#142e3b);border-color:#4d91b2}.theme-dark #app .occ-print-selector-options label>i{background:#183440;border-color:#376073;color:#a8dcf3}
 @media(max-width:620px){.occ-print-selector-dialog{border-radius:18px}.occ-print-selector-options{padding-left:18px;padding-right:18px}.occ-print-selector-dialog>header{padding-left:20px;padding-right:20px}.occ-print-selector-dialog>footer{align-items:stretch;flex-direction:column;padding-left:20px;padding-right:20px}.occ-print-selector-dialog>footer>div{display:grid;grid-template-columns:1fr}.occ-print-selector-dialog>footer>span{text-align:center}}
+
+/* Night palette also covers inherited text and native select menus. */
+body.theme-dark #app #occurrences{color:#e5e7eb}
+body.theme-dark #app select,
+body.theme-dark #app select option,
+body.theme-dark #app select optgroup{background-color:#172935;color:#eef5f8;color-scheme:dark}
+body.theme-dark #app #occurrences .occ-dash-filters :is(select,input){background:#172935;color:#eef5f8;border-color:#658294;color-scheme:dark}
+body.theme-dark #app #occurrences .occ-dash-title .eyebrow{color:#c4e5fa}
+body.theme-dark #app #occurrences .occ-dash-title p{color:#d5e9f8;opacity:1}
+body.theme-dark #app #occurrences .occurrences-source-status{background:#173828;color:#b6f0ce;border-color:#507e62}
+body.theme-dark #app #occurrences .occurrences-source-status :is(span,strong){color:#b6f0ce}
+body.theme-dark #app #user-name{color:#e5e7eb;background:#172935}
+body.theme-dark #app #period-open{color:#eef5f8;background:#172935;border-color:#658294}
+body.theme-dark #app #occurrences .occurrences-source-status.is-missing{background:#3d2026;border-color:#a76670;color:#ffd5da}
+body.theme-dark #app #occurrences .occurrences-source-status.is-missing :is(span,strong){color:#ffd5da}
