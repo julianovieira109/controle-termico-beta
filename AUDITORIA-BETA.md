@@ -34,4 +34,12 @@ Escopo: checkout `controle-termico-beta`, banco e servidor locais. O ambiente of
 
 `node tools/audit-backup-restore.js` exige `DATABASE_URL` de PostgreSQL local, permissão CREATEDB, credenciais de administrador de teste nas variáveis `ADMIN_EMAIL`/`ADMIN_PASSWORD` e `JWT_SECRET`. Cria um banco temporário e inicia o servidor na porta 3002; não restaura nem zera o banco configurado. Remove o banco temporário ao concluir. Se a porta estiver ocupada, a execução falha antes das requisições de restauração.
 
-As correções desta auditoria estão locais; a publicação e a verificação do deploy são etapas separadas. Após publicar, gere um novo backup para incluir os históricos que os arquivos antigos omitiam.
+A publicação e a verificação do deploy são etapas separadas. Após publicar, gere um novo backup para incluir os históricos que os arquivos antigos omitiam.
+
+## Revisão visual dos temas
+
+Foi adicionada uma paleta de contraste por componente para Painel, alertas, Ocorrências, calendário, repouso automático, segurança, Leitor Senior e resultados de leitura de PDF. Textos, números, opções de listas e mensagens mantêm cores de sucesso, atenção e bloqueio. O Manual e a Ajuda incluem orientações de tema para todos os perfis.
+
+A varredura de navegador percorreu 52 cenários nos temas claro e escuro, incluindo os nove módulos, abas de importação/configurações, formulários de cadastro, capítulos do Manual e estados representativos da leitura de PDFs, com cadastros de demonstração em banco temporário isolado. Não houve exceções JavaScript nem ocorrências abaixo do limiar de contraste do verificador nos elementos avaliados. O verificador mede texto sobre fundos sólidos; não constitui certificação de todos os estados visuais ou fundos em gradiente.
+
+A navegação dos nove módulos também passou no celular. Foram aprovados os testes específicos de contraste de BH/Ocorrências, o ensaio de impressão (totais 88/1350 preservados) e os 298 testes automatizados. A nova folha de estilos se aplica somente à tela, preservando a paleta de papel. Esta revisão visual ainda precisa ser publicada.

@@ -1,0 +1,100 @@
+/* Screen-only corrections: printed reports retain their own paper palette. */
+@media screen{
+  #app .sidebar-nav-heading,#app .sidebar-version small{color:#a8bdcf}
+  #app .point-import-steps>span{color:#596574}
+  #app #occurrences .occ-analysis-scope-note{color:#5b6775}
+  #app #occurrences-visible-count{color:#526777}
+  #app #occurrences :is(.occ-empty-good,.occ-empty-good i){color:#087640}
+  #app .thermal-rule-note p{color:#596574}
+
+  body.theme-dark #app{
+    --text:#e5e7eb;
+    --muted:#bdcbd7;
+    --surface:#172935;
+    --surface-soft:#203543;
+    --panel-soft:#172935;
+    --line:#526879;
+  }
+  body.theme-dark #app :is(.dashboard-chart-card,.dashboard-alert-center,.dashboard-alert-group,.dashboard-alert-summary article,.thermal-save-bar){background:#1f2937;border-color:#526879;color:#e5e7eb}
+  body.theme-dark #app :is(.dashboard-management-head,.dashboard-charts-head,.dashboard-alert-head) p,
+  body.theme-dark #app :is(.dashboard-management-grid,.dashboard-chart-card,.dashboard-alert-center) :is(span,small){color:#bdcbd7}
+  body.theme-dark #app :is(.dashboard-management-grid,.dashboard-chart-card,.dashboard-alert-center,.cards) :is(strong,b,h3){color:#f9fafb}
+  body.theme-dark #app :is(.dashboard-chart-title,.dashboard-alert-group summary) :is(strong,b){color:#f9fafb}
+  body.theme-dark #app .dashboard-alert-center .eyebrow{color:#b9dcf5}
+  body.theme-dark #app .dashboard-alert-group summary b{background:#172935;color:#eef5f8}
+  body.theme-dark #app .dashboard-alert-group summary span,
+  body.theme-dark #app .dashboard-alert-group-body li span,
+  body.theme-dark #app .dashboard-alert-more{color:#bdcbd7}
+  body.theme-dark #app .dashboard-alert-empty{background:#173828;color:#b6f0ce;border-color:#507e62}
+  body.theme-dark #app .dashboard-alert-empty :is(span,strong){color:#b6f0ce}
+  body.theme-dark #app :is(.dashboard-donut:after,.dashboard-donut-center){background:#1f2937}
+  body.theme-dark #app .pending-card small{color:#9de7be}
+  body.theme-dark #app .pending-card.is-warning small{color:#ffd78b}
+  body.theme-dark #app :is(.security-count.success,.feedback.success){color:#9de7be}
+  body.theme-dark #app :is(.security-count.danger,.feedback.error,.danger-zone h3){color:#ffb9bd}
+  body.theme-dark #app :is(.thermal-status-badge,.occ-tab-icon){background:#294654;color:#c7e9fc}
+  body.theme-dark #app .thermal-rule-note{background:#173828;border-color:#75d09c;color:#e5e7eb}
+  body.theme-dark #app .thermal-rule-note p{color:#b6f0ce}
+  body.theme-dark #app #occurrences :is(.occ-empty-good,.occ-empty-good i){color:#9de7be}
+  body.theme-dark #app #occurrences :is(.occ-analysis-scope-note,#occurrences-visible-count,#occ-general-suggestion){color:#bdcbd7}
+  body.theme-dark #app :is(input,textarea)::placeholder{color:#aabccc;opacity:1}
+  body.theme-dark #app :is(.app-modal,.modal-backdrop) :is(input,select,textarea){color-scheme:dark}
+  /* Existing dashboard totals force their day palette with !important. */
+  body.theme-dark #app #dashboard .cards article strong{color:#f9fafb!important}
+  body.theme-dark #app #dashboard .pending-card.is-clear small{color:#9de7be}
+  body.theme-dark #app #dashboard .pending-card:not(.is-clear) small{color:#ffd78b}
+  body.theme-dark #app :is(.dashboard-chart-title>b,.dashboard-correction-row){background:#172935;border-color:#526879}
+  body.theme-dark #app :is(.dashboard-review-callout,.dashboard-progress-stat){background:#29384a;border-color:#526879}
+  body.theme-dark #app .dashboard-review-callout :is(span,strong,small){color:#ffd78b}
+  body.theme-dark #app .dashboard-corrections-ok{background:#173828;border-color:#507e62}
+  body.theme-dark #app .dashboard-corrections-ok :is(strong,span){color:#b6f0ce}
+  #app{--muted:#586675}
+  #app #occurrences :is(.occ-analysis-tabs button small,.occ-team-donut span,.occ-team-dominant>span,.occ-team-dominant>small,.occurrences-footer small,.occurrences-analysis-more>summary span,.occurrences-donut span){color:#526777}
+  #app .holiday-type-card small,#app .thermal-overview :is(span,small),#app .illustration-window i{color:#586675}
+  #app #occurrences .occ-positive-item i{color:#087640}
+
+  body.theme-dark #app .eyebrow{color:#b9dcf5}
+  body.theme-dark #app .dashboard-correction-row>b{background:#3c321d;color:#ffd78b}
+  body.theme-dark #app #occurrences .occ-analysis-tabs button.active :is(strong,small){color:#c7e9fc}
+  body.theme-dark #app #occurrences :is(.occ-exec-head small,.occ-team-donut span,.occ-team-dominant>span,.occ-team-dominant>small,.occurrences-footer small,.occurrences-analysis-more>summary span,.occurrences-donut span){color:#bdcbd7}
+  body.theme-dark #app #occurrences :is(.occ-team-donut:after,.occurrences-donut:after){background:#172935}
+  body.theme-dark #app #occurrences :is(.occ-team-dominant>strong,.occurrences-analysis-more>summary strong){color:#f9fafb}
+  body.theme-dark #app #occurrences .occ-team-dominant>strong.green{color:#9de7be}
+  body.theme-dark #app #occurrences .occ-team-dominant>strong.yellow{color:#ffd78b}
+  body.theme-dark #app #occurrences .occ-team-dominant>strong.red{color:#ffb9bd}
+  body.theme-dark #app #occurrences .occ-positive-item i{color:#9de7be}
+  body.theme-dark #app #occurrences .occ-insight.attention .occ-insight-head{color:#ffb9bd}
+  body.theme-dark #app #occurrences .occ-insight.positive .occ-insight-head{color:#9de7be}
+  body.theme-dark #app #occurrences .occ-insight.suggestion .occ-insight-head{color:#ffd78b}
+  body.theme-dark #app .holiday-type-card{background:#172935;border-color:#526879}
+  body.theme-dark #app .holiday-type-card:has(input:checked){background:#203543;border-color:#83b7d8}
+  body.theme-dark #app .holiday-type-card small{color:#bdcbd7}
+  body.theme-dark #app #senior-models-summary article{background:#172935;border-color:#526879}
+  body.theme-dark #app #senior-models-summary span,
+  body.theme-dark #app :is(#senior-models-reports-body,#senior-models-readers-body,#senior-models-codes-body,#senior-models-branches-body,#senior-models-confidence-body) small{color:#bdcbd7}
+  #app #occurrences :is(.occ-team-donut>div,.occurrences-donut>div){background:#fff}
+  #app #occurrences :is(.occ-team-donut span,.occurrences-donut span){color:#455a6c}
+  body.theme-dark #app #occurrences .occ-analysis-tabs button small{color:#bdcbd7}
+  body.theme-dark #app #occurrences :is(.occ-team-donut>div,.occurrences-donut>div){background:#172935}
+  body.theme-dark #app #occurrences :is(.occ-team-donut span,.occurrences-donut span){color:#bdcbd7}
+  body.theme-dark #app :is(.holiday-type-card strong,#senior-models-summary strong){color:#f9fafb}
+  body.theme-dark #app .thermal-overview :is(span,small){color:#bdcbd7}
+  body.theme-dark #app :is(input,select,textarea){color-scheme:dark}
+  body.theme-dark #app :is(input,select,textarea,button,summary):focus-visible{outline:2px solid #85cfff;outline-offset:2px}
+  body.theme-dark #app :is(.point-audit-status,.senior-intelligence-card,.import-detection){background:#172935;color:#e5e7eb;border-color:#526879}
+  body.theme-dark #app :is(.point-audit-status,.senior-intelligence-card) :is(strong,p,span,summary){color:#e5e7eb}
+  body.theme-dark #app :is(.point-audit-status.is-trusted,.senior-intelligence-card.alta,.import-success){background:#173828;border-color:#507e62;color:#b6f0ce}
+  body.theme-dark #app :is(.point-audit-status.is-warning,.senior-intelligence-card.media){background:#3c321d;border-color:#9d824a}
+  body.theme-dark #app :is(.point-audit-status.is-blocked,.senior-intelligence-card.baixa){background:#3d2026;border-color:#a76670}
+  body.theme-dark #app .senior-confidence-badge{background:#172935;color:#eef5f8;border-color:#658294}
+  body.theme-dark #app :is(.pdf-diagnostic-grid,.point-audit-metrics) strong{color:#f9fafb}
+  body.theme-dark #app .point-audit-tabs button.active{color:#c7e9fc}
+  body.theme-dark #app .point-audit-total-head{background:#172935;color:#bdcbd7}
+  body.theme-dark #app .point-audit-total-row .is-ok{color:#9de7be}
+  body.theme-dark #app .point-audit-total-row .is-different{color:#ffb9bd}
+  body.theme-dark #app .feedback{color:#ffb9bd}
+  body.theme-dark #app .feedback.success{color:#9de7be}
+  body.theme-dark #app .feedback.warning{color:#ffd78b}
+  #app .point-audit-status.is-warning .point-audit-status-icon{background:#a16604}
+  #app .senior-intelligence-kicker{color:#526777}
+}
