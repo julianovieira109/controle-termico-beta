@@ -33,7 +33,7 @@
   <link id="app-favicon" rel="icon" href="data:,">
   <meta id="theme-color-meta" name="theme-color" content="#154c79">
   <link rel="stylesheet" href="/css/base.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.87">
+  <link rel="stylesheet" href="/css/reports.css?v=1.0.31-beta.100">
   <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.87">
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
@@ -1199,7 +1199,7 @@
     <section id="reports" class="view">
       <div class="panel no-print">
         <h3>Impressão de fichas</h3>
-        <p class="hint">O repouso térmico recebe horários automáticos; a ficha de refeição mantém a assinatura manual e exibe as ausências identificadas no ponto.</p>
+        <p class="hint">O repouso térmico apresenta horários calculados a partir das marcações confirmadas; a ficha de refeição mantém a assinatura manual e exibe as ausências identificadas no ponto.</p>
 
         <div class="form-grid">
           <label>Empresa
@@ -1231,7 +1231,7 @@
           </label>
 
           <div class="full manual-note info report-automatic-policy" id="report-thermal-mode-note">
-            <strong>Repouso térmico:</strong> o modo automático ou manual é definido em Configurações → Repouso automático. A assinatura da refeição permanece manual, com DSR, faltas, férias e demais ausências preenchidas conforme o ponto.
+            <strong>Repouso térmico:</strong> o modo automático ou manual é definido em Configurações → Repouso automático. Os horários calculados são um planejamento; a realização das pausas precisa ser conferida e registrada. A assinatura da refeição permanece manual, com DSR, faltas, férias e demais ausências preenchidas conforme o ponto.
           </div>
 
           <div class="full actions">
@@ -1285,7 +1285,7 @@
             <div>
               <span class="eyebrow">Organização da impressão</span>
               <h3 id="report-print-center-title">Central de impressão</h3>
-              <p class="hint">Escolha exatamente quais fichas e colaboradores serão enviados para impressão.</p>
+              <p class="hint">Escolha quais fichas e colaboradores serão impressos. Os totais contam folhas, incluindo as continuações.</p>
             </div>
             <button type="button" class="modal-close" data-close-print-center aria-label="Fechar">×</button>
           </div>
@@ -1302,7 +1302,7 @@
               <strong>Tipos de ficha</strong>
               <label class="print-center-option">
                 <input type="checkbox" id="print-center-type-thermal" checked>
-                <span><b>Repouso térmico</b><small>Ficha principal gerada para o colaborador.</small></span>
+                <span><b>Repouso térmico</b><small>Ficha principal e todas as continuações do colaborador.</small></span>
               </label>
               <label class="print-center-option">
                 <input type="checkbox" id="print-center-type-blank" checked>
@@ -1489,6 +1489,11 @@
             <summary><span class="manual-number">8</span><span><strong>Relatórios e impressão</strong><small>Repouso térmico e Refeitório</small></span></summary>
             <div class="manual-body">
               <div class="manual-report-preview" aria-label="Exemplo de ficha mensal"><b>FICHA MENSAL</b><span>Empresa • Filial • Colaborador • Matrícula</span><i></i><i></i><i></i><small>Assinatura do colaborador</small></div>
+              <h4>Planejamento automático e conferência do repouso</h4><p>O cálculo usa <strong>pausas de 20 minutos</strong> e mantém cada trecho de trabalho contínuo em <strong>até 100 minutos</strong>, inclusive antes da primeira pausa, entre pausas e após a última. A refeição reinicia a contagem. As pausas podem ser antecipadas pela distribuição da jornada, sempre dentro das marcações reais. Não há teto diário de três ou quatro: a ficha usa até quatro colunas de repouso por página e cria <strong>continuação</strong> para apresentar todas as pausas necessárias, inclusive em jornadas com horas extras.</p>
+              <p>Em <strong>Relatórios → Validação prévia → Conferir cálculo do repouso</strong>, selecione o dia para visualizar a jornada e a conferência. O mesmo motor é usado na prévia dos turnos, no cálculo do dia e na ficha. A auditoria verifica os horários recebidos, incluindo duração, ordem, sobreposições, refeição, encaixe na jornada e o trecho final. Uma falha impede a ficha automática; nenhum repouso isolado recebe <strong>Conforme</strong> quando o dia falha na conferência.</p>
+              <p>O automático exige dados do <strong>próprio colaborador</strong> na competência confirmada. A escala prevista não preenche horários quando faltam pontos. Datas sem cobertura e dias pendentes recebem avisos e ficam sem horários automáticos; faltas, férias e demais ocorrências da Senior permanecem identificadas. Batidas iguais, horários inválidos, sequências ambíguas e jornadas de 24 horas ou mais exigem revisão.</p>
+              <div class="manual-note warning"><strong>Horários calculados:</strong> os campos <strong>Saída calculada</strong> e <strong>Retorno calculado</strong> representam planejamento pelas batidas da jornada. O cartão de ponto não comprova, por si só, a realização das pausas térmicas. Confira e registre o que foi realizado antes de utilizar a ficha como registro.</div>
+              <p><strong>Aplicar esta correção:</strong> após a atualização, pressione <strong>Ctrl+F5</strong> e gere as fichas novamente. Jornadas válidas já salvas usam o cálculo corrigido sem reimportação. Para rever batidas iguais ou outras classificações antigas, confira o arquivo original, corrija a Senior quando necessário e reimporte em <strong>Importações → Cartão de Ponto</strong>. Reavalie as fichas emitidas anteriormente. Alterar filtros ou configurações e iniciar uma nova geração invalida a impressão anterior; uma falha de consulta ou conferência não libera a ficha antiga.</p>
               <h4>Duas marcações e repouso térmico</h4><p>Duas batidas reais distintas podem delimitar o período usado para calcular os repousos, mesmo quando a escala prevê quatro marcações. Os repousos só são inseridos se houver tempo suficiente e ficam dentro do intervalo registrado, inclusive quando ele atravessa a meia-noite. O sistema não cria batidas de refeição nem altera Trabalho, BH ou faltas da Senior.</p>
               <p>Uma batida sem par, ausência de batidas e ocorrências explícitas de Falta, Atestado ou Jornada Incompleta continuam recebendo o tratamento correspondente. O aviso <strong>Revisar marcações do ponto</strong> exige conferir o motivo; ele não significa necessariamente que o PDF inteiro foi lido incorretamente.</p>
               <p><strong>Após uma atualização do leitor:</strong> reimporte o PDF pela Central de Importações, confira e confirme os dados; depois gere as fichas novamente. Atualizar o navegador não recalcula os pontos já salvos.</p>
@@ -1507,6 +1512,7 @@
             <div class="manual-body">
               <p>Esta seção mostra somente as configurações liberadas para o seu perfil.</p>
               <div class="manual-settings-grid"><article data-help-permission="master"><b>🎨 Visual</b><span>Nome, logos, cores e tema — exclusivo do Master.</span></article><article data-help-permission="master"><b>☎ Suporte</b><span>WhatsApp, e-mail, responsável e horário.</span></article><article data-help-permission="master"><b>🔐 Segurança</b><span>Tentativas de acesso e senha temporária.</span></article><article data-help-permission="calendar.manage"><b>📅 Feriados e folgas</b><span>Calendário e folga individual.</span></article><article data-help-permission="admin"><b>⏱ Turnos</b><span>Códigos, nomes e horários.</span></article><article data-help-permission="admin"><b>▤ Cargos e relatórios</b><span>Tipos de ficha permitidos.</span></article><article data-help-permission="admin"><b>◇ Leitor Senior</b><span>Modelos, códigos e confiança.</span></article><article data-help-permission="admin"><b>👤 Perfis</b><span>Permissões personalizadas.</span></article><article data-help-permission="admin"><b>▣ Backup e dados</b><span>Testes, backup e duplicidades.</span></article></div>
+              <h4 data-help-permission="master">Repouso automático</h4><p data-help-permission="master">Em <strong>Configurações → Repouso automático</strong>, o Master escolhe modo manual, automático ou automático com cópia em branco, empresas/filiais autorizadas e tamanho da fonte. O cálculo permanece fixo em <strong>100 minutos de limite contínuo e 20 minutos de pausa</strong>. Parâmetros antigos de duração variável, aleatoriedade, repetição e teto de três/quatro pausas deixam de limitar a geração; a quantidade segue a jornada e as continuações preservam o resultado completo. A prévia dos turnos é identificada como planejamento e não substitui o ponto de cada dia.</p>
               <h4 data-help-permission="master">Contato do suporte</h4><p data-help-permission="master">Em <strong>Configurações → Suporte</strong>, somente o Administrador Master pode cadastrar WhatsApp, e-mail, responsável e horário. O Assistente exibe os canais configurados aos usuários.</p>
               <h4 data-help-permission="master">Segurança e acessos</h4><p data-help-permission="master">Em <strong>Configurações → Segurança e acessos</strong>, o Master acompanha acessos e tentativas com senha incorreta. Quando um usuário não consegue recuperar a conta, o Master pode gerar uma senha temporária; no primeiro acesso, o sistema exige a criação de uma senha pessoal nova.</p>
               <h4 data-help-permission="admin">Cargos e relatórios</h4><p data-help-permission="admin">A prioridade é: <strong>exceção do colaborador → regra da filial → regra geral do cargo</strong>. Cargo/função nova encontrada na importação é cadastrada como <strong>Pendente</strong> até o Administrador definir os relatórios permitidos.</p>
@@ -2238,26 +2244,26 @@
         <div class="panel thermal-command-panel">
           <div class="panel-head"><div><h3>Repouso automático</h3><p class="hint">Configure as regras de geração das fichas. Para enviar arquivos da Senior, use o menu Importações.</p></div><span class="thermal-status-badge">Configuração principal</span></div>
           <div class="thermal-overview" aria-label="Resumo das regras atuais">
-            <div><span>Jornada normal</span><strong>Até 3 repousos</strong><small>Conforme o ponto real</small></div>
+            <div><span>Quantidade de repousos</span><strong>Conforme a jornada</strong><small>Sem cortar pausas necessárias</small></div>
             <div><span>Ciclo máximo</span><strong>100 minutos</strong><small>20 minutos de repouso</small></div>
-            <div><span>Hora extra</span><strong>Até o 4º repouso</strong><small>Sem página adicional</small></div>
+            <div><span>Impressão completa</span><strong>Com continuação</strong><small>Todas as pausas calculadas</small></div>
           </div>
           <form id="thermal-rest-form" class="thermal-settings-form">
             <section class="thermal-config-section">
               <div class="thermal-section-head"><span>1</span><div><strong>Como gerar as fichas</strong><p class="hint">Escolha o formato de saída das fichas.</p></div></div>
-              <label class="thermal-mode-field">Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="AUTOMATIC_AND_BLANK">Automático + cópia manual</option><option value="MANUAL">Manual — campos em branco</option></select><small>No modo combinado, a ordem será: ficha automática, cópia sem horários e ficha de refeição. Todas mantêm DSR, faltas, férias, atestados, folgas e demais justificativas.</small></label>
-              <div class="thermal-rule-note"><strong>Leitura segura do ponto</strong><p>A refeição reinicia a contagem. Saída antecipada confirmada é tratada como jornada parcial. Marcações incompletas continuam sinalizadas para revisão.</p></div>
-              <input id="thermal-rest-count" type="hidden" value="3">
+              <label class="thermal-mode-field">Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="AUTOMATIC_AND_BLANK">Automático + cópia manual</option><option value="MANUAL">Manual — campos em branco</option></select><small>No modo combinado, a ordem será: ficha automática, cópia sem horários e ficha de refeição. A automática mantém as ocorrências do ponto. A cópia manual fica sem horários e ocorrências, preservando as folgas configuradas.</small></label>
+              <div class="thermal-rule-note"><strong>Leitura segura do ponto</strong><p>A refeição reinicia a contagem. Saída antecipada confirmada é tratada como jornada parcial. Batidas iguais, horários inválidos ou jornadas ambíguas ficam para revisão. Sem marcações utilizáveis, a escala prevista não preenche o automático.</p></div>
+              <input id="thermal-rest-count" type="hidden" value="0">
             </section>
             <section class="thermal-config-section">
-              <div class="thermal-section-head"><span>2</span><div><strong>Minutos e distribuição</strong><p class="hint">Confira e ajuste os parâmetros usados para montar os horários.</p></div></div>
+              <div class="thermal-section-head"><span>2</span><div><strong>Minutos e distribuição</strong><p class="hint">O cálculo usa o máximo de 100 minutos contínuos e pausas de 20 minutos, dentro da jornada confirmada.</p></div></div>
               <div class="thermal-fields thermal-fields-three">
                 <label>Ciclo de trabalho contínuo (minutos)<input id="thermal-min-work-minutes" type="number" min="100" max="100" value="100" readonly><small>O limite permanece fixado em 100 minutos.</small></label>
                 <label>Limite antes do repouso (minutos)<input id="thermal-work-minutes" type="number" min="100" max="100" value="100" readonly><small>O repouso pode ser antecipado pela distribuição da jornada, sem ultrapassar 100 minutos.</small></label>
-                <label>Duração do repouso (minutos)<input id="thermal-duration-minutes" type="number" min="5" max="60" value="20"><small>Valor utilizado como duração mínima.</small></label>
-                <label>Duração máxima (minutos)<input id="thermal-max-duration-minutes" type="number" min="5" max="60" value="25"><small>Deve ser igual ou maior que a duração mínima.</small></label>
-                <label>Variação dos horários (minutos)<input id="thermal-variation-minutes" type="number" min="0" max="30" value="15"><small>Evita repetir os mesmos horários todos os dias.</small></label>
-                <label>Dias sem repetir a combinação<input id="thermal-cycle-days" type="number" min="1" max="31" value="31"><small>Período usado para variar as combinações.</small></label>
+                <label>Duração do repouso (minutos)<input id="thermal-duration-minutes" type="number" min="20" max="20" value="20" readonly><small>Duração fixa no planejamento automático.</small></label>
+                <input id="thermal-max-duration-minutes" type="hidden" value="20">
+                <input id="thermal-variation-minutes" type="hidden" value="0">
+                <input id="thermal-cycle-days" type="hidden" value="1">
               </div>
             </section>
             <details class="thermal-settings-details">
@@ -2827,17 +2833,17 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.99"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.100"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.92"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.31-beta.18"></script>
-  <script src="/js/report-validator.js?v=1.0.31-beta.17"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.31-beta.100"></script>
+  <script src="/js/report-validator.js?v=1.0.31-beta.100"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
-  <script src="/js/rest-audit.js?v=1.0.31-beta.17"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.99"></script>
+  <script src="/js/rest-audit.js?v=1.0.31-beta.100"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.100"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
-  <script src="/js/settings-system.js?v=1.0.31-beta.88"></script>
+  <script src="/js/settings-system.js?v=1.0.31-beta.100"></script>
   <script src="/js/bh-comparison.js?v=1.0.31-beta.99"></script>
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>

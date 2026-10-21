@@ -16,8 +16,8 @@ const employee = (overrides={}) => ({
 test('regras oficiais permanecem fixadas em 100/20 minutos', () => {
   assert.equal(thermal.REST_AFTER_MINUTES, 100);
   assert.equal(thermal.REST_DURATION_MINUTES, 20);
-  assert.equal(thermal.MAX_REST_DURATION_MINUTES, 25);
-  assert.equal(thermal.MAX_VARIATION_MINUTES, 15);
+  assert.equal(thermal.MAX_REST_DURATION_MINUTES, 20);
+  assert.equal(thermal.MAX_VARIATION_MINUTES, 0);
 });
 
 test('interpreta jornada normal com intervalo de refeição', () => {
@@ -58,20 +58,20 @@ test('sem ponto do dia, geração automática não cria marcação', () => {
   assert.equal(plan.has('1|2026-08-01'), false);
 });
 
-test('jornada normal é limitada a no máximo 3 repousos na geração mensal', () => {
+test('jornada normal mantém todos os repousos para cobrir os dois trechos', () => {
   const e = employee({ point_schedules: { '2026-08-03': '08:00 - 12:00 - 13:00 - 17:00' } });
   const plan = thermal.buildMonthPlan([e], [day('2026-08-03')], { usePointData: true });
   const rests = plan.get('1|2026-08-03');
   assert.ok(rests);
-  assert.ok(rests.length <= 3);
+  assert.equal(rests.length, 4);
   assert.ok(rests.every(rest => rest.duration === 20));
 });
 
-test('hora extra pode liberar o 4º repouso, mas nunca ultrapassa 4', () => {
+test('jornada estendida mantém mais de quatro repousos quando necessário', () => {
   const e = employee({ point_schedules: { '2026-08-04': '08:00 - 12:00 - 13:00 - 20:00' } });
   const plan = thermal.buildMonthPlan([e], [day('2026-08-04')], { usePointData: true });
   const rests = plan.get('1|2026-08-04');
-  assert.equal(rests.length, 4);
+  assert.equal(rests.length, 5);
 });
 
 test('identifica 3º turno por nome ou código Senior 56', () => {

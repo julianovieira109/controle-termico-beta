@@ -1074,6 +1074,8 @@
 
 /* V1.2.2 Beta — horários térmicos discretamente maiores na tela. */
 .thermal-continuation-label{margin:6px 0;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:#f3f6f9;color:#334155;text-align:center;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.thermal-plan-note{margin:4px 0;color:#334155;font-size:10px;line-height:1.2;text-align:center}
+@media print{.thermal-plan-note{margin:1mm 0;font-size:6.2pt;line-height:1.15}}
 .thermal-report-sheet.thermal-rests-4 .col-time{width:7.2%}
 .thermal-report-sheet.thermal-rests-4 .col-signature{width:22%}
 #report-output .thermal-report-table tbody tr:not(.non-work-row) td.thermal-time-cell{
@@ -1100,3 +1102,60 @@
 /* V1.0.31 Beta.11 — competência Senior e período do ponto */
 .report-point-period-field{min-width:220px;flex:1.35 1 260px}
 .report-point-period-field .report-field-value{white-space:nowrap}
+
+/* Keep calculated headers and every continuation inside the thermal sheet. */
+#report-output .thermal-report-sheet .thermal-report-table{table-layout:fixed;width:100%}
+#report-output .thermal-report-sheet .col-date{width:12%!important}
+#report-output .thermal-report-sheet .col-day{width:7%!important}
+#report-output .thermal-report-sheet.thermal-rests-1 .col-time{width:12%!important}
+#report-output .thermal-report-sheet.thermal-rests-1 .col-signature{width:57%!important}
+#report-output .thermal-report-sheet.thermal-rests-2 .col-time{width:10%!important}
+#report-output .thermal-report-sheet.thermal-rests-2 .col-signature{width:41%!important}
+#report-output .thermal-report-sheet.thermal-rests-3 .col-time{width:8.5%!important}
+#report-output .thermal-report-sheet.thermal-rests-3 .col-signature{width:30%!important}
+#report-output .thermal-report-sheet.thermal-rests-4 .col-time{width:7.5%!important}
+#report-output .thermal-report-sheet.thermal-rests-4 .col-signature{width:21%!important}
+#report-output .thermal-report-sheet .thermal-report-table thead th{
+  white-space:normal!important;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+
+@media print{
+  #report-output .thermal-report-sheet{
+    height:auto!important;
+    min-height:289mm!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+  #report-output .thermal-report-sheet .report-field-value{
+    white-space:normal!important;
+    overflow-wrap:anywhere;
+  }
+  #report-output .thermal-report-sheet .thermal-report-table tbody td{
+    box-sizing:border-box!important;
+    height:6.1mm!important;
+    min-height:6.1mm!important;
+    padding:.3mm .55mm!important;
+  }
+  #report-output .month-days-31.thermal-report-sheet .thermal-report-table tbody td{
+    height:5.9mm!important;
+    min-height:5.9mm!important;
+  }
+  #report-output .thermal-report-sheet .thermal-report-table thead tr:nth-child(2) th{
+    padding:.6mm .3mm!important;
+    font-size:5.2pt!important;
+    line-height:1.1!important;
+  }
+  #report-output .thermal-report-sheet .thermal-plan-note{
+    margin:.5mm 0 1mm;
+    font-size:6.2pt;
+    line-height:1.15;
+  }
+  #report-output .thermal-report-sheet .thermal-continuation-label{
+    margin:.7mm 0;
+    padding:.6mm 1mm;
+    font-size:6.4pt;
+    line-height:1.1;
+  }
+}

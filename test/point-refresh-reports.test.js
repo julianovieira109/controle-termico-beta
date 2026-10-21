@@ -31,7 +31,7 @@ test("fichas abertas são invalidadas e regeneradas",()=>{
   const block=ui.slice(start,start+4000);
   assert.match(block,/querySelector\("\.report-sheet"\)/);
   assert.match(block,/output\.innerHTML=""/);
-  assert.match(block,/\$\("report-generate"\)\?\.click\(\)/);
+  assert.match(block,/await \$\("report-generate"\)\?\.onclick\?\.\(\)/);
 });
 test("consultas do ponto não usam cache",()=>{
   assert.match(ui,/_=\$\{Date\.now\(\)\}/);

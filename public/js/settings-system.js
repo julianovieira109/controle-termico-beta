@@ -1155,20 +1155,34 @@ document.addEventListener("keydown",event=>{
   }
 });
 
+const thermalFixedFieldValues={
+  "thermal-min-work-minutes":100,
+  "thermal-work-minutes":100,
+  "thermal-duration-minutes":20,
+  "thermal-max-duration-minutes":20,
+  "thermal-variation-minutes":0,
+  "thermal-cycle-days":1,
+  "thermal-rest-count":0
+};
+
+function renderThermalFixedFields(){
+  Object.entries(thermalFixedFieldValues).forEach(([id,value])=>{
+    const input=$(id);
+    if(!input)return;
+    input.value=String(value);
+    input.readOnly=true;
+  });
+}
+
 async function loadThermalRestSettings(){
   if(!catalogs.shifts.length)await loadCatalogs();
   if(!companies.length)await loadCompanies();
   if(!branches.length)await loadBranches();
   const config=await api("/api/settings/thermal-rest");
   window.thermalRestSettings=config;
+  if(typeof invalidateReportValidation==="function")invalidateReportValidation();
   $("thermal-rest-mode").value=config.mode;
-  $("thermal-min-work-minutes").value=100;
-  $("thermal-work-minutes").value=config.workMinutes;
-  $("thermal-duration-minutes").value=config.restMinutes;
-  $("thermal-max-duration-minutes").value=config.maxRestMinutes;
-  $("thermal-variation-minutes").value=config.variationMinutes;
-  $("thermal-cycle-days").value=config.cycleDays;
-  $("thermal-rest-count").value=config.restCount;
+  renderThermalFixedFields();
   $("thermal-font-size").value=config.fontSizePt;
   renderThermalAuthorization(config);
   document.documentElement.style.setProperty("--thermal-time-font-size",`${config.fontSizePt}pt`);
@@ -1248,11 +1262,12 @@ function renderThermalShiftList(config=window.thermalRestSettings||{}){
   const body=$("thermal-shifts-list");
   if(!body)return;
   body.innerHTML=(catalogs.shifts||[]).map(shift=>{
-    const rests=ThermalSchedule.baseThermalRests(shift.description,config);
+    const parsed=ThermalSchedule.parseShiftPeriods(shift.description);
+    const rests=parsed.valid?ThermalSchedule.baseThermalRests(shift.description,config):[];
     const preview=rests.length
       ?rests.map((rest,index)=>`R${index+1}: ${ThermalSchedule.formatMinutes(rest.start)}–${ThermalSchedule.formatMinutes(rest.end)}`).join(" · ")
-      :"Não foi possível calcular";
-    return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>${escapeHtml(preview)}</td><td>${rests.length>=Number(config.restCount||3)?"Apto":"Revisar horário"}</td></tr>`;
+      :parsed.valid?"Jornada curta: sem repouso calculado":parsed.reason||"Não foi possível calcular";
+    return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>${escapeHtml(preview)}</td><td>${parsed.valid?"Prévia de planejamento":"Revisar horário"}</td></tr>`;
   }).join("")||'<tr><td colspan="5">Nenhum turno cadastrado.</td></tr>';
 }
 
@@ -1263,17 +1278,19 @@ if($("thermal-rest-form"))$("thermal-rest-form").onsubmit=async event=>{
     scopeMode:$("thermal-scope-mode").value,
     authorizedCompanyIds:[],
     authorizedBranchIds:[...document.querySelectorAll("[data-thermal-branch]:checked")].map(input=>input.value),
-    minWorkMinutes:Number($("thermal-min-work-minutes").value),
-    workMinutes:Number($("thermal-work-minutes").value),
-    restMinutes:Number($("thermal-duration-minutes").value),
-    maxRestMinutes:Number($("thermal-max-duration-minutes").value),
-    variationMinutes:Number($("thermal-variation-minutes").value),
-    cycleDays:Number($("thermal-cycle-days").value),
-    restCount:Number($("thermal-rest-count").value),
+    minWorkMinutes:100,
+    workMinutes:100,
+    restMinutes:20,
+    maxRestMinutes:20,
+    variationMinutes:0,
+    cycleDays:1,
+    restCount:0,
     fontSizePt:Number($("thermal-font-size").value)
   };
   const result=await api("/api/settings/thermal-rest",{method:"PUT",body:JSON.stringify({value})});
   window.thermalRestSettings=result.value;
+  if(typeof invalidateReportValidation==="function")invalidateReportValidation();
+  renderThermalFixedFields();
   document.documentElement.style.setProperty("--thermal-time-font-size",`${result.value.fontSizePt}pt`);
   $("thermal-rest-feedback").className="feedback full success";
   $("thermal-rest-feedback").textContent=result.value.mode==="MANUAL"

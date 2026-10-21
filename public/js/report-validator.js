@@ -1,8 +1,11 @@
 (function(root,factory){
-  const api=factory();
+  const api=factory(
+    typeof module==='object'&&module.exports?require('./thermal-schedule.js'):root.ThermalSchedule,
+    ()=>typeof module==='object'&&module.exports?require('./rest-audit.js'):root.RestAudit
+  );
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.ReportValidator=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(ThermalSchedule,getRestAudit){
   function text(value){return String(value??'').trim();}
   function upper(value){return text(value).toUpperCase();}
   function active(employee){return upper(employee?.status)==='ATIVO';}
@@ -27,7 +30,7 @@
     const blockers=[]; const warnings=[]; const ok=[];
     const branchSet=new Set([...pointCompetenceBranches].map(String));
     const missingPointByBranch=new Map();
-    if(!/^\d{4}-\d{2}$/.test(text(month))){
+    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(text(month))){
       blockers.push(issue('blocker','MONTH_REQUIRED','Selecione uma competência válida antes de gerar as fichas.'));
     }
     if(!Array.isArray(employees)||employees.length===0){
@@ -67,8 +70,31 @@
         }
         const schedules=employee.point_schedules&&typeof employee.point_schedules==='object'?employee.point_schedules:{};
         const states=employee.point_states&&typeof employee.point_states==='object'?employee.point_states:{};
-        if(Object.keys(schedules).length===0&&Object.keys(states).length===0){
-          warnings.push(issue('warning','NO_POINT_ROWS',`${name}: a filial possui ponto importado, mas não foram localizados dias deste colaborador na competência.`,employee));
+        const inMonth=date=>String(date).startsWith(`${month}-`);
+        const dates=[...new Set([...Object.keys(schedules),...Object.keys(states)].filter(inMonth))];
+        if(dates.length===0){
+          blockers.push(issue('blocker','NO_POINT_ROWS',`${name}: não há dias de ponto deste colaborador na competência. A escala prevista não pode preencher a ficha automática. Importe e confirme o cartão correspondente.`,employee));
+          continue;
+        }
+        if(!ThermalSchedule?.parsePointPeriods){
+          blockers.push(issue('blocker','THERMAL_MODULE_MISSING','O módulo de cálculo não foi carregado. Atualize a página antes de gerar fichas.',employee));
+          continue;
+        }
+        const invalid=Object.entries(schedules).filter(([date,description])=>inMonth(date)&&!ThermalSchedule.parsePointPeriods(description).valid);
+        if(invalid.length){
+          blockers.push(issue('blocker','INVALID_POINT_SCHEDULE',`${name}: ${invalid.length} dia(s) com marcações inválidas ou ambíguas (${invalid.map(([date])=>date.split('-').reverse().join('/')).join(', ')}). Confira a Senior e reimporte o ponto; nenhum horário será inventado.`,employee));
+          continue;
+        }
+        const pending=dates.filter(date=>['REVIEW','NO_MARKINGS'].includes(upper(states[date]))||(upper(states[date])==='WORKED'&&!schedules[date]));
+        if(pending.length){
+          warnings.push(issue('warning','POINT_DAYS_PENDING',`${name}: ${pending.length} dia(s) sem jornada utilizável ou aguardando revisão. Esses dias serão sinalizados na ficha, sem repousos automáticos.`,employee));
+        }
+        if(/^\d{4}-(0[1-9]|1[0-2])$/.test(text(month))){
+          const [year,monthNumber]=month.split('-').map(Number);
+          const total=new Date(Date.UTC(year,monthNumber,0)).getUTCDate();
+          const admission=text(employee.admission_date).slice(0,10),termination=text(employee.termination_date).slice(0,10);
+          const expected=Array.from({length:total},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`).filter(date=>(!admission||date>=admission)&&(!termination||date<=termination));
+          if(expected.some(date=>!dates.includes(date)))warnings.push(issue('warning','POINT_PARTIAL_COVERAGE',`${name}: há datas da competência sem ponto importado. A ficha indicará os dias sem informação e não completará a jornada pela escala.`,employee));
         }
       }
       ok.push({employeeId:employee.id??null,employeeName:name});
@@ -88,5 +114,26 @@
       counts:{employees:employees.length,blockers:blockers.length,warnings:warnings.length,ok:ok.length}
     };
   }
-  return {validate,active,policyAllows,automaticAllowed};
+  function validatePlan({employees=[],monthDays=[],plan=new Map()}={}){
+    const blockers=[];
+    const audit=getRestAudit();
+    if(!audit?.auditDay){
+      blockers.push(issue('blocker','THERMAL_AUDIT_MISSING','A conferência do cálculo não foi carregada. Atualize a página antes de gerar fichas.'));
+      return {valid:false,blockers};
+    }
+    for(const employee of employees){
+      for(const day of monthDays){
+        const description=employee.point_schedules?.[day.iso];
+        const state=employee.point_states?.[day.iso];
+        if(!description||(state&&state!=='WORKED'))continue;
+        const result=audit.auditDay(description,plan.get(`${employee.id}|${day.iso}`)||[],employee.shift_description||'');
+        if(!result.valid){
+          const reason=result.issues?.map(item=>item.message).join(' ')||'O cálculo não passou pela conferência completa.';
+          blockers.push(issue('blocker','THERMAL_PLAN_INVALID',`${text(employee.full_name)||'Colaborador'} — ${day.iso.split('-').reverse().join('/')}: ${reason}`,employee));
+        }
+      }
+    }
+    return {valid:blockers.length===0,blockers};
+  }
+  return {validate,validatePlan,active,policyAllows,automaticAllowed};
 });

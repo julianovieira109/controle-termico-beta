@@ -227,9 +227,10 @@ if($("holiday-types-save"))$("holiday-types-save").onclick=async()=>{
 let reportEmployees=[];
 let pointImportPreview=null;
 let pointDataActive=false;
+let thermalSettingsLoaded=false;
 let pointCompetenceBranches=new Set();
 let pointCompetenceInfo={month:null,imports:[]};
-window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:100,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+window.thermalRestSettings={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:100,workMinutes:100,restMinutes:20,maxRestMinutes:20,variationMinutes:0,cycleDays:1,restCount:0,fontSizePt:7.2};
 
 function thermalAutomaticAllowed(employee,config=window.thermalRestSettings||{}){
   if(!["AUTOMATIC","AUTOMATIC_AND_BLANK"].includes(config.mode))return false;
@@ -419,12 +420,17 @@ function reportHeader(employee,title,month){
     </div>`;
 }
 
-function dayStatus(employee,d){
+function employmentDayStatus(employee,d){
   const admission=employee.admission_date?String(employee.admission_date).slice(0,10):null;
   const termination=employee.termination_date?String(employee.termination_date).slice(0,10):null;
   if(admission&&d.iso<admission)return "NÃO ADMITIDO";
   if(termination&&d.iso>termination)return "DESLIGADO";
+  return "";
+}
 
+function dayStatus(employee,d){
+  const employmentStatus=employmentDayStatus(employee,d);
+  if(employmentStatus)return employmentStatus;
   const weeklyOff=(employee.weekly_days_off||[]).includes(d.weekDay);
   const specific=(employee.specific_days_off||[]).find(x=>String(x.date).slice(0,10)===d.iso);
   const holiday=holidays.find(h=>String(h.holiday_date).slice(0,10)===d.iso &&
@@ -438,25 +444,29 @@ function dayStatus(employee,d){
 
 function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
   const days=reportThermalDays(employee,month);
-  const maximumRests=Math.min(4,Math.max(0,...days.map(day=>(thermalPlan?.get(`${employee.id}|${day.iso}`)||[]).length)));
+  const automatic=thermalAutomaticAllowed(employee,thermalRestSettings);
+  const maximumRests=blankCopy||!automatic?4:Math.max(0,...days.map(day=>(thermalPlan?.get(`${employee.id}|${day.iso}`)||[]).length));
   const restsPerPage=4;
-  const pageCount=1;
+  const pageCount=Math.max(1,Math.ceil(maximumRests/restsPerPage));
   const pointLabels={DSR:"DSR",FERIADO:"FERIADO",FOLGA:"FOLGA / SEM JORNADA",FERIAS:"FÉRIAS",FALTA:"FALTA",ATESTADO:"ATESTADO",LICENCA:"LICENÇA",SUSPENSAO:"SUSPENSÃO",AFASTAMENTO:"AFASTAMENTO",COMPENSADO:"COMPENSADO",CURSO:"CURSO",OBITO:"ÓBITO FAMILIAR",REVIEW:"REVISAR MARCAÇÕES DO PONTO",NO_MARKINGS:"SEM MARCAÇÕES"};
   return Array.from({length:pageCount},(_,pageIndex)=>{
     const offset=pageIndex*restsPerPage;
     const slots=pageIndex===pageCount-1&&maximumRests>offset?Math.min(restsPerPage,maximumRests-offset):restsPerPage;
     const rows=days.map(d=>{
       const pointState=employee.point_states?.[d.iso];
-      const allRests=(thermalPlan?.get(`${employee.id}|${d.iso}`)||[]).slice(0,4);
+      const allRests=automatic?(thermalPlan?.get(`${employee.id}|${d.iso}`)||[]):[];
       // Cópia manual: deliberadamente NÃO consulta point_states, feriados, férias,
       // faltas, atestados, DSR ou qualquer outra ocorrência do ponto.
       // Somente folgas previamente configuradas podem ser pré-marcadas.
       let status=blankCopy
         ?BlankCopyStatus.status(employee,d)
-        :(pointDataActive
-          ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":dayStatus(employee,d)||"PONTO NÃO IMPORTADO")
+        :(automatic
+          ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":employmentDayStatus(employee,d)||"PONTO NÃO IMPORTADO")
           :dayStatus(employee,d));
-      if(!blankCopy&&pointDataActive&&pointState==="WORKED"&&!allRests.length)status="JORNADA ABAIXO DO MÍNIMO PARA REPOUSO";
+      if(!blankCopy&&automatic&&pointState==="WORKED"&&!allRests.length){
+        const parsed=ThermalSchedule.parsePointPeriods(employee.point_schedules?.[d.iso]||"");
+        status=parsed.valid?"SEM REPOUSO NECESSÁRIO NESTA JORNADA":"REVISAR MARCAÇÕES DO PONTO";
+      }
       if(status)return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="${slots*2+1}">${escapeHtml(status)}</td></tr>`;
       const rests=blankCopy?[]:allRests.slice(offset,offset+slots);
       const generated=rests.map(rest=>`<td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.start)}</td><td class="thermal-time-cell">${ThermalSchedule.formatMinutes(rest.end)}</td>`).join("");
@@ -464,8 +474,8 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
       return `<tr><td>${d.br}</td><td>${d.weekName}</td>${cells}<td class="signature-cell"></td></tr>`;
     }).join("");
     const restHeaders=Array.from({length:slots},(_,index)=>`<th class="print-head" colspan="2">Repouso ${offset+index+1}</th>`).join("");
-    const subHeaders='<th class="print-head">Saída</th><th class="print-head">Retorno</th>'.repeat(slots);
-    const copyLabel=blankCopy?'<div class="thermal-continuation-label">Cópia para preenchimento manual</div>':"";
+    const subHeaders=(blankCopy||!thermalAutomaticAllowed(employee,thermalRestSettings)?'<th class="print-head">Saída</th><th class="print-head">Retorno</th>':'<th class="print-head">Saída calculada</th><th class="print-head">Retorno calculado</th>').repeat(slots);
+    const copyLabel=blankCopy?'<div class="thermal-continuation-label">Cópia para preenchimento manual</div>':thermalAutomaticAllowed(employee,thermalRestSettings)?'<div class="thermal-plan-note">Planejamento calculado pelas marcações do ponto. A realização dos repousos precisa de conferência e registro.</div>':"";
     const continuation=pageCount>1?`<div class="thermal-continuation-label">${pageIndex===0?"Página principal":`Continuação ${pageIndex+1} de ${pageCount}`} — repousos ${offset+1} a ${offset+slots}</div>`:"";
     const reportType=blankCopy?"thermal-blank":"thermal";
     return `<section class="report-sheet thermal-report-sheet thermal-rests-${slots} month-days-${days.length}" data-report-type="${reportType}" data-employee-id="${escapeHtml(employee.id)}" data-employee-name="${escapeHtml(employee.full_name)}">
@@ -577,18 +587,20 @@ function invalidateReportHolidayCache(year=null){
 }
 
 async function prepareReports(){
+  invalidateReportValidation();
   if(!companies.length)await loadCompanies();
   if(!branches.length)await loadBranches();
   if(!catalogs.shifts.length) await loadCatalogs();
-  try{window.thermalRestSettings=await api("/api/settings/thermal-rest");}catch{}
+  thermalSettingsLoaded=false;
+  try{window.thermalRestSettings=await api("/api/settings/thermal-rest");thermalSettingsLoaded=true;}catch{}
   document.documentElement.style.setProperty("--thermal-time-font-size",`${Number(thermalRestSettings.fontSizePt||7.2)}pt`);
-  if($("report-thermal-mode-note"))$("report-thermal-mode-note").innerHTML=thermalRestSettings.mode==="MANUAL"
+  if($("report-thermal-mode-note"))$("report-thermal-mode-note").innerHTML=!thermalSettingsLoaded?"Não foi possível carregar as configurações. A geração está bloqueada; atualize a página para tentar novamente.":thermalRestSettings.mode==="MANUAL"
     ?"<strong>Repouso térmico manual:</strong> os campos serão gerados em branco. Altere em Configurações → Repouso automático."
     :thermalRestSettings.mode==="AUTOMATIC_AND_BLANK"
       ?"<strong>Automático + cópia manual:</strong> cada ficha automática completa será seguida de uma cópia sem horários e sem ocorrências do ponto, mantendo as folgas configuradas no sistema."
     :thermalRestSettings.scopeMode==="SELECTED"
       ?"<strong>Repouso térmico autorizado por empresa e filial:</strong> somente colaboradores dentro da autorização receberão horários automáticos. Os demais terão os campos em branco. A refeição permanece manual."
-      :"<strong>Repouso térmico automático:</strong> os horários serão preenchidos para todas as empresas e filiais conforme as regras de Configurações. A refeição permanece manual.";
+      :"<strong>Repouso térmico automático:</strong> o planejamento usa somente marcações confirmadas, com repousos de 20 minutos e trechos de até 100 minutos. A realização das pausas exige conferência e registro. A refeição permanece manual.";
 
   reportEmployees=(await api("/api/reports/employees"))
     .filter(employeeCanGenerateReports);
@@ -1070,6 +1082,8 @@ async function refreshReportsAfterPointImport(importResult){
   const period=importResult?.period||null;
   const coveredMonths=monthsCoveredByPeriod(period);
   const currentMonth=$("report-month")?.value||"";
+  const output=$("report-output");
+  const hadGeneratedSheets=Boolean(output?.querySelector(".report-sheet"));
 
   invalidateReportValidation();
 
@@ -1084,9 +1098,6 @@ async function refreshReportsAfterPointImport(importResult){
 
   await applyPointDataToEmployees(currentMonth);
 
-  const output=$("report-output");
-  const hadGeneratedSheets=Boolean(output?.querySelector(".report-sheet"));
-
   if(hadGeneratedSheets){
     output.innerHTML="";
     const summary=$("report-generation-summary");
@@ -1095,8 +1106,8 @@ async function refreshReportsAfterPointImport(importResult){
       summary.textContent=`Cartão de Ponto atualizado (${formatApiDate(period.start)} a ${formatApiDate(period.end)}). Recalculando a competência ${reportMonthLabel(currentMonth)}...`;
     }
     await new Promise(resolve=>setTimeout(resolve,0));
-    $("report-generate")?.click();
-    return {importedMonth,coveredMonths,regenerated:true};
+    await $("report-generate")?.onclick?.();
+    return {importedMonth,coveredMonths,regenerated:lastReportValidation?.valid===true&&lastReportValidation?.generated===true};
   }
 
   const summary=$("report-generation-summary");
@@ -1226,6 +1237,10 @@ async function loadPointImportHistory(){
 }
 
 async function applyPointDataToEmployees(month){
+  pointDataActive=false;
+  pointCompetenceBranches=new Set();
+  pointCompetenceInfo={month:null,imports:[]};
+  reportEmployees.forEach(employee=>{employee.point_schedules={};employee.point_states={};});
   const [rows,competence]=await Promise.all([
     api(`/api/reports/point-days?month=${encodeURIComponent(month)}&_=${Date.now()}`),
     api(`/api/reports/point-competence?month=${encodeURIComponent(month)}&_=${Date.now()}`)
@@ -1384,6 +1399,8 @@ let lastReportValidation=null;
 
 function invalidateReportValidation(){
   lastReportValidation=null;
+  if($("report-output"))$("report-output").innerHTML="";
+  closePrintCenter();
   const panel=$("report-validation-panel");
   const toggle=$("report-validation-toggle");
   if(panel)panel.hidden=true;
@@ -1415,6 +1432,7 @@ if($("report-validation-toggle"))$("report-validation-toggle").onclick=()=>{
 function renderReportValidation(result,month){
   const panel=$("report-validation-panel");
   if(!panel)return;
+  if(lastReportValidation)lastReportValidation.summary=`Validação: ${result.counts.ok} aptos · ${result.counts.warnings} avisos · ${result.counts.blockers} bloqueios — Ver detalhes`;
   panel.classList.remove("is-ok","has-warning","has-blocker");
   const hasBlocker=result.blockers.length>0;
   const hasWarning=result.warnings.length>0;
@@ -1466,33 +1484,12 @@ function simulatorParseMarkings(description=""){
 }
 
 function simulatorTimelineSegments(employee,day,rests=[]){
-  const markings=simulatorParseMarkings(employee.point_schedules?.[day.iso]||"");
-  if(markings.length<2)return {markings,segments:[]};
-
-  const toMinutes=value=>{
-    const [h,m]=String(value).split(":").map(Number);
-    return h*60+m;
-  };
-  let values=markings.map(toMinutes);
-  for(let i=1;i<values.length;i++){
-    while(values[i]<=values[i-1])values[i]+=1440;
-  }
-
-  const segments=[];
-  const addWork=(start,end,label)=>{
-    if(end>start)segments.push({type:"work",start,end,label});
-  };
-  const addBreak=(start,end,label,type="meal")=>{
-    if(end>start)segments.push({type,start,end,label});
-  };
-
-  if(values.length===2){
-    addWork(values[0],values[1],"Jornada");
-  }else{
-    addWork(values[0],values[1],"Trabalho");
-    addBreak(values[1],values[2],"Refeição","meal");
-    addWork(values[2],values[3],"Trabalho");
-  }
+  const parsed=ThermalSchedule.parsePointPeriods(employee.point_schedules?.[day.iso]||"");
+  const markings=parsed.markings;
+  if(!parsed.valid)return {markings,segments:[]};
+  const segments=parsed.periods.map(period=>({...period,type:"work",label:"Trabalho"}));
+  if(parsed.meal)segments.push({...parsed.meal,type:"meal",label:"Refeição"});
+  segments.sort((a,b)=>a.start-b.start);
 
   // Split work segments around rests, preserving meal.
   let finalSegments=[];
@@ -1523,7 +1520,7 @@ function simulatorFormatDuration(start,end){
 }
 
 function renderReportSimulator(employee,day,plan){
-  const rests=(plan?.get(`${employee.id}|${day.iso}`)||[]).slice(0,4);
+  const rests=plan?.get(`${employee.id}|${day.iso}`)||[];
   const {markings,segments}=simulatorTimelineSegments(employee,day,rests);
   const message=$("report-simulator-message");
   const timeline=$("report-simulator-timeline");
@@ -1584,11 +1581,13 @@ function renderReportSimulator(employee,day,plan){
       rests,
       employee.shift_description||""
     );
+    if(!audit.valid){message.className="report-simulator-message warning";message.textContent="O planejamento precisa de revisão. Confira os intervalos indicados abaixo.";}
     const summaryCards=[
       `<article><span>Regra aplicada</span><strong>${audit.ruleWorkMinutes} min contínuos</strong><small>limite de trabalho contínuo</small></article>`,
       `<article><span>Duração-base</span><strong>${audit.ruleRestMinutes} min</strong><small>por repouso calculado</small></article>`,
       `<article><span>Fonte do cálculo</span><strong>Cartão de ponto</strong><small>${audit.markings.length} marcação(ões) utilizada(s)</small></article>`,
-      `<article><span>Limite diário</span><strong>até ${audit.dailyLimit} repouso(s)</strong><small>${audit.overtimeMinutes>0?`${audit.overtimeMinutes} min extras identificados`:"sem acréscimo por hora extra"}</small></article>`
+      `<article><span>Maior trecho contínuo</span><strong>${audit.maxContinuousMinutes??"—"} min</strong><small>inclui o trecho após a última pausa</small></article>`,
+      `<article><span>Conferência do planejamento</span><strong>${audit.valid?"Conferido":"Revisar"}</strong><small>${audit.restCount} repouso(s) calculado(s), sem teto diário artificial</small></article>`
     ].join("");
 
     const restRows=audit.items.length
@@ -1600,8 +1599,8 @@ function renderReportSimulator(employee,day,plan){
           </div>
           <dl>
             <div><dt>Trecho do ponto</dt><dd>${item.periodLabel}</dd></div>
-            <div><dt>Trabalho antes</dt><dd>${item.continuousBefore} min</dd></div>
-            <div><dt>Duração</dt><dd>${item.duration} min</dd></div>
+            <div><dt>Trabalho antes</dt><dd>${item.continuousBefore??"—"} min</dd></div>
+            <div><dt>Duração</dt><dd>${item.duration??"—"} min</dd></div>
             <div><dt>Contagem</dt><dd>reinicia após o repouso</dd></div>
           </dl>
           <p>${escapeHtml(item.explanation)}</p>
@@ -1614,17 +1613,20 @@ function renderReportSimulator(employee,day,plan){
 
     auditContainer.innerHTML=`
       <div class="rest-audit-heading">
-        <div><span class="eyebrow">V1.0.27 · Auditoria explicativa</span><h5>Por que cada repouso foi gerado?</h5></div>
+        <div><span class="eyebrow">Conferência completa do planejamento</span><h5>Por que cada repouso foi gerado?</h5></div>
         <small>Somente leitura — nenhuma regra ou horário é alterado aqui.</small>
       </div>
       <div class="rest-audit-summary">${summaryCards}</div>
       ${mealNote}
+      ${audit.issues.length?`<div class="rest-audit-item review"><strong>Revisar antes de gerar</strong><ul>${audit.issues.map(item=>`<li>${escapeHtml(item.message)}</li>`).join("")}</ul></div>`:""}
+      <p class="hint">Esta conferência verifica os horários calculados. A realização das pausas precisa de registro próprio.</p>
       <div class="rest-audit-list">${restRows}</div>`;
   }
 }
 
 async function openReportSimulator(){
   const month=$("report-month")?.value;
+  if(!thermalSettingsLoaded)return toast("Atualize a página para carregar as configurações antes de conferir o repouso.","warning");
   if(!month)return toast("Selecione o mês de referência.","warning");
   if($("report-all-employees")?.checked){
     return toast("Para simular, selecione apenas um colaborador.","warning");
@@ -1641,7 +1643,7 @@ async function openReportSimulator(){
   const monthDays=reportThermalDays(employee,month);
   const plan=ThermalSchedule.buildMonthPlan([employee],monthDays,{
     ...thermalRestSettings,
-    usePointData:pointDataActive
+    usePointData:true
   });
   const available=monthDays.filter(day=>employee.point_schedules?.[day.iso]);
 
@@ -1681,9 +1683,15 @@ $("report-generate").onclick=async()=>{
   const month=$("report-month").value;
   const all=$("report-all-employees").checked;
   const summary=$("report-generation-summary");
+  invalidateReportValidation();
   summary.className="full feedback";
   summary.textContent="";
   showReportSkippedDetails([]);
+  if(!thermalSettingsLoaded){
+    summary.className="full feedback error";
+    summary.textContent="A geração está bloqueada porque as configurações não foram carregadas. Atualize a página para tentar novamente.";
+    return;
+  }
 
   if(!month){
     alert("Selecione o mês de referência.");
@@ -1793,19 +1801,30 @@ $("report-generate").onclick=async()=>{
       alert(
         `RELATÓRIO AUTOMÁTICO BLOQUEADO\n\n`+
         `Não existe Cartão de Ponto confirmado da competência ${competence} para: ${missingBranches.join(", ")}.\n\n`+
-        `Importe o PDF correto em Configurações → Repouso automático ou altere o modo para Manual.`
+        `Importe e confirme o PDF correto em Importações → Cartão de Ponto.`
       );
       return;
     }
   }
 
-  const automaticEmployees=reportEmployees.filter(employee=>
-    thermalAutomaticAllowed(employee,thermalRestSettings)&&pointCompetenceBranches.has(String(employee.branch_id))
+  const automaticEmployees=selectedEmployees.filter(employee=>
+    reportPolicyAllows(employee.report_policy,"thermal")&&thermalAutomaticAllowed(employee,thermalRestSettings)&&pointCompetenceBranches.has(String(employee.branch_id))
   );
   const monthDays=reportPlanningDays(automaticEmployees,month);
   const thermalPlan=automaticEmployees.length
-    ?ThermalSchedule.buildMonthPlan(automaticEmployees,monthDays,{...thermalRestSettings,usePointData:pointDataActive})
+    ?ThermalSchedule.buildMonthPlan(automaticEmployees,monthDays,{...thermalRestSettings,usePointData:true})
     :new Map();
+  const checkedPlan=ReportValidator.validatePlan({employees:automaticEmployees,monthDays,plan:thermalPlan});
+  if(!checkedPlan.valid){
+    validation.blockers.push(...checkedPlan.blockers);
+    validation.valid=false;
+    validation.counts.blockers=validation.blockers.length;
+    lastReportValidation.valid=false;
+    renderReportValidation(validation,month);
+    summary.className="full feedback error";
+    summary.textContent="A conferência do cálculo bloqueou a ficha automática. Confira os detalhes antes de gerar novamente.";
+    return;
+  }
   let html="";
   let thermalCount=0;
   let thermalAutomaticCount=0;
@@ -1884,7 +1903,7 @@ function updatePrintCenterSummary(){
   if(feedback){
     feedback.className=`feedback ${matches.length?"":"warning"}`;
     feedback.textContent=matches.length
-      ?`${matches.length} ficha(s) selecionada(s) para impressão.`
+      ?`${matches.length} folha(s) selecionada(s) para impressão, incluindo continuações.`
       :"Nenhuma ficha corresponde à seleção atual.";
   }
 }
@@ -1999,7 +2018,7 @@ if($("print-center-select-all"))$("print-center-select-all").onclick=()=>{
 
 if($("print-center-confirm"))$("print-center-confirm").onclick=event=>{
   if(event && event.isTrusted===false)return;
-  if(reportPrintInProgress)return;
+  if(reportPrintInProgress||!validateReportPrint())return;
 
   const matches=printCenterMatchingSheets();
   if(!matches.length){

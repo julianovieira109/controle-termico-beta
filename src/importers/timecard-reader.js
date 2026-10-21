@@ -101,6 +101,24 @@ function minutesBetweenPairs(markings){
   return total;
 }
 
+// A mesma data do cartão pode conter uma virada de meia-noite, mas nunca
+// transforma batidas iguais ou uma sequência de mais de um dia em jornada.
+function markingsAllowThermalRest(markings){
+  if(![2,4].includes(markings.length))return false;
+  if(markings.some(value=>!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)))return false;
+  const values=markings.map(value=>{
+    const [hour,minute]=value.split(":").map(Number);
+    return hour*60+minute;
+  });
+  let dayOffset=0;
+  for(let index=1;index<values.length;index++){
+    if(values[index]===values[index-1])return false;
+    if(values[index]<values[index-1])dayOffset+=1440;
+    if(values[index]+dayOffset-values[0]>=1440)return false;
+  }
+  return true;
+}
+
 function hhmmDuration(minutes){
   return `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
 }
@@ -240,7 +258,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   const rawTail=head[3];
   const explicitColumns=parseExplicitColumns(rawTail);
   const tail=explicitColumns?explicitColumns.base:rawTail;
-  const codeMatch=tail.match(/(\d{4})\s+(?=(?:[0-2]\d:[0-5]\d|BH\b|DSR\b|FERIADO\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|REDU[ÇC][ÃA]O\s+AVISO\b|DEMITIDO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|AUX[ÍI]LIO\s+DOEN[ÇC]A|TRABALHANDO\b|JORNADA\s+INCOMPLETA\b|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
+  const codeMatch=tail.match(/(\d{4})\s+(?=(?:\d{1,3}:\d{2}|BH\b|DSR\b|FERIADO\b|F[ÉE]RIAS\b|FALTAS?\b|ATESTADO\b|COMPENSADO\b|CURSO\b|REDU[ÇC][ÃA]O\s+AVISO\b|DEMITIDO\b|[ÓO]BITO\b|LICEN|SUSPENS|AFAST|AUX[ÍI]LIO\s+DOEN[ÇC]A|TRABALHANDO\b|JORNADA\s+INCOMPLETA\b|ADICIONAL\s+NOTURNO\b|SA[ÍI]DA\s+INTERMEDI[ÁA]RIA))(.*)$/i);
   if(!codeMatch)return null;
   const scheduleCode=codeMatch[1];
   const payload=clean(codeMatch[2]);
@@ -252,7 +270,10 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   ].filter(index=>index>=0).sort((a,b)=>a-b)[0];
   const markingPart=firstEventIndex===undefined?payload:payload.slice(0,firstEventIndex);
   const rawMarkings=markingPart.match(/(?:[01]\d|2[0-3]):[0-5]\d/g)||[];
-  const reportedMarkings=rawMarkings.slice(0,8);
+  // Mantém inclusive relógios inválidos na origem para revisão, em vez de
+  // descartá-los e interpretar somente as batidas restantes como um par.
+  // A contagem estrita anterior continua alimentando a normalização do BH.
+  const reportedMarkings=markingPart.match(/\b\d{1,3}:\d{2}\b/g)||[];
   let occurrence=payload.replace(markingPart,"").trim()||null;
   let markings=reportedMarkings.slice();
   let ignoredMarkings=[];
@@ -312,6 +333,8 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     &&ignoredMarkings.length===0&&markings[0]!==markings[1];
   const confirmedTwoMarkSchedule=markings.length===2&&plannedMarkings.length===2;
   const confirmedPartial=markings.length===2&&(earlyExit||partialFromOdd);
+  const validRestMarkings=markingsAllowThermalRest(markings)
+    &&reportedMarkings.every(value=>/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value));
   let state="WORKED";
 
   // Beta.86 — a classificação explícita da Senior sempre prevalece sobre a
@@ -323,6 +346,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
   if(statusMatch)state=statusMatch[0];
   else if(seniorIncompleteJourney)state="REVIEW";
   else if(markings.length===0)state="NO_MARKINGS";
+  else if(!validRestMarkings)state="REVIEW";
   else if(markings.length!==4&&!confirmedPartial&&!confirmedTwoMarkSchedule&&!confirmedTwoMarkSpan)state="REVIEW";
 
   // Beta.83: a fila do DP diferencia falha de leitura de uma exceção já
@@ -343,7 +367,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     date:isoDate(head[1],period.start,period.end),
     weekDay:head[2].toUpperCase(),
     scheduleCode,
-    markings:markings.slice(0,8),
+    markings,
     reportedMarkings,
     reportedMarkingsCount:reportedMarkings.length,
     ignoredMarkings,
@@ -355,7 +379,7 @@ function parseDayLine(line,period,scheduleDefinitions=new Map()){
     hourlyMedical,
     explicitEarlyExit,
     requiresReview,
-    eligibleForAutomaticRest:state==="WORKED"&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule||confirmedTwoMarkSpan),
+    eligibleForAutomaticRest:state==="WORKED"&&validRestMarkings&&(markings.length===4||confirmedPartial||confirmedTwoMarkSchedule||confirmedTwoMarkSpan),
     workMinutes:explicitColumns?.workMinutes??null,
     bhNegativeMinutes:explicitColumns?negativeNormalization.minutes:null,
     bhNegativeRawMinutes:explicitColumns?.bhNegativeRawMinutes??null,

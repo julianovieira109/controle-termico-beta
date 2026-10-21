@@ -36,9 +36,9 @@ test('matrícula ausente é sinalizada como aviso',()=>{
   assert.equal(r.valid,true); assert.ok(r.warnings.some(x=>x.code==='NO_REGISTRATION'));
 });
 
-test('filial com competência mas colaborador sem linhas de ponto gera aviso',()=>{
+test('filial com competência mas colaborador sem linhas de ponto bloqueia automático',()=>{
   const r=validator.validate({month:'2026-08',employees:[employee({point_schedules:{},point_states:{}})],thermalConfig:cfg,pointCompetenceBranches:['10']});
-  assert.equal(r.valid,true); assert.ok(r.warnings.some(x=>x.code==='NO_POINT_ROWS'));
+  assert.equal(r.valid,false); assert.ok(r.blockers.some(x=>x.code==='NO_POINT_ROWS'));
 });
 
 

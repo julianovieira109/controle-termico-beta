@@ -1,126 +1,127 @@
 (function(root,factory){
-  const api=factory();
+  const thermal=typeof module==="object"&&module.exports?require("./thermal-schedule.js"):root.ThermalSchedule;
+  const api=factory(thermal);
   if(typeof module==="object"&&module.exports)module.exports=api;
   root.RestAudit=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+})(typeof globalThis!=="undefined"?globalThis:this,function(ThermalSchedule){
   const RULE_WORK_MINUTES=100;
   const RULE_REST_MINUTES=20;
 
-  function clockToMinutes(value){
-    const match=String(value||"").match(/^(\d{1,2}):(\d{2})$/);
-    if(!match)return null;
-    const h=Number(match[1]),m=Number(match[2]);
-    if(h>23||m>59)return null;
-    return h*60+m;
-  }
-
   function formatMinutes(value){
-    const normalized=((Number(value)%1440)+1440)%1440;
+    if(!Number.isSafeInteger(value))return "Horário inválido";
+    const normalized=((value%1440)+1440)%1440;
     return `${String(Math.floor(normalized/60)).padStart(2,"0")}:${String(normalized%60).padStart(2,"0")}`;
   }
 
-  function markingsFrom(description=""){
-    return String(description||"").match(/(?:[01]?\d|2[0-3]):[0-5]\d/g)||[];
+  function normalizedPointPeriods(description=""){
+    return ThermalSchedule.parsePointPeriods(description);
   }
 
-  function normalizedPointPeriods(description=""){
-    const markings=markingsFrom(description);
-    if(markings.length!==2&&markings.length!==4)return {markings,periods:[]};
-    const values=markings.map(clockToMinutes);
-    if(values.some(v=>v===null))return {markings,periods:[]};
-    const normalized=[values[0]];
-    for(let i=1;i<values.length;i++){
-      let value=values[i];
-      while(value<normalized[i-1])value+=1440;
-      normalized.push(value);
-    }
-    if(markings.length===2){
-      return {markings,periods:[{start:normalized[0],end:normalized[1],kind:"work"}]};
-    }
-    return {
-      markings,
-      periods:[
-        {start:normalized[0],end:normalized[1],kind:"work"},
-        {start:normalized[2],end:normalized[3],kind:"work"}
-      ],
-      meal:{start:normalized[1],end:normalized[2]}
-    };
+  function markingsFrom(description=""){
+    return normalizedPointPeriods(description).markings;
   }
 
   function workedMinutes(periods=[]){
-    return periods.reduce((sum,p)=>sum+Math.max(0,p.end-p.start),0);
+    return periods.reduce((sum,p)=>sum+p.end-p.start,0);
   }
 
-  function registeredWorkedMinutes(description=""){
-    const parsed=normalizedPointPeriods(description);
-    return workedMinutes(parsed.periods);
+  function requiredRests(period){
+    return Math.max(0,Math.ceil((period.end-period.start-RULE_WORK_MINUTES)/(RULE_WORK_MINUTES+RULE_REST_MINUTES)));
   }
 
+  // Validate the received timetable directly. Do not regenerate it or compare it
+  // with the generator's output: a second implementation must catch omissions.
   function auditDay(pointDescription="",rests=[],registeredDescription=""){
     const parsed=normalizedPointPeriods(pointDescription);
-    const safeRests=(Array.isArray(rests)?rests:[])
-      .filter(r=>Number.isFinite(Number(r.start))&&Number.isFinite(Number(r.end)))
-      .map(r=>({...r,start:Number(r.start),end:Number(r.end)}))
-      .sort((a,b)=>a.start-b.start);
-
-    const actualWorked=workedMinutes(parsed.periods);
-    const registeredWorked=registeredWorkedMinutes(registeredDescription);
-    const overtimeMinutes=registeredWorked>0?Math.max(0,actualWorked-registeredWorked):0;
-    const dailyLimit=Math.min(4,3+Math.floor(overtimeMinutes/RULE_WORK_MINUTES));
-
-    const items=safeRests.map((rest,index)=>{
-      const period=parsed.periods.find(p=>rest.start>=p.start&&rest.start<=p.end)||
-        parsed.periods.find(p=>rest.end>=p.start&&rest.end<=p.end)||null;
-      const priorInPeriod=safeRests
-        .slice(0,index)
-        .filter(r=>period&&r.start>=period.start&&r.end<=period.end)
-        .pop();
-      const workStart=priorInPeriod?priorInPeriod.end:(period?.start??rest.start);
-      const continuousBefore=Math.max(0,rest.start-workStart);
-      const duration=Math.max(0,rest.end-rest.start);
-      const withinPeriod=!!period&&rest.start>=period.start&&rest.end<=period.end;
+    const registered=normalizedPointPeriods(registeredDescription);
+    const periods=parsed.valid?parsed.periods:[];
+    const actualWorked=parsed.valid?workedMinutes(periods):null;
+    const registeredWorked=registered.valid?workedMinutes(registered.periods):0;
+    const overtimeMinutes=actualWorked!==null&&registeredWorked>0?Math.max(0,actualWorked-registeredWorked):0;
+    const issues=[];
+    const addIssue=(code,message,details={})=>issues.push({code,message,...details});
+    if(!parsed.valid)addIssue("INVALID_POINT",parsed.reason||"As marcações do ponto não delimitam uma jornada válida.");
+    if(!Array.isArray(rests))addIssue("INVALID_RESTS","A lista de repousos recebida é inválida.");
+    const received=Array.isArray(rests)?Array.from(rests):[rests];
+    const items=received.map((rest,index)=>{
+      const start=Number.isSafeInteger(rest?.start)?rest.start:null;
+      const end=Number.isSafeInteger(rest?.end)?rest.end:null;
+      const validRange=start!==null&&end!==null&&end>start;
+      const duration=validRange?end-start:null;
+      const periodIndex=validRange?periods.findIndex(p=>start>=p.start&&end<=p.end):-1;
+      const period=periods[periodIndex];
+      const withinPeriod=periodIndex>=0;
       const durationConform=duration===RULE_REST_MINUTES;
+      if(!validRange)addIssue("INVALID_REST",`Repouso ${index+1}: os horários precisam ser minutos inteiros, com retorno após a saída.`,{restIndex:index+1});
+      else{
+        if(!durationConform)addIssue("INVALID_REST_DURATION",`Repouso ${index+1}: duração de ${duration} minutos; a regra adotada exige ${RULE_REST_MINUTES}.`,{restIndex:index+1,duration});
+        if(!withinPeriod)addIssue("REST_OUTSIDE_WORK",`Repouso ${index+1}: os horários não estão inteiramente dentro de um trecho válido do ponto.`,{restIndex:index+1});
+      }
       return {
-        index:index+1,
-        start:rest.start,
-        end:rest.end,
-        startLabel:formatMinutes(rest.start),
-        endLabel:formatMinutes(rest.end),
-        duration,
-        continuousBefore,
-        periodStart:period?.start??null,
-        periodEnd:period?.end??null,
+        index:index+1,start,end,startLabel:formatMinutes(start),endLabel:formatMinutes(end),duration,
+        continuousBefore:null,periodStart:period?.start??null,periodEnd:period?.end??null,
         periodLabel:period?`${formatMinutes(period.start)} – ${formatMinutes(period.end)}`:"Não identificado",
-        status:withinPeriod&&durationConform?"Conforme":"Revisar",
-        withinPeriod,
-        durationConform,
-        explanation:withinPeriod
-          ?`O repouso está dentro do período trabalhado ${formatMinutes(period.start)} – ${formatMinutes(period.end)}. A regra considera limite de ${RULE_WORK_MINUTES} minutos de trabalho contínuo e reinicia a contagem após cada repouso.`
-          :"O repouso não pôde ser relacionado com segurança a um período trabalhado do cartão de ponto."
+        validRange,withinPeriod,durationConform,periodIndex,status:"Revisar",explanation:""
       };
     });
 
+    // Preserve the input order and report inversions instead of silently sorting
+    // them away. A sorted copy is used only to measure the actual covered gaps.
+    let previousStart=null;
+    for(const item of items){
+      if(!item.validRange)continue;
+      if(previousStart!==null&&item.start<previousStart)addIssue("REST_ORDER",`Repouso ${item.index}: a lista não está em ordem cronológica.`,{restIndex:item.index});
+      previousStart=item.start;
+    }
+    const ordered=items.filter(item=>item.validRange).slice().sort((a,b)=>a.start-b.start||a.end-b.end);
+    let previousEnd=null;
+    for(const item of ordered){
+      if(previousEnd!==null&&item.start<previousEnd)addIssue("REST_OVERLAP",`Repouso ${item.index}: há sobreposição com outro repouso.`,{restIndex:item.index});
+      previousEnd=previousEnd===null?item.end:Math.max(previousEnd,item.end);
+    }
+
+    const segments=[];
+    let missingRestCount=0;
+    for(const [periodIndex,period] of periods.entries()){
+      const inside=ordered.filter(item=>item.periodIndex===periodIndex);
+      const needed=requiredRests(period);
+      const present=inside.filter(item=>item.durationConform).length;
+      if(present<needed){
+        missingRestCount+=needed-present;
+        addIssue("MISSING_RESTS",`Trecho ${formatMinutes(period.start)} – ${formatMinutes(period.end)}: são necessários pelo menos ${needed} repouso(s) de ${RULE_REST_MINUTES} minutos; foram recebidos ${present}.`,{periodIndex,required:needed,received:present});
+      }
+      let cursor=period.start;
+      const addSegment=(start,end,beforeRestIndex=null)=>{
+        const duration=Math.max(0,end-start);
+        const segment={start,end,duration,periodIndex,beforeRestIndex,position:beforeRestIndex===null?"after":"before",conform:duration<=RULE_WORK_MINUTES};
+        segments.push(segment);
+        if(!segment.conform)addIssue("CONTINUOUS_WORK_EXCEEDED",`Trecho contínuo ${formatMinutes(start)} – ${formatMinutes(end)}: ${duration} minutos, acima do limite de ${RULE_WORK_MINUTES}.`,{periodIndex,start,end,duration,beforeRestIndex});
+      };
+      for(const item of inside){
+        item.continuousBefore=Math.max(0,item.start-cursor);
+        if(item.start>=cursor)addSegment(cursor,item.start,item.index);
+        cursor=Math.max(cursor,item.end);
+      }
+      addSegment(cursor,period.end);
+    }
+
+    const valid=issues.length===0;
+    for(const item of items){
+      item.status=valid?"Conforme":"Revisar";
+      item.explanation=valid
+        ?`Repouso calculado de ${RULE_REST_MINUTES} minutos dentro de ${item.periodLabel}. Todos os trechos contínuos do dia, inclusive após o último repouso, respeitam o limite de ${RULE_WORK_MINUTES} minutos. A auditoria do cálculo não comprova a realização do repouso.`
+        :"O dia precisa de revisão. Confira os avisos da auditoria antes de utilizar estes horários; um repouso isolado não valida os demais trechos da jornada.";
+    }
     return {
-      ruleWorkMinutes:RULE_WORK_MINUTES,
-      ruleRestMinutes:RULE_REST_MINUTES,
-      markings:parsed.markings,
-      meal:parsed.meal||null,
-      periods:parsed.periods,
-      actualWorked,
-      registeredWorked,
-      overtimeMinutes,
-      dailyLimit,
-      restCount:items.length,
-      items
+      ruleWorkMinutes:RULE_WORK_MINUTES,ruleRestMinutes:RULE_REST_MINUTES,
+      markings:parsed.markings,meal:parsed.valid?parsed.meal||null:null,periods,
+      actualWorked,registeredWorked,overtimeMinutes,dailyLimit:null,
+      restCount:items.length,items,valid,status:valid?"Conforme":"Revisar",issues,segments,
+      maxContinuousMinutes:parsed.valid?Math.max(0,...segments.map(s=>s.duration)):null,
+      requiredRestCount:parsed.valid?periods.reduce((sum,p)=>sum+requiredRests(p),0):null,
+      missingRestCount:parsed.valid?missingRestCount:null
     };
   }
 
-  return {
-    RULE_WORK_MINUTES,
-    RULE_REST_MINUTES,
-    markingsFrom,
-    normalizedPointPeriods,
-    auditDay,
-    formatMinutes
-  };
+  return {RULE_WORK_MINUTES,RULE_REST_MINUTES,markingsFrom,normalizedPointPeriods,auditDay,formatMinutes};
 });

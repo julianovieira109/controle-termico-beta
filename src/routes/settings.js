@@ -9,26 +9,23 @@ function normalizeSettingValue(value){
   return value;
 }
 
-const thermalRestDefaults={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:100,workMinutes:100,restMinutes:20,maxRestMinutes:25,variationMinutes:15,cycleDays:31,restCount:3,fontSizePt:7.2};
+const thermalRestDefaults={mode:"AUTOMATIC",scopeMode:"ALL",authorizedCompanyIds:[],authorizedBranchIds:[],minWorkMinutes:100,workMinutes:100,restMinutes:20,maxRestMinutes:20,variationMinutes:0,cycleDays:1,restCount:0,fontSizePt:7.2};
 function normalizeThermalRest(value={}){
-  const integer=(key,min,max)=>Math.max(min,Math.min(max,Number.parseInt(value[key],10)||thermalRestDefaults[key]));
   const ids=key=>[...new Set((Array.isArray(value[key])?value[key]:[]).map(item=>String(item||"").trim()).filter(Boolean))].slice(0,500);
-  const restMinutes=integer("restMinutes",5,60);
-  const workMinutes=100;
-  const minWorkMinutes=100;
   const requestedMode=String(value.mode||"").toUpperCase();
   return {
     mode:["MANUAL","AUTOMATIC","AUTOMATIC_AND_BLANK"].includes(requestedMode)?requestedMode:"AUTOMATIC",
     scopeMode:String(value.scopeMode||"").toUpperCase()==="SELECTED"?"SELECTED":"ALL",
     authorizedCompanyIds:ids("authorizedCompanyIds"),
     authorizedBranchIds:ids("authorizedBranchIds"),
-    minWorkMinutes,
-    workMinutes,
-    restMinutes,
-    maxRestMinutes:Math.max(restMinutes,integer("maxRestMinutes",5,60)),
-    variationMinutes:integer("variationMinutes",0,30),
-    cycleDays:integer("cycleDays",1,31),
-    restCount:integer("restCount",1,3),
+    minWorkMinutes:100,
+    workMinutes:100,
+    restMinutes:20,
+    maxRestMinutes:20,
+    variationMinutes:0,
+    cycleDays:1,
+    // Compatibility field only. The required pauses come from the actual journey.
+    restCount:0,
     fontSizePt:Math.max(6,Math.min(10,Math.round((Number(value.fontSizePt)||thermalRestDefaults.fontSizePt)*10)/10))
   };
 }
