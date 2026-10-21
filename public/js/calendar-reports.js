@@ -463,9 +463,10 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
         :(automatic
           ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":employmentDayStatus(employee,d)||"PONTO NÃO IMPORTADO")
           :dayStatus(employee,d));
-      if(!blankCopy&&automatic&&pointState==="WORKED"&&!allRests.length){
-        const parsed=ThermalSchedule.parsePointPeriods(employee.point_schedules?.[d.iso]||"");
-        status=parsed.valid?"SEM REPOUSO NECESSÁRIO NESTA JORNADA":"REVISAR MARCAÇÕES DO PONTO";
+      if(!blankCopy&&automatic&&pointState==="WORKED"){
+        const assessment=ThermalSchedule.assessPointPlanning(employee.point_schedules?.[d.iso]||"");
+        if(!assessment.valid)status=assessment.code==="MEAL_BREAK_TOO_SHORT"?"REVISAR INTERVALO — PLANEJAMENTO NÃO CONFIRMADO":"REVISAR MARCAÇÕES DO PONTO";
+        else if(!allRests.length)status="SEM REPOUSO NECESSÁRIO NESTA JORNADA";
       }
       if(status)return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="${slots*2+1}">${escapeHtml(status)}</td></tr>`;
       const rests=blankCopy?[]:allRests.slice(offset,offset+slots);
@@ -1595,7 +1596,7 @@ function renderReportSimulator(employee,day,plan){
         <article class="rest-audit-item ${item.status==="Conforme"?"ok":"review"}">
           <div class="rest-audit-title">
             <div><span>Repouso ${item.index}</span><strong>${item.startLabel} – ${item.endLabel}</strong></div>
-            <b>${item.status}</b>
+            <b>${item.status==="Conforme"?"Cálculo conferido":item.status}</b>
           </div>
           <dl>
             <div><dt>Trecho do ponto</dt><dd>${item.periodLabel}</dd></div>
@@ -1608,7 +1609,7 @@ function renderReportSimulator(employee,day,plan){
       :`<div class="rest-audit-empty">Nenhum repouso foi calculado para este dia.</div>`;
 
     const mealNote=audit.meal
-      ?`<div class="rest-audit-meal"><strong>Refeição:</strong> ${RestAudit.formatMinutes(audit.meal.start)} – ${RestAudit.formatMinutes(audit.meal.end)}. A refeição separa os períodos de trabalho usados na conferência.</div>`
+      ?`<div class="rest-audit-meal"><strong>Refeição:</strong> ${RestAudit.formatMinutes(audit.meal.start)} – ${RestAudit.formatMinutes(audit.meal.end)}. ${audit.meal.end-audit.meal.start<20?"Este intervalo não completa 20 minutos e não reinicia a contagem do trabalho acumulado.":"O intervalo separa os trechos usados no planejamento e não é registrado como pausa térmica."}</div>`
       :"";
 
     auditContainer.innerHTML=`

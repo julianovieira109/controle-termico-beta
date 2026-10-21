@@ -1262,12 +1262,18 @@ function renderThermalShiftList(config=window.thermalRestSettings||{}){
   const body=$("thermal-shifts-list");
   if(!body)return;
   body.innerHTML=(catalogs.shifts||[]).map(shift=>{
-    const parsed=ThermalSchedule.parseShiftPeriods(shift.description);
-    const rests=parsed.valid?ThermalSchedule.baseThermalRests(shift.description,config):[];
-    const preview=rests.length
-      ?rests.map((rest,index)=>`R${index+1}: ${ThermalSchedule.formatMinutes(rest.start)}–${ThermalSchedule.formatMinutes(rest.end)}`).join(" · ")
-      :parsed.valid?"Jornada curta: sem repouso calculado":parsed.reason||"Não foi possível calcular";
-    return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>${escapeHtml(preview)}</td><td>${parsed.valid?"Prévia de planejamento":"Revisar horário"}</td></tr>`;
+    const assessment=ThermalSchedule.assessShiftPlanning(shift.description);
+    const required=assessment.valid?ThermalSchedule.requiredShiftRestCount(shift.description):null;
+    const rests=assessment.valid?ThermalSchedule.baseThermalRests(shift.description,config):[];
+    const planned=assessment.valid&&Number.isInteger(required)&&required>=0&&rests.length===required;
+    const preview=!assessment.valid
+      ?assessment.reason||"Não foi possível calcular"
+      :!planned
+        ?"Revisar jornada: não foi possível distribuir todos os repousos dentro das marcações."
+        :rests.length
+          ?rests.map((rest,index)=>`R${index+1}: ${ThermalSchedule.formatMinutes(rest.start)}–${ThermalSchedule.formatMinutes(rest.end)}`).join(" · ")
+          :"Jornada curta: sem repouso calculado";
+    return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>${escapeHtml(preview)}</td><td>${planned?"Prévia de planejamento":"Revisar jornada"}</td></tr>`;
   }).join("")||'<tr><td colspan="5">Nenhum turno cadastrado.</td></tr>';
 }
 

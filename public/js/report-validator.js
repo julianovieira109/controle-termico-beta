@@ -76,13 +76,23 @@
           blockers.push(issue('blocker','NO_POINT_ROWS',`${name}: não há dias de ponto deste colaborador na competência. A escala prevista não pode preencher a ficha automática. Importe e confirme o cartão correspondente.`,employee));
           continue;
         }
-        if(!ThermalSchedule?.parsePointPeriods){
+        if(!ThermalSchedule?.parsePointPeriods||!ThermalSchedule?.assessPointPlanning){
           blockers.push(issue('blocker','THERMAL_MODULE_MISSING','O módulo de cálculo não foi carregado. Atualize a página antes de gerar fichas.',employee));
           continue;
         }
         const invalid=Object.entries(schedules).filter(([date,description])=>inMonth(date)&&!ThermalSchedule.parsePointPeriods(description).valid);
         if(invalid.length){
           blockers.push(issue('blocker','INVALID_POINT_SCHEDULE',`${name}: ${invalid.length} dia(s) com marcações inválidas ou ambíguas (${invalid.map(([date])=>date.split('-').reverse().join('/')).join(', ')}). Confira a Senior e reimporte o ponto; nenhum horário será inventado.`,employee));
+          continue;
+        }
+        const planningIssues=Object.entries(schedules)
+          .filter(([date])=>inMonth(date)&&(!states[date]||upper(states[date])==='WORKED'))
+          .map(([date,description])=>({date,...ThermalSchedule.assessPointPlanning(description)}))
+          .filter(assessment=>!assessment.valid);
+        if(planningIssues.length){
+          for(const assessment of planningIssues){
+            blockers.push(issue('blocker',assessment.code||'THERMAL_PLANNING_REVIEW',`${name} — ${assessment.date.split('-').reverse().join('/')}: ${assessment.reason} A ficha automática aguarda conferência; nenhum horário será completado pela escala.`,employee));
+          }
           continue;
         }
         const pending=dates.filter(date=>['REVIEW','NO_MARKINGS'].includes(upper(states[date]))||(upper(states[date])==='WORKED'&&!schedules[date]));

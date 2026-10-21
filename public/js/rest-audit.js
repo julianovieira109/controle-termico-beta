@@ -36,11 +36,15 @@
     const registered=normalizedPointPeriods(registeredDescription);
     const periods=parsed.valid?parsed.periods:[];
     const actualWorked=parsed.valid?workedMinutes(periods):null;
+    const mealMinutes=parsed.valid&&parsed.meal?parsed.meal.end-parsed.meal.start:null;
+    const hasShortMeal=mealMinutes!==null&&mealMinutes<RULE_REST_MINUTES;
+    const shortMealRequiresReview=hasShortMeal&&actualWorked>RULE_WORK_MINUTES;
     const registeredWorked=registered.valid?workedMinutes(registered.periods):0;
     const overtimeMinutes=actualWorked!==null&&registeredWorked>0?Math.max(0,actualWorked-registeredWorked):0;
     const issues=[];
     const addIssue=(code,message,details={})=>issues.push({code,message,...details});
     if(!parsed.valid)addIssue("INVALID_POINT",parsed.reason||"As marcações do ponto não delimitam uma jornada válida.");
+    if(shortMealRequiresReview)addIssue("MEAL_BREAK_TOO_SHORT",`O intervalo registrado entre os trechos tem ${mealMinutes} minutos e a jornada soma ${actualWorked} minutos de trabalho. O cálculo automático requer conferência: esse intervalo inferior aos ${RULE_REST_MINUTES} minutos adotados não pode reiniciar a contagem de ${RULE_WORK_MINUTES} minutos. As marcações originais permanecem preservadas.`,{mealMinutes,actualWorked});
     if(!Array.isArray(rests))addIssue("INVALID_RESTS","A lista de repousos recebida é inválida.");
     const received=Array.isArray(rests)?Array.from(rests):[rests];
     const items=received.map((rest,index)=>{
@@ -105,6 +109,21 @@
       addSegment(cursor,period.end);
     }
 
+    // A break shorter than 20 minutes does not establish a fresh 100-minute
+    // counter. Measure the bridge between the periods without treating the
+    // non-work minutes of that break as worked minutes.
+    if(hasShortMeal&&periods.length===2){
+      const before=segments.filter(segment=>segment.periodIndex===0).at(-1);
+      const after=segments.find(segment=>segment.periodIndex===1);
+      if(before&&after){
+        const duration=before.duration+after.duration;
+        const bridge={start:before.start,end:after.end,duration,periodIndex:0,beforeRestIndex:after.beforeRestIndex,position:"across-meal",conform:duration<=RULE_WORK_MINUTES,mealMinutes};
+        segments.push(bridge);
+        if(after.beforeRestIndex!==null)items[after.beforeRestIndex-1].continuousBefore=duration;
+        if(!bridge.conform)addIssue("CONTINUOUS_WORK_EXCEEDED",`Os trechos antes e após o intervalo de ${mealMinutes} minutos acumulam ${duration} minutos de trabalho, acima do limite de ${RULE_WORK_MINUTES}.`,{start:bridge.start,end:bridge.end,duration,beforeRestIndex:bridge.beforeRestIndex,acrossMeal:true,mealMinutes});
+      }
+    }
+
     const valid=issues.length===0;
     for(const item of items){
       item.status=valid?"Conforme":"Revisar";
@@ -118,8 +137,8 @@
       actualWorked,registeredWorked,overtimeMinutes,dailyLimit:null,
       restCount:items.length,items,valid,status:valid?"Conforme":"Revisar",issues,segments,
       maxContinuousMinutes:parsed.valid?Math.max(0,...segments.map(s=>s.duration)):null,
-      requiredRestCount:parsed.valid?periods.reduce((sum,p)=>sum+requiredRests(p),0):null,
-      missingRestCount:parsed.valid?missingRestCount:null
+      requiredRestCount:parsed.valid&&!shortMealRequiresReview?periods.reduce((sum,p)=>sum+requiredRests(p),0):null,
+      missingRestCount:parsed.valid&&!shortMealRequiresReview?missingRestCount:null
     };
   }
 

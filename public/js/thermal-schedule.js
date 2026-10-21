@@ -72,6 +72,29 @@
     };
   }
 
+  function assessParsedPlanning(parsed){
+    if(!parsed.valid)return {valid:false,code:"INVALID_MARKINGS",reason:parsed.reason,parsed};
+    const workedMinutes=parsed.periods.reduce((sum,period)=>sum+period.end-period.start,0);
+    const mealMinutes=parsed.meal?parsed.meal.end-parsed.meal.start:null;
+    if(mealMinutes!==null&&mealMinutes<REST_DURATION_MINUTES&&workedMinutes>REST_AFTER_MINUTES){
+      return {
+        valid:false,
+        code:"MEAL_BREAK_TOO_SHORT",
+        reason:`O intervalo registrado de ${mealMinutes} minuto(s) não completa os ${REST_DURATION_MINUTES} minutos adotados para reiniciar o ciclo. Como há ${workedMinutes} minutos de trabalho nos dois trechos, confira a exposição e as pausas reais antes de gerar automaticamente. Os dados da Senior foram preservados.`,
+        parsed
+      };
+    }
+    return {valid:true,code:null,reason:null,parsed};
+  }
+
+  function assessPointPlanning(description){
+    return assessParsedPlanning(parsePointPeriods(description));
+  }
+
+  function assessShiftPlanning(description){
+    return assessParsedPlanning(parseShiftPeriods(description));
+  }
+
   function restsForPeriods(periods){
     const rests=[];
     for(const period of periods){
@@ -96,14 +119,24 @@
   }
 
   function dynamicPointRests(description){
-    const parsed=parsePointPeriods(description);
-    return parsed.valid?restsForPeriods(parsed.periods):[];
+    const assessment=assessPointPlanning(description);
+    return assessment.valid?restsForPeriods(assessment.parsed.periods):[];
   }
 
   function baseThermalRests(description){
     // Shift preview only. Production plans require the day's actual punches.
-    const parsed=parseShiftPeriods(description);
-    return parsed.valid?restsForPeriods(parsed.periods):[];
+    const assessment=assessShiftPlanning(description);
+    return assessment.valid?restsForPeriods(assessment.parsed.periods):[];
+  }
+
+  function requiredRestCount(description){
+    const assessment=assessPointPlanning(description);
+    return assessment.valid?restsForPeriods(assessment.parsed.periods).length:null;
+  }
+
+  function requiredShiftRestCount(description){
+    const assessment=assessShiftPlanning(description);
+    return assessment.valid?restsForPeriods(assessment.parsed.periods).length:null;
   }
 
   function formatMinutes(value){
@@ -134,8 +167,9 @@
         const description=employee.point_schedules?.[day.iso];
         const state=employee.point_states?.[day.iso];
         if(!description||(state&&state!=="WORKED"))continue;
-        if(!parsePointPeriods(description).valid)continue;
-        plan.set(`${employee.id}|${day.iso}`,dynamicPointRests(description));
+        const assessment=assessPointPlanning(description);
+        if(!assessment.valid)continue;
+        plan.set(`${employee.id}|${day.iso}`,restsForPeriods(assessment.parsed.periods));
       }
     }
     return plan;
@@ -149,6 +183,10 @@
     parsePointPeriods,
     parseShiftPeriods,
     parseShiftSchedule,
+    assessPointPlanning,
+    assessShiftPlanning,
+    requiredRestCount,
+    requiredShiftRestCount,
     baseThermalRests,
     dynamicPointRests,
     buildMonthPlan,

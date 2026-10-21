@@ -1489,7 +1489,8 @@
             <summary><span class="manual-number">8</span><span><strong>Relatórios e impressão</strong><small>Repouso térmico e Refeitório</small></span></summary>
             <div class="manual-body">
               <div class="manual-report-preview" aria-label="Exemplo de ficha mensal"><b>FICHA MENSAL</b><span>Empresa • Filial • Colaborador • Matrícula</span><i></i><i></i><i></i><small>Assinatura do colaborador</small></div>
-              <h4>Planejamento automático e conferência do repouso</h4><p>O cálculo usa <strong>pausas de 20 minutos</strong> e mantém cada trecho de trabalho contínuo em <strong>até 100 minutos</strong>, inclusive antes da primeira pausa, entre pausas e após a última. A refeição reinicia a contagem. As pausas podem ser antecipadas pela distribuição da jornada, sempre dentro das marcações reais. Não há teto diário de três ou quatro: a ficha usa até quatro colunas de repouso por página e cria <strong>continuação</strong> para apresentar todas as pausas necessárias, inclusive em jornadas com horas extras.</p>
+              <h4>Regra utilizada e condições de aplicação</h4><p>O planejamento de <strong>100 minutos de trabalho contínuo e 20 minutos de repouso</strong> usa como referência o <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del5452.htm#art253" target="_blank" rel="noopener noreferrer">art. 253 da CLT</a>, para o trabalho abrangido pela proteção ao frio. Os 20 minutos integram o tempo de serviço; o sistema não desconta as pausas calculadas do Trabalho ou do BH informado pela Senior. O ponto, sozinho, não identifica temperatura, tempo de exposição ou condições do local. O DP e a Segurança do Trabalho devem confirmar quais atividades e colaboradores estão abrangidos, incluindo normas específicas e instrumentos coletivos aplicáveis. O resultado <strong>Cálculo conferido</strong> (Conforme na auditoria) refere-se ao cálculo; não certifica cumprimento da legislação nem comprova repousos realizados.</p>
+              <h4>Planejamento automático e conferência do repouso</h4><p>O cálculo usa <strong>pausas de 20 minutos</strong> e mantém cada trecho de trabalho contínuo em <strong>até 100 minutos</strong>, inclusive antes da primeira pausa, entre pausas e após a última. O intervalo de refeição separa os trechos do planejamento quando tem pelo menos 20 minutos; ele não é registrado como pausa térmica. Um intervalo menor não reinicia automaticamente a contagem. Se o trabalho acumulado exceder 100 minutos nessa situação, a ficha automática exige revisão. As pausas podem ser antecipadas pela distribuição da jornada, sempre dentro das marcações reais. Não há teto diário fixo no sistema: a quantidade acompanha a jornada. A ficha usa até quatro colunas de repouso por página e cria <strong>continuação</strong> para apresentar todas as pausas necessárias, inclusive em jornadas com horas extras.</p>
               <p>Em <strong>Relatórios → Validação prévia → Conferir cálculo do repouso</strong>, selecione o dia para visualizar a jornada e a conferência. O mesmo motor é usado na prévia dos turnos, no cálculo do dia e na ficha. A auditoria verifica os horários recebidos, incluindo duração, ordem, sobreposições, refeição, encaixe na jornada e o trecho final. Uma falha impede a ficha automática; nenhum repouso isolado recebe <strong>Conforme</strong> quando o dia falha na conferência.</p>
               <p>O automático exige dados do <strong>próprio colaborador</strong> na competência confirmada. A escala prevista não preenche horários quando faltam pontos. Datas sem cobertura e dias pendentes recebem avisos e ficam sem horários automáticos; faltas, férias e demais ocorrências da Senior permanecem identificadas. Batidas iguais, horários inválidos, sequências ambíguas e jornadas de 24 horas ou mais exigem revisão.</p>
               <div class="manual-note warning"><strong>Horários calculados:</strong> os campos <strong>Saída calculada</strong> e <strong>Retorno calculado</strong> representam planejamento pelas batidas da jornada. O cartão de ponto não comprova, por si só, a realização das pausas térmicas. Confira e registre o que foi realizado antes de utilizar a ficha como registro.</div>
@@ -2248,11 +2249,12 @@
             <div><span>Ciclo máximo</span><strong>100 minutos</strong><small>20 minutos de repouso</small></div>
             <div><span>Impressão completa</span><strong>Com continuação</strong><small>Todas as pausas calculadas</small></div>
           </div>
+          <p class="hint">Referência do planejamento: art. 253 da CLT, para trabalho abrangido pela proteção ao frio. Confirme o enquadramento com o DP e a Segurança do Trabalho; o ponto não informa as condições de exposição.</p>
           <form id="thermal-rest-form" class="thermal-settings-form">
             <section class="thermal-config-section">
               <div class="thermal-section-head"><span>1</span><div><strong>Como gerar as fichas</strong><p class="hint">Escolha o formato de saída das fichas.</p></div></div>
               <label class="thermal-mode-field">Modo de geração<select id="thermal-rest-mode"><option value="AUTOMATIC">Automático</option><option value="AUTOMATIC_AND_BLANK">Automático + cópia manual</option><option value="MANUAL">Manual — campos em branco</option></select><small>No modo combinado, a ordem será: ficha automática, cópia sem horários e ficha de refeição. A automática mantém as ocorrências do ponto. A cópia manual fica sem horários e ocorrências, preservando as folgas configuradas.</small></label>
-              <div class="thermal-rule-note"><strong>Leitura segura do ponto</strong><p>A refeição reinicia a contagem. Saída antecipada confirmada é tratada como jornada parcial. Batidas iguais, horários inválidos ou jornadas ambíguas ficam para revisão. Sem marcações utilizáveis, a escala prevista não preenche o automático.</p></div>
+              <div class="thermal-rule-note"><strong>Leitura segura do ponto</strong><p>O intervalo de refeição separa os trechos do planejamento quando tem pelo menos 20 minutos; ele não é registrado como pausa térmica. Um intervalo menor não reinicia automaticamente a contagem. Se o trabalho acumulado exceder 100 minutos nessa situação, a ficha automática exige revisão. Saída antecipada confirmada é tratada como jornada parcial. Batidas iguais, horários inválidos ou jornadas ambíguas ficam para revisão. Sem marcações utilizáveis, a escala prevista não preenche o automático.</p></div>
               <input id="thermal-rest-count" type="hidden" value="0">
             </section>
             <section class="thermal-config-section">
@@ -2833,17 +2835,17 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.100"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.101"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.92"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.31-beta.100"></script>
-  <script src="/js/report-validator.js?v=1.0.31-beta.100"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.31-beta.101"></script>
+  <script src="/js/report-validator.js?v=1.0.31-beta.101"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
-  <script src="/js/rest-audit.js?v=1.0.31-beta.100"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.100"></script>
+  <script src="/js/rest-audit.js?v=1.0.31-beta.101"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.101"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
-  <script src="/js/settings-system.js?v=1.0.31-beta.100"></script>
+  <script src="/js/settings-system.js?v=1.0.31-beta.101"></script>
   <script src="/js/bh-comparison.js?v=1.0.31-beta.99"></script>
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>

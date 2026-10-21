@@ -171,3 +171,18 @@ test('bloqueio da auditoria atualiza o resumo compacto e mantém a ficha e impre
   assert.ok(elements['report-validation-details'].innerHTML.includes('153 minutos'));
   assert.ok(elements['report-generation-summary'].textContent.includes('conferência do cálculo bloqueou'));
 });
+test('intervalo curto recebido do ponto bloqueia nova geração e não libera impressão anterior',async()=>{
+  const {context,elements,employee}=harness();
+  const api=context.api;
+  context.api=async path=>path.startsWith('/api/reports/point-days?')
+    ?[{employee_id:employee.id,work_date:workDate,point_state:'WORKED',eligible_for_automatic_rest:true,markings:['08:00','09:30','09:40','11:10']}]
+    :api(path);
+  await elements['report-generate'].onclick();
+  assert.equal(context.lastReportValidation.valid,false);
+  assert.equal(context.lastReportValidation.generated,false);
+  assert.equal(elements['report-output'].innerHTML,'');
+  assert.equal(context.validateReportPrint(),false);
+  assert.equal(elements['report-validation-badge'].textContent,'Bloqueado');
+  assert.match(elements['report-validation-details'].innerHTML,/intervalo registrado de 10/);
+  assert.equal(employee.point_schedules[workDate],'08:00-09:30-09:40-11:10');
+});
