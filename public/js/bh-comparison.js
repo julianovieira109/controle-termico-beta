@@ -18,7 +18,7 @@
   async function history(){
     const params=new URLSearchParams();if($('bh-company').value)params.set('companyId',$('bh-company').value);if($('bh-branch').value)params.set('branchId',$('bh-branch').value);
     const result=await api('/api/reconciliation/bh/history?'+params);
-    $('bh-history').innerHTML=result.rows.length?`<div class="table-wrap"><table><thead><tr><th>Arquivo</th><th>Modelo</th><th>Empresa / filial</th><th>Referência</th><th>Vínculos</th><th>Confirmado</th></tr></thead><tbody>${result.rows.map(r=>`<tr><td>${esc(r.file_name)}</td><td>${type(r.report_type)}</td><td>${esc(r.company)} / ${esc(r.branch)}</td><td>${date(r.start)} a ${date(r.end)}</td><td>${r.records}</td><td>${date(r.confirmed_at)}</td></tr>`).join('')}</tbody></table></div>`:'Nenhum BH confirmado neste filtro.';
+    $('bh-history').innerHTML=result.rows.length?`<div class="table-wrap"><table><thead><tr><th>Arquivo</th><th>Modelo</th><th>Empresa / filial</th><th>Datas abrangidas</th><th>Registros</th><th>Confirmado</th></tr></thead><tbody>${result.rows.map(r=>`<tr><td>${esc(r.file_name)}</td><td>${type(r.report_type)}</td><td>${esc(r.company)} / ${esc(r.branch)}</td><td>${date(r.start)} a ${date(r.end)}</td><td>${r.records}</td><td>${date(r.confirmed_at)}</td></tr>`).join('')}</tbody></table></div>`:'Nenhum BH confirmado neste filtro.';
   }
   $('bh-file').onchange=clearPreview;
   $('bh-read').onclick=async()=>{
@@ -30,10 +30,10 @@
       const response=await fetch('/api/reconciliation/bh/preview',{method:'POST',headers:{Authorization:`Bearer ${token}`},body});
       const result=await response.json();if(!response.ok)throw Error(result.error||'Falha ao ler o BH.');preview=result;
       $('bh-preview').hidden=false;
-      $('bh-detection').textContent=`${type(preview.type)} · ${date(preview.start)} a ${date(preview.end)} · ${preview.records.length} vínculos · Empresa: ${preview.companyName}.`;
+      $('bh-detection').textContent=`${type(preview.type)} · ${date(preview.start)} a ${date(preview.end)} · ${preview.records.length} registros de vínculo/banco · Empresa: ${preview.companyName}.`;
       $('bh-confirm').disabled=preview.errors.length>0||Boolean(preview.confirmedAt);
-      $('bh-status').textContent=preview.errors.length?`Leitura bloqueada: ${preview.errors.slice(0,5).join(' ')}`:preview.confirmedAt?'Este arquivo já foi confirmado nesta empresa/filial. Não será duplicado.':'Leitura concluída. Confira os saldos e a filial antes de confirmar.';
-      $('bh-records').innerHTML=preview.records.map(r=>`<tr><td>${esc(r.registration)}</td><td>${esc(r.name)}</td><td>${esc(r.bank)}</td><td>${hours(r.initial)}</td><td>${hours(r.final)}</td><td>${r.events}</td><td>${r.ledgerDifference===null||r.ledgerDifference===undefined?'Saldo na data':r.ledgerDifference===0?'Fechamento confere':`Diferença no fechamento: ${hours(r.ledgerDifference)}`}</td><td>${r.page}</td></tr>`).join('');
+      $('bh-status').textContent=preview.errors.length?`Leitura bloqueada: ${preview.errors.slice(0,5).join(' ')}`:preview.confirmedAt?'Este arquivo já foi confirmado nesta empresa/filial. Não será duplicado.':'Leitura concluída. Confira as datas de cada registro, os saldos e a filial antes de confirmar. Os cortes gerenciais não limitam a leitura.';
+      $('bh-records').innerHTML=preview.records.map(r=>`<tr><td>${esc(r.registration)}</td><td>${esc(r.name)}</td><td>${esc(r.bank)}</td><td>${date(r.periodStart)} a ${date(r.periodEnd)}</td><td>${hours(r.initial)}</td><td>${hours(r.final)}</td><td>${r.events}</td><td>${r.ledgerDifference===null||r.ledgerDifference===undefined?'Saldo na data':r.ledgerDifference===0?'Fechamento confere':`Diferença no fechamento: ${hours(r.ledgerDifference)}`}</td><td>${r.page}</td></tr>`).join('');
     }catch(e){$('bh-status').textContent=e.message;}finally{button.disabled=false;}
   };
   $('bh-confirm').onclick=async()=>{
@@ -44,7 +44,7 @@
     const button=$('bh-confirm');button.disabled=true;
     try{
       const r=await api('/api/reconciliation/bh/confirm',{method:'POST',body:JSON.stringify({id:preview.id,companyId:preview.companyId,branchId:preview.branchId,scopeConfirmed:true})});
-      $('bh-status').textContent=r.alreadyConfirmed?'Arquivo já confirmado; nenhuma duplicação.':`BH confirmado: ${r.records} vínculos. Compare em Ocorrências → Comparar períodos.`;
+      $('bh-status').textContent=r.alreadyConfirmed?'Arquivo já confirmado; nenhuma duplicação.':`BH confirmado: ${r.records} registros. Compare em Ocorrências → Comparar períodos.`;
       clearPreview();$('bh-file').value='';await history();
     }catch(e){$('bh-status').textContent=e.message;button.disabled=false;}
   };
@@ -59,12 +59,27 @@
   function refillEmployees(){
     $('period-employee').innerHTML=opt(options.employees.filter(r=>(!$('period-company').value||r.company_id===$('period-company').value)&&(!$('period-branch').value||r.branch_id===$('period-branch').value)),'Todos os colaboradores');
   }
+  let monthlyBasis='closing';
+  function isoWeek(value){
+    const d=new Date(Date.UTC(value.getFullYear(),value.getMonth(),value.getDate()));
+    d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
+    const year=d.getUTCFullYear(),week=Math.ceil(((d-Date.UTC(year,0,1))/86400000+1)/7);
+    return `${year}-W${String(week).padStart(2,'0')}`;
+  }
   function modes(){
-    const yearly=$('period-mode').value==='year';const now=new Date();const year=now.getFullYear();
+    const mode=$('period-mode').value,yearly=mode==='year',weekly=mode==='week';
+    const now=new Date(),year=now.getFullYear();
     const current=$('occurrences-month').value||`${year}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    const previousDate=new Date(Number(current.slice(0,4)),Number(current.slice(5,7))-2,1);const previous=`${previousDate.getFullYear()}-${String(previousDate.getMonth()+1).padStart(2,'0')}`;
-    for(const [id,value] of [['period-a',yearly?String(year-1):previous],['period-b',yearly?String(year):current]]){
-      $(id).type=yearly?'number':'month';$(id).value=value;if(yearly){$(id).min='2000';$(id).max='2100';}else{$(id).removeAttribute('min');$(id).removeAttribute('max');}
+    const previousDate=new Date(Number(current.slice(0,4)),Number(current.slice(5,7))-2,1),previous=`${previousDate.getFullYear()}-${String(previousDate.getMonth()+1).padStart(2,'0')}`;
+    if(weekly){if(!$('period-basis').disabled)monthlyBasis=$('period-basis').value;$('period-basis').value='calendar';}
+    else if($('period-basis').disabled)$('period-basis').value=monthlyBasis;
+    $('period-basis').disabled=weekly;
+    $('period-basis').querySelector('option[value="calendar"]').textContent=weekly?'Semana: segunda a domingo':'Mês/ano calendário';
+    $('period-basis-note').textContent=weekly?'Semanal: segunda a domingo.':'A base define somente o recorte gerencial.';
+    const lastWeek=new Date(now);lastWeek.setDate(lastWeek.getDate()-7);
+    for(const [id,value] of [['period-a',weekly?isoWeek(lastWeek):yearly?String(year-1):previous],['period-b',weekly?isoWeek(now):yearly?String(year):current]]){
+      $(id).type=weekly?'week':yearly?'number':'month';$(id).value=value;
+      if(yearly){$(id).min='2000';$(id).max='2100';}else{$(id).removeAttribute('min');$(id).removeAttribute('max');}
     }
   }
   $('period-open').onclick=async()=>{

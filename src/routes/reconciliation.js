@@ -27,7 +27,7 @@ async function assertUnit(req,companyId,branchId,db=pool){
 }
 const canonical=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/gi,'').toUpperCase();
 function summary(row){return {id:row.id,type:row.report_type,start:row.period_start,end:row.period_end,fileName:row.file_name,companyId:row.company_id,branchId:row.branch_id,companyName:row.company_name,confirmedAt:row.confirmed_at,errors:row.errors,
-  records:row.records.map(r=>({registration:r.registration,name:r.name,bank:r.bank,initial:r.initial,final:r.final,expiring:r.expiring,page:r.page,events:r.events.length,ledgerDifference:r.ledgerDifference}))};}
+  records:row.records.map(r=>({registration:r.registration,name:r.name,bank:r.bank,initial:r.initial,final:r.final,expiring:r.expiring,periodStart:r.periodStart||row.period_start,periodEnd:r.periodEnd||row.period_end,page:r.page,events:r.events.length,ledgerDifference:r.ledgerDifference}))};}
 router.post('/bh/preview',requirePermission('imports.manage'),createPdfUpload(32).single('file'),async(req,res,next)=>{
   try{
     const {companyId,branchId}=req.body;const unit=await assertUnit(req,companyId,branchId);
@@ -38,7 +38,9 @@ router.post('/bh/preview',requirePermission('imports.manage'),createPdfUpload(32
     const hash=crypto.createHash('sha256').update(req.file.buffer).digest('hex');
     const {rows}=await pool.query(`INSERT INTO senior_bh_imports(user_id,company_id,branch_id,report_type,period_start,period_end,file_name,file_hash,company_name,records,errors)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-      ON CONFLICT(company_id,branch_id,file_hash) DO UPDATE SET created_at=CASE WHEN senior_bh_imports.confirmed_at IS NULL THEN NOW() ELSE senior_bh_imports.created_at END
+      ON CONFLICT(company_id,branch_id,file_hash) DO UPDATE SET records=CASE WHEN senior_bh_imports.confirmed_at IS NULL THEN EXCLUDED.records ELSE senior_bh_imports.records END,
+        errors=CASE WHEN senior_bh_imports.confirmed_at IS NULL THEN EXCLUDED.errors ELSE senior_bh_imports.errors END,
+        created_at=CASE WHEN senior_bh_imports.confirmed_at IS NULL THEN NOW() ELSE senior_bh_imports.created_at END
       RETURNING *,to_char(period_start,'YYYY-MM-DD') period_start,to_char(period_end,'YYYY-MM-DD') period_end`,
       [req.user.sub,companyId,branchId,parsed.type,parsed.start,parsed.end,req.file.originalname.slice(0,255),hash,parsed.companyName,JSON.stringify(parsed.records),JSON.stringify(parsed.errors)]);
     res.json(summary(rows[0]));
@@ -54,7 +56,7 @@ router.post('/bh/confirm',requirePermission('imports.manage'),async(req,res,next
     await client.query('BEGIN');
     const {rows}=await client.query('SELECT * FROM senior_bh_imports WHERE id=$1 AND company_id=$2 AND branch_id=$3 FOR UPDATE',[id,companyId,branchId]);
     const row=rows[0];if(!row)throw fail('Prévia não encontrada nesta empresa/filial.',404);
-    if(row.errors.length)throw fail('Há linhas não reconhecidas no BH. Confira o PDF antes de confirmar.');
+    if(row.errors.length)throw fail('Há divergências na leitura do BH. Confira as datas, os blocos e as linhas do PDF antes de confirmar.');
     if(!row.confirmed_at&&new Date(row.created_at).getTime()<Date.now()-86400000)throw fail('Prévia expirada. Reenvie o PDF para uma nova conferência.',409);
     const alreadyConfirmed=Boolean(row.confirmed_at);
     if(!alreadyConfirmed)await client.query('UPDATE senior_bh_imports SET confirmed_at=NOW() WHERE id=$1',[id]);
@@ -84,8 +86,9 @@ router.get('/options',requirePermission('dashboard.view'),requireOccurrencesAcce
 });
 router.get('/compare',requirePermission('dashboard.view'),requireOccurrencesAccess,async(req,res,next)=>{
   try{
-    const mode=req.query.mode||'month',basis=req.query.basis||'closing';let a,b;
-    try{a=periodRange(String(req.query.a||''),mode,basis);b=periodRange(String(req.query.b||''),mode,basis);}catch(e){throw fail(e.message);}
+    const mode=req.query.mode||'month',requestedBasis=req.query.basis||'closing';let a,b;
+    try{a=periodRange(String(req.query.a||''),mode,requestedBasis);b=periodRange(String(req.query.b||''),mode,requestedBasis);}catch(e){throw fail(e.message);}
+    const basis=mode==='week'?'calendar':requestedBasis;
     if(a.label===b.label)throw fail('Selecione dois períodos diferentes.');
     const params=[a.start,a.end,b.start,b.end];let scope=filters(req,'p',params);
     if(req.query.employeeId){params.push(req.query.employeeId);scope+=` AND p.employee_id=$${params.length}::uuid`;}

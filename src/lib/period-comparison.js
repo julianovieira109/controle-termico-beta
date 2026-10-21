@@ -1,14 +1,5 @@
 const {registration}=require('../importers/senior-bh');
-function periodRange(value,mode='month',basis='closing'){
-  if(!['month','year'].includes(mode)||!['closing','calendar'].includes(basis))throw new Error('Tipo de comparação inválido.');
-  const pattern=mode==='month'?/^\d{4}-(0[1-9]|1[0-2])$/:/^\d{4}$/;
-  if(!pattern.test(String(value)))throw new Error('Selecione mês/ano válidos para os dois períodos.');
-  const year=Number(value.slice(0,4));if(year<2000||year>2100)throw new Error('Ano fora do intervalo permitido (2000 a 2100).');
-  const month=mode==='year'?1:Number(value.slice(5,7));
-  const iso=(y,m,d)=>new Date(Date.UTC(y,m-1,d)).toISOString().slice(0,10);
-  if(basis==='closing')return {label:value,start:iso(year,month-1,19),end:iso(year,mode==='year'?12:month,18)};
-  return {label:value,start:iso(year,month,1),end:iso(year,mode==='year'?13:month+1,0)};
-}
+const {periodRange}=require('./reporting-periods');
 const personKey=r=>`${r.company_id}|${r.branch_id}|${registration(r.registration)}`;
 function occurrenceTypes(row){
   const state=String(row.point_state||'').toUpperCase(),text=String(row.occurrence||'').split(' | ')[0].trim();
@@ -23,22 +14,24 @@ function occurrenceType(row){return occurrenceTypes(row).join(' · ')||null;}
 function compareSnapshot(range,points,reports){
   const inRange=date=>date>=range.start&&date<=range.end;
   points=points.filter(p=>inRange(p.work_date));
-  const analytic=reports.filter(r=>r.report_type==='ANALYTIC'&&r.period_start<=range.end&&r.period_end>=range.start);
-  const synthetic=reports.filter(r=>r.report_type==='SYNTHETIC'&&r.period_end===range.end);
+  const coverage=(record,report)=>({start:record.periodStart||report.period_start,end:record.periodEnd||report.period_end});
+  const analytic=reports.filter(r=>r.report_type==='ANALYTIC').map(report=>({...report,records:report.records.filter(record=>{const c=coverage(record,report);return c.start<=range.end&&c.end>=range.start;})})).filter(r=>r.records.length);
+  const synthetic=reports.filter(r=>r.report_type==='SYNTHETIC').map(report=>({...report,records:report.records.filter(record=>coverage(record,report).end===range.end)})).filter(r=>r.records.length);
   // Most recent confirmed revision wins for each covered bank/day, even if that day has no event.
   const daily=new Map(),balances=new Map(),ledgerBalances=new Map();
   for(const report of [...analytic].reverse()){
     for(const r of report.records){
       const key=personKey({...report,registration:r.registration});
+      const c=coverage(r,report);
       const events=new Map();
       for(const e of r.events){if(!events.has(e.date))events.set(e.date,[]);events.get(e.date).push(e);}
-      const start=report.period_start>range.start?report.period_start:range.start;
-      const end=report.period_end<range.end?report.period_end:range.end;
+      const start=c.start>range.start?c.start:range.start;
+      const end=c.end<range.end?c.end:range.end;
       for(let date=start;date<=end;date=new Date(Date.parse(date)+86400000).toISOString().slice(0,10)){
         const list=events.get(date)||[];
         daily.set(`${key}|${r.bank}|${date}`,{key,date,bank:r.bank,events:list,reportId:report.id,file:report.file_name,page:list[0]?.page||r.page});
       }
-      if(report.period_end===range.end)ledgerBalances.set(`${key}|${r.bank}`,{value:r.final,reportId:report.id,file:report.file_name,page:r.page,ledgerDifference:r.ledgerDifference});
+      if(c.end===range.end)ledgerBalances.set(`${key}|${r.bank}`,{value:r.final,reportId:report.id,file:report.file_name,page:r.page,ledgerDifference:r.ledgerDifference});
     }
   }
   for(const report of [...synthetic].reverse())for(const r of report.records){
