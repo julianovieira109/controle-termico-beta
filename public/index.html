@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
-  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.96">
+  <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.102">
   <link rel="stylesheet" href="/css/imports-center.css?v=1.0.31-beta.88">
   <link rel="stylesheet" href="/css/bh-comparison.css?v=1.0.31-beta.98">
   <link rel="stylesheet" href="/css/theme-accessibility.css?v=1.0.31-beta.97">
@@ -1500,6 +1500,14 @@
               <p><strong>Após uma atualização do leitor:</strong> reimporte o PDF pela Central de Importações, confira e confirme os dados; depois gere as fichas novamente. Atualizar o navegador não recalcula os pontos já salvos.</p>
               <h4>Controle de Ocorrências</h4><p>Use os filtros de período, empresa, filial, turno, coordenador e colaborador. A impressão utiliza as categorias selecionadas; resumo, cabeçalho dos gráficos e tabela devem apresentar os mesmos totais desse recorte. Quantidades de ocorrências não são quantidades de colaboradores ou de dias únicos: um dia pode ter mais de uma categoria.</p>
               <p><strong>Relatório parcial:</strong> confira o intervalo do Cartão Senior e a cobertura do mês selecionado. Uma importação de vários meses não transforma um mês parcialmente coberto em fechamento mensal completo. A área de Ocorrências apenas consulta e sinaliza; correções do ponto devem ser feitas na Senior e refletidas por nova importação.</p>
+              <div data-help-permission="occurrences.view">
+                <h4>Equipes e coordenadores, inclusive PJ</h4>
+                <p>Abra <strong>Ocorrências → Gerenciar Equipes</strong>. O acesso é do <strong>Administrador Master</strong> ou de administrador autorizado para <strong>Controle de Ocorrências</strong>. Escolha <strong>empresa e filial na própria janela</strong>; os cadastros e vínculos pertencem a essa unidade. A janela tem fundo opaco, contraste para os modos claro e noturno e rolagem para telas menores.</p>
+                <ol><li><strong>Cadastre os coordenadores:</strong> informe o nome e selecione <strong>Interno</strong>, <strong>Prestador PJ</strong> ou <strong>Externo</strong>. O coordenador não precisa ter matrícula, cartão de ponto ou registro no quadro de colaboradores. Se ele já for colaborador da filial, use o vínculo opcional ao cadastro existente.</li><li><strong>Defina o responsável de cada turno:</strong> escolha o coordenador padrão para atender os colaboradores daquele turno. A lista considera o cadastro da filial, mesmo sem ponto importado no mês.</li><li><strong>Organize colaboradores individualmente ou em lote:</strong> busque por <strong>nome, matrícula ou turno</strong>, use o filtro de turno e selecione os colaboradores exibidos. Escolha um coordenador e aplique o vínculo direto. Para voltar ao responsável padrão, use <strong>Voltar ao turno</strong>.</li></ol>
+                <p><strong>Prioridade:</strong> o vínculo direto do colaborador substitui o coordenador padrão do turno. A configuração é gerencial e vale para os períodos consultados, inclusive dados já importados; não muda o turno cadastrado, os horários, o BH ou as ocorrências da Senior. Não é necessário reimportar PDFs para aplicar ou alterar os vínculos.</p>
+                <p><strong>Manutenção:</strong> editar o nome mantém a identificação e os vínculos do coordenador. Inativar preserva os vínculos existentes e impede novas atribuições. Um coordenador vinculado não pode ser excluído; retire ou transfira os vínculos antes. As configurações antigas são preservadas ao abrir a nova tela. Se outra pessoa alterar a mesma equipe, o sistema solicita recarregar antes de salvar novamente, evitando sobrescrever mudanças.</p>
+                <p><strong>Aplicar esta atualização:</strong> após a publicação, pressione <strong>Ctrl+F5</strong> e abra novamente <strong>Gerenciar Equipes</strong>. Confira os responsáveis anteriores e acrescente os coordenadores externos desejados. A consulta de Ocorrências acompanha os vínculos salvos; quem não tiver ponto no período pode ser configurado na equipe sem criar ocorrências ou horas.</p>
+              </div>
               <h4>Gerar ficha</h4><ol><li>Escolha empresa e filial.</li><li>Selecione um colaborador ou <strong>Todos os colaboradores</strong>.</li><li>Se desejar, filtre por turno.</li><li>Escolha o mês/ano.</li><li>Clique em <strong>Gerar ficha</strong>, confira o resumo e depois clique em <strong>Imprimir</strong>.</li></ol>
               <p>A ficha mostra empresa, filial, colaborador, matrícula, cargo, turno, dias, folgas/sem jornada e assinaturas.</p>
               <div class="manual-note info"><strong>Tipo automático:</strong> não é necessário escolher “Tipo de ficha”. O sistema aplica a prioridade <strong>exceção individual → regra da filial → regra geral do cargo/função</strong> e gera Repouso Térmico, Refeição ou as duas fichas.</div>
@@ -1688,24 +1696,44 @@
 
       <div class="occ-team-management-modal" id="occurrences-management" hidden aria-hidden="true">
         <div class="occ-team-management-backdrop" data-management-close></div>
-        <section class="occ-team-management-dialog" role="dialog" aria-modal="true" aria-labelledby="occurrences-management-title">
+        <section class="occ-team-management-dialog" role="dialog" aria-modal="true" aria-labelledby="occurrences-management-title" aria-describedby="occurrences-management-description" tabindex="-1">
           <header class="occ-team-management-head">
-            <div><span class="eyebrow">Configuração gerencial</span><h3 id="occurrences-management-title">Gestão de Equipes e Coordenadores</h3><p>Defina o responsável padrão de cada turno. Use exceções somente quando um colaborador responder a outro coordenador.</p></div>
+            <div><span class="eyebrow">Configuração gerencial</span><h3 id="occurrences-management-title">Equipes e coordenadores</h3><p id="occurrences-management-description">Cadastre o responsável e organize a equipe por turno ou por colaborador. Coordenadores podem ser internos, PJ ou externos.</p></div>
             <button type="button" class="secondary" id="occurrences-management-close">Fechar</button>
           </header>
           <div class="occ-team-management-content">
-            <section class="occ-team-section">
-              <div class="occ-team-section-head"><div><h4>Turnos e responsáveis</h4><p class="hint">Configuração principal usada pelo Painel de Pessoas.</p></div><span id="occurrences-management-status" class="hint">Aguardando empresa e filial.</span></div>
-              <div id="occurrences-team-cards" class="occ-team-cards"><div class="muted">Selecione uma empresa e uma filial.</div></div>
+            <section class="occ-management-scope" aria-labelledby="occurrences-management-scope-title">
+              <div><h4 id="occurrences-management-scope-title">Empresa e filial da equipe</h4><p class="hint">Os cadastros e vínculos ficam nesta filial. Você pode organizar a equipe antes de importar o ponto.</p></div>
+              <label>Empresa<select id="occurrences-management-company"><option value="">Selecione a empresa</option></select></label>
+              <label>Filial<select id="occurrences-management-branch"><option value="">Selecione a filial</option></select></label>
             </section>
-            <details class="occ-team-exceptions">
-              <summary><strong>Exceções por colaborador</strong><span>Somente casos especiais</span></summary>
-              <div class="occ-team-exception-body">
-                <p class="hint">O coordenador específico substitui o coordenador padrão do turno apenas para o colaborador selecionado.</p>
-                <div class="occurrences-management-grid"><label>Colaborador<select id="occurrences-manage-employee"><option value="">Selecione o colaborador</option></select></label><label>Coordenador específico<select id="occurrences-manage-employee-coordinator"><option value="">Usar coordenador do turno</option></select></label><button type="button" class="secondary" id="occurrences-save-employee-coordinator">Salvar exceção</button></div>
-              </div>
-            </details>
+            <fieldset id="occurrences-management-fields" class="occ-management-fields" disabled>
+              <legend class="sr-only">Configuração da filial selecionada</legend>
+              <section class="occ-management-step" aria-labelledby="occurrences-coordinator-title">
+                <div class="occ-management-step-head"><span class="occ-management-step-number" aria-hidden="true">1</span><div><h4 id="occurrences-coordinator-title">Cadastre os coordenadores</h4><p class="hint">O responsável pode ser cadastrado pelo nome, mesmo sem matrícula de colaborador.</p></div></div>
+                <form id="occurrences-coordinator-form" class="occ-coordinator-form">
+                  <label>Nome do coordenador<input id="occurrences-coordinator-name" type="text" maxlength="120" required autocomplete="off" placeholder="Nome completo do responsável"></label>
+                  <label>Tipo<select id="occurrences-coordinator-type"><option value="INTERNAL">Interno</option><option value="PJ">Prestador PJ</option><option value="EXTERNAL">Externo</option></select></label>
+                  <label>Vincular a um colaborador (opcional)<select id="occurrences-coordinator-employee"><option value="">Cadastro independente</option></select></label>
+                  <div class="actions"><button id="occurrences-coordinator-save" type="submit" class="primary">Cadastrar coordenador</button><button id="occurrences-coordinator-cancel" type="button" class="secondary" hidden>Cancelar edição</button></div>
+                </form>
+                <div id="occurrences-coordinator-list" class="occ-coordinator-list"><p class="occ-management-empty">Selecione a filial para consultar os coordenadores.</p></div>
+              </section>
+              <section class="occ-management-step" aria-labelledby="occurrences-management-shifts-title">
+                <div class="occ-management-step-head"><span class="occ-management-step-number" aria-hidden="true">2</span><div><h4 id="occurrences-management-shifts-title">Defina o responsável de cada turno</h4><p class="hint">O coordenador do turno se aplica aos colaboradores que não têm vínculo direto.</p></div></div>
+                <div id="occurrences-team-cards" class="occ-team-cards"><p class="occ-management-empty">Selecione a filial para consultar os turnos.</p></div>
+              </section>
+              <section class="occ-management-step" aria-labelledby="occurrences-management-employees-title">
+                <div class="occ-management-step-head"><span class="occ-management-step-number" aria-hidden="true">3</span><div><h4 id="occurrences-management-employees-title">Organize colaboradores individualmente ou em lote</h4><p class="hint">O vínculo direto substitui o responsável do turno. Use “Voltar ao turno” para retirar esse vínculo.</p></div></div>
+                <div class="occ-management-toolbar"><label>Pesquisar colaborador<input id="occurrences-management-search" type="search" autocomplete="off" placeholder="Nome, matrícula ou turno"></label><label>Filtrar turno<select id="occurrences-management-shift"><option value="">Todos os turnos</option></select></label></div>
+                <div class="occ-employee-selection"><label><input id="occurrences-management-select-visible" type="checkbox"> Selecionar os exibidos</label><span id="occurrences-management-selection-count" aria-live="polite">0 selecionados</span><button type="button" id="occurrences-management-clear-selection" class="secondary">Limpar seleção</button></div>
+                <p class="hint">A seleção é mantida ao pesquisar ou trocar o filtro de turno.</p>
+                <div class="table-wrap"><table class="occ-management-table"><thead><tr><th scope="col">Selecionar</th><th scope="col">Colaborador</th><th scope="col">Matrícula</th><th scope="col">Turno</th><th scope="col">Coordenador atual</th></tr></thead><tbody id="occurrences-management-employees"><tr><td colspan="5">Selecione a filial para consultar os colaboradores.</td></tr></tbody></table></div>
+                <div class="occ-management-toolbar"><label>Coordenador para os selecionados<select id="occurrences-management-batch-coordinator"><option value="">Selecione o coordenador</option></select></label><button type="button" class="primary" id="occurrences-management-assign">Aplicar vínculo direto</button><button type="button" class="secondary" id="occurrences-management-use-shift">Voltar ao turno</button></div>
+              </section>
+            </fieldset>
           </div>
+          <footer class="occ-management-footer"><p id="occurrences-management-status" class="occ-management-feedback" role="status" aria-live="polite">Selecione a empresa e a filial para começar.</p><button type="button" class="secondary" id="occurrences-management-retry" hidden>Recarregar dados da filial</button></footer>
         </section>
       </div>
 
@@ -2835,7 +2863,7 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.101"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.102"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.92"></script>
@@ -2849,6 +2877,6 @@
   <script src="/js/bh-comparison.js?v=1.0.31-beta.99"></script>
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
-  <script src="/js/occurrences-control.js?v=1.0.31-beta.89"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.102"></script>
 </body>
 </html>

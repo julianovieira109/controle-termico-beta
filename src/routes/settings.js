@@ -129,10 +129,11 @@ router.get("/support",authenticate,async(_req,res,next)=>{
   }catch(e){next(e);}
 });
 
-router.get("/",authenticate,async(_req,res,next)=>{
+router.get("/",authenticate,async(req,res,next)=>{
   try{
     const {rows}=await pool.query(`SELECT * FROM system_settings ORDER BY setting_key,updated_at DESC`);
-    res.json(rows);
+    const canViewTeams=req.user?.role==="ADMIN"&&(req.user?.isMasterAdmin===true||req.user?.permissions?.["occurrences.view"]===true);
+    res.json(rows.filter(row=>String(row.setting_key||"").toLowerCase()!=="occurrences-management"||canViewTeams));
   }catch(e){next(e);}
 });
 
@@ -145,6 +146,9 @@ router.put("/:key",authenticate,async(req,res,next)=>{
 
     const key=String(req.params.key||"").trim();
     if(!key)return res.status(400).json({error:"Configuração inválida."});
+    if(key.toLowerCase()==="occurrences-management"){
+      return res.status(400).json({error:"Use Ocorrências → Gerenciar Equipes para alterar coordenadores e vínculos."});
+    }
     const protectedMasterSettings=new Set(["support","visual","thermal-rest"]);
     if(protectedMasterSettings.has(key.toLowerCase())&&req.user.isMasterAdmin!==true){
       return res.status(403).json({

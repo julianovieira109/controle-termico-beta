@@ -2,6 +2,7 @@ function hasEffectivePermission(rule=""){
   const alternatives=String(rule||"").split("|").map(item=>item.trim()).filter(Boolean);
   if(!alternatives.length)return true;
   if(alternatives.includes("master"))return currentUser?.isMasterAdmin===true;
+  if(alternatives.length===1&&alternatives[0]==="occurrences.view")return currentUser?.role==="ADMIN"&&(currentUser?.isMasterAdmin===true||currentUser?.permissions?.["occurrences.view"]===true);
   if(currentUser?.role==="ADMIN")return true;
   if(alternatives.includes("admin"))return false;
   return alternatives.some(permission=>currentUser?.permissions?.[permission]===true);
@@ -53,6 +54,8 @@ function filterManualChapters(){
 }
 
 const helpTopics=[
+  {id:"coordinator_new",label:"Cadastrar coordenador interno, PJ ou externo",permission:"occurrences.view",view:"occurrences",chapter:"manual-reports",answer:"Abra Ocorrências → Gerenciar Equipes e escolha empresa e filial na própria janela. Cadastre o nome do coordenador e indique se é interno, PJ ou externo. O coordenador não precisa estar no quadro de colaboradores nem ter matrícula ou ponto importado. Se ele já for colaborador dessa filial, você pode usar esse cadastro. O acesso é do Master ou de administrador autorizado para Controle de Ocorrências. Cadastros e vínculos anteriores são preservados. Renomear mantém os vínculos; inativar preserva os existentes e impede novas atribuições. Um coordenador vinculado não pode ser excluído: transfira ou retire os vínculos primeiro."},
+  {id:"coordinator_team",label:"Vincular equipe por turno, nome ou matrícula",permission:"occurrences.view",view:"occurrences",chapter:"manual-reports",answer:"Em Ocorrências → Gerenciar Equipes, selecione empresa e filial. Defina o coordenador padrão de cada turno ou procure colaboradores por nome ou matrícula, filtre por turno e selecione um ou vários para atribuir diretamente. O vínculo direto do colaborador tem prioridade sobre o responsável do turno. Para voltar ao padrão, retire o vínculo direto. Os colaboradores são carregados do cadastro da filial, mesmo sem ponto no mês. O vínculo é gerencial e vale para os períodos consultados; não muda o turno cadastrado nem os dados da Senior. Não é necessário reimportar PDFs. Se outra pessoa alterar a mesma configuração, recarregue a equipe antes de salvar novamente."},
   {id:"access",label:"Entrar, senha e menu",permission:"",view:"manual",chapter:"manual-access",answer:"Para entrar, informe o e-mail e a senha cadastrados. Use “Minha senha” para trocar a própria senha. Se esquecer, escolha “Esqueci minha senha”, solicite o código enviado por e-mail e crie uma nova senha. O WhatsApp e o Administrador Master continuam disponíveis como alternativas."},
   {id:"dashboard",label:"Entender o Painel",permission:"dashboard.view",view:"dashboard",chapter:"manual-dashboard",answer:"O Painel mostra os totais e alertas dentro do seu acesso. Se aparecer colaborador sem turno, abra a lista indicada e regularize antes de gerar fichas."},
   {id:"employee_new",label:"Cadastrar colaborador",permission:"employees.manage",view:"employees",chapter:"manual-employees",answer:"Abra Colaboradores, clique em “+ Novo colaborador”, selecione empresa e filial, preencha matrícula, nome, admissão, cargo, turno e situação, confira a regra de ficha e salve."},
@@ -86,6 +89,7 @@ let activeHelpCategory=null;
 const helpCategories=[
   {id:"overview",label:"Painel, acesso e segurança",topics:["access","dashboard","night_mode","safety"]},
   {id:"employees",label:"Colaboradores",topics:["employee_new","employee_find"]},
+  {id:"teams",label:"Coordenadores e equipes",topics:["coordinator_new","coordinator_team"]},
   {id:"imports",label:"Importação Senior e turnos",topics:["timecard","import","shifts","cleanup","historical_dismissed","bh_import","period_compare","import_error"]},
   {id:"reports",label:"Relatórios e fichas",topics:["reports","thermal_safety","missing_report","two_punches","occurrence_print"]},
   {id:"settings",label:"Configurações e calendário",topics:["calendar","settings"]},

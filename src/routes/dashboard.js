@@ -2,6 +2,7 @@ const express=require("express");
 const pool=require("../db/pool");
 const {authenticate,applyScope,requirePermission,requireOccurrencesAccess}=require("../middleware/auth");
 const DashboardAlerts=require("../lib/dashboard-alerts");
+const OccurrencesManagement=require("../lib/occurrences-management");
 const audit=require("../db/audit");
 const router=express.Router();
 router.use(authenticate,applyScope,requirePermission("dashboard.view"));
@@ -376,11 +377,22 @@ router.get("/occurrences",requireOccurrencesAccess,async(req,res,next)=>{
     if(companyId){settingParams.push(companyId);settingFilters.push(`ss.company_id=$${settingParams.length}::uuid`);}
     if(branchId){settingParams.push(branchId);settingFilters.push(`ss.branch_id=$${settingParams.length}::uuid`);}
     const {rows:settingRows}=await pool.query(`SELECT ss.company_id,ss.branch_id,ss.setting_value FROM system_settings ss WHERE ${settingFilters.join(" AND ")} ORDER BY ss.updated_at DESC`,settingParams);
-    const configs=new Map(settingRows.map(item=>[`${item.company_id||""}|${item.branch_id||""}`,item.setting_value||{}]));
+    const configs=new Map();
+    for(const item of settingRows){
+      const unitKey=`${item.company_id||""}|${item.branch_id||""}`;
+      if(!configs.has(unitKey))configs.set(unitKey,item.setting_value||{});
+    }
+    const coordinatorEmployeeIds=[...new Set(settingRows.flatMap(item=>[
+      ...(Array.isArray(item.setting_value?.coordinators)?item.setting_value.coordinators.map(coordinator=>coordinator.employeeId):[]),
+      ...Object.values(item.setting_value?.shiftCoordinators||{}).map(coordinator=>coordinator?.id),
+      ...Object.values(item.setting_value?.employeeCoordinators||{}).map(coordinator=>coordinator?.id)
+    ]).filter(value=>OccurrencesManagement.UUID.test(String(value||""))))];
+    const coordinatorEmployees=coordinatorEmployeeIds.length?await pool.query("SELECT id,full_name,company_id,branch_id FROM employees WHERE id=ANY($1::uuid[])",[coordinatorEmployeeIds]):{rows:[]};
     for(const row of rows){
       const cfg=configs.get(`${row.company_id}|${row.branch_id}`)||{};
-      const employeeCoordinator=cfg.employeeCoordinators?.[row.employee_id]||null;
-      const shiftCoordinator=row.shift_id?cfg.shiftCoordinators?.[row.shift_id]||null:null;
+      const localEmployees=coordinatorEmployees.rows.filter(employee=>employee.company_id===row.company_id&&employee.branch_id===row.branch_id);
+      const employeeCoordinator=OccurrencesManagement.resolveCoordinator(cfg,cfg.employeeCoordinators?.[row.employee_id],localEmployees);
+      const shiftCoordinator=row.shift_id?OccurrencesManagement.resolveCoordinator(cfg,cfg.shiftCoordinators?.[row.shift_id],localEmployees):null;
       row.coordinator=employeeCoordinator||shiftCoordinator||null;
       row.coordinator_source=employeeCoordinator?"COLABORADOR":shiftCoordinator?"TURNO":null;
       const absences=Number(row.absences||0);
@@ -549,56 +561,72 @@ router.get("/occurrences/journeys",requireOccurrencesAccess,async(req,res,next)=
   }catch(error){next(error);}
 });
 
+async function assertManagementUnit(req,companyId,branchId,db=pool,lock=false){
+  if(!OccurrencesManagement.UUID.test(companyId)||!OccurrencesManagement.UUID.test(branchId)){
+    throw Object.assign(new Error("Selecione empresa e filial válidas para gerenciar as equipes."),{status:400});
+  }
+  if(!req.scope.isAdmin&&(companyId!==String(req.scope.companyId).toLowerCase()||!req.scope.branchIds.map(value=>String(value).toLowerCase()).includes(branchId))){
+    throw Object.assign(new Error("Filial fora do seu escopo."),{status:403});
+  }
+  const {rows}=await db.query(`SELECT b.id FROM branches b JOIN companies c ON c.id=b.company_id
+    WHERE c.id=$1::uuid AND b.id=$2::uuid ${lock?'FOR UPDATE OF b':''}`,[companyId,branchId]);
+  if(!rows.length)throw Object.assign(new Error("A filial não pertence à empresa selecionada."),{status:400});
+}
+
+async function managementCatalog(db,companyId,branchId){
+  const [employees,shifts]=await Promise.all([
+    db.query(`SELECT e.id,e.full_name,e.registration,e.shift_id,e.status,s.name shift_name
+      FROM employees e LEFT JOIN shifts s ON s.id=e.shift_id
+      WHERE e.company_id=$1::uuid AND e.branch_id=$2::uuid ORDER BY e.full_name,e.id`,[companyId,branchId]),
+    db.query("SELECT id,name,senior_code,active FROM shifts WHERE company_id=$1::uuid ORDER BY name,id",[companyId])
+  ]);
+  return {employees:employees.rows,shifts:shifts.rows};
+}
+
 router.get("/occurrences/management",requireOccurrencesAccess,async(req,res,next)=>{
   try{
-    const companyId=String(req.query.companyId||"").trim(); const branchId=String(req.query.branchId||"").trim();
-    if(!companyId||!branchId)return res.json({shiftCoordinators:{},employeeCoordinators:{}});
-    if(!req.scope.isAdmin&&(String(companyId)!==String(req.scope.companyId)||!req.scope.branchIds.map(String).includes(String(branchId))))return res.status(403).json({error:"Filial fora do seu escopo."});
-    const {rows}=await pool.query("SELECT setting_value FROM system_settings WHERE company_id=$1 AND branch_id=$2 AND setting_key='occurrences-management' ORDER BY updated_at DESC LIMIT 1",[companyId,branchId]);
-    res.json(rows[0]?.setting_value||{shiftCoordinators:{},employeeCoordinators:{}});
+    const companyId=String(req.query.companyId||"").trim().toLowerCase(),branchId=String(req.query.branchId||"").trim().toLowerCase();
+    if(!companyId&&!branchId)return res.json({...OccurrencesManagement.empty(),employees:[],shifts:[],companyId:null,branchId:null});
+    await assertManagementUnit(req,companyId,branchId);
+    const [settings,catalog]=await Promise.all([
+      pool.query("SELECT setting_value FROM system_settings WHERE company_id=$1 AND branch_id=$2 AND setting_key='occurrences-management' ORDER BY updated_at DESC,id DESC LIMIT 1",[companyId,branchId]),
+      managementCatalog(pool,companyId,branchId)
+    ]);
+    res.json({...OccurrencesManagement.normalizeState(settings.rows[0]?.setting_value||{},catalog.employees),...catalog,companyId,branchId});
   }catch(error){next(error);}
 });
 
 router.put("/occurrences/management",requireOccurrencesAccess,async(req,res,next)=>{
+  let client,committed=false;
   try{
-    const companyId=String(req.body?.companyId||"").trim(); const branchId=String(req.body?.branchId||"").trim();
-    if(!companyId||!branchId)return res.status(400).json({error:"Selecione empresa e filial para salvar os coordenadores."});
-    if(!req.scope.isAdmin&&(String(companyId)!==String(req.scope.companyId)||!req.scope.branchIds.map(String).includes(String(branchId))))return res.status(403).json({error:"Filial fora do seu escopo."});
-    // A configuração gerencial é sempre filial-específica. Não confiamos nos
-    // ids/nomes enviados pelo navegador: turnos, colaboradores e coordenadores
-    // precisam existir entre os colaboradores da empresa + filial selecionadas.
-    const {rows:branchEmployees}=await pool.query(`
-      SELECT e.id employee_id,e.full_name,e.shift_id
-      FROM employees e
-      WHERE e.company_id=$1::uuid AND e.branch_id=$2::uuid AND COALESCE(e.active,true)=true
-    `,[companyId,branchId]);
-    const employeesById=new Map(branchEmployees.map(item=>[String(item.employee_id),item]));
-    const validShiftIds=new Set(branchEmployees.map(item=>String(item.shift_id||'')).filter(Boolean));
-    const requestedShift=req.body?.shiftCoordinators&&typeof req.body.shiftCoordinators==='object'?req.body.shiftCoordinators:{};
-    const requestedEmployee=req.body?.employeeCoordinators&&typeof req.body.employeeCoordinators==='object'?req.body.employeeCoordinators:{};
-    const coordinatorFromBranch=value=>{
-      const candidate=employeesById.get(String(value?.id||''));
-      return candidate?{id:String(candidate.employee_id),name:String(candidate.full_name||'').trim()}:null;
-    };
-    const shiftCoordinators={};
-    for(const [shiftId,rawCoordinator] of Object.entries(requestedShift)){
-      if(!validShiftIds.has(String(shiftId)))continue;
-      const coordinator=coordinatorFromBranch(rawCoordinator);
-      if(coordinator)shiftCoordinators[String(shiftId)]=coordinator;
-    }
-    const employeeCoordinators={};
-    for(const [employeeId,rawCoordinator] of Object.entries(requestedEmployee)){
-      if(!employeesById.has(String(employeeId)))continue;
-      const coordinator=coordinatorFromBranch(rawCoordinator);
-      if(coordinator)employeeCoordinators[String(employeeId)]=coordinator;
-    }
-    const value={shiftCoordinators,employeeCoordinators};
-    const existing=await pool.query("SELECT id FROM system_settings WHERE company_id=$1 AND branch_id=$2 AND setting_key='occurrences-management' ORDER BY updated_at DESC LIMIT 1",[companyId,branchId]);
-    if(existing.rows[0])await pool.query("UPDATE system_settings SET setting_value=$1::jsonb,updated_at=NOW() WHERE id=$2",[JSON.stringify(value),existing.rows[0].id]);
-    else await pool.query("INSERT INTO system_settings(company_id,branch_id,setting_key,setting_value) VALUES($1,$2,'occurrences-management',$3::jsonb)",[companyId,branchId,JSON.stringify(value)]);
-    await audit(req,"UPDATE_OCCURRENCES_MANAGEMENT","system_settings",null,{companyId,branchId,shiftAssignments:Object.keys(value.shiftCoordinators).length,employeeAssignments:Object.keys(value.employeeCoordinators).length});
-    res.json({ok:true,...value});
-  }catch(error){next(error);}
+    client=await pool.connect();
+    const companyId=String(req.body?.companyId||"").trim().toLowerCase(),branchId=String(req.body?.branchId||"").trim().toLowerCase();
+    await client.query('BEGIN');
+    // Locking the branch also serializes the initial save, before a settings
+    // row exists. Every mutation checks the version read by the browser.
+    await assertManagementUnit(req,companyId,branchId,client,true);
+    const existing=await client.query("SELECT id,setting_value FROM system_settings WHERE company_id=$1 AND branch_id=$2 AND setting_key='occurrences-management' ORDER BY updated_at DESC,id DESC LIMIT 1 FOR UPDATE",[companyId,branchId]);
+    const catalog=await managementCatalog(client,companyId,branchId);
+    const current=OccurrencesManagement.normalizeState(existing.rows[0]?.setting_value||{},catalog.employees);
+    const requestedRegistry=Object.prototype.hasOwnProperty.call(req.body||{},'coordinators')?req.body.coordinators:current.coordinators;
+    const candidateIds=(Array.isArray(requestedRegistry)?requestedRegistry:[]).map(entry=>String(entry?.id||'').toLowerCase()).filter(value=>OccurrencesManagement.UUID.test(value));
+    const [foreignRegistry,foreignEmployees]=await Promise.all([
+      client.query(`SELECT setting_value->'coordinators' coordinators FROM system_settings
+        WHERE setting_key='occurrences-management' AND (company_id IS DISTINCT FROM $1::uuid OR branch_id IS DISTINCT FROM $2::uuid)`,[companyId,branchId]),
+      client.query(`SELECT id FROM employees WHERE id=ANY($1::uuid[])
+        AND (company_id IS DISTINCT FROM $2::uuid OR branch_id IS DISTINCT FROM $3::uuid)`,[candidateIds,companyId,branchId])
+    ]);
+    const forbiddenCoordinatorIds=[...foreignEmployees.rows.map(employee=>employee.id),...foreignRegistry.rows.flatMap(row=>Array.isArray(row.coordinators)?row.coordinators.map(entry=>entry.id):[])];
+    const value=OccurrencesManagement.prepareUpdate(current,req.body||{},{...catalog,forbiddenCoordinatorIds});
+    if(existing.rows[0])await client.query("UPDATE system_settings SET setting_value=$1::jsonb,updated_at=NOW() WHERE id=$2",[JSON.stringify(value),existing.rows[0].id]);
+    else await client.query("INSERT INTO system_settings(company_id,branch_id,setting_key,setting_value) VALUES($1,$2,'occurrences-management',$3::jsonb)",[companyId,branchId,JSON.stringify(value)]);
+    await client.query('COMMIT');committed=true;
+    await audit(req,"UPDATE_OCCURRENCES_MANAGEMENT","system_settings",existing.rows[0]?.id||null,{companyId,branchId,version:value.version,coordinators:value.coordinators.length,shiftAssignments:Object.keys(value.shiftCoordinators).length,employeeAssignments:Object.keys(value.employeeCoordinators).length});
+    res.json({ok:true,...value,...catalog,companyId,branchId});
+  }catch(error){
+    if(client&&!committed){try{await client.query('ROLLBACK');}catch{/* Preserve the original failure if the connection is already gone. */}}
+    next(error);
+  }finally{client?.release();}
 });
 
 module.exports=router;

@@ -690,3 +690,213 @@ body.theme-dark #app #user-name{color:#e5e7eb;background:#172935}
 body.theme-dark #app #period-open{color:#eef5f8;background:#172935;border-color:#658294}
 body.theme-dark #app #occurrences .occurrences-source-status.is-missing{background:#3d2026;border-color:#a76670;color:#ffd5da}
 body.theme-dark #app #occurrences .occurrences-source-status.is-missing :is(span,strong){color:#ffd5da}
+
+/* Gestão de equipes: superfícies opacas e navegação isolada do painel e da impressão. */
+@media screen{
+  #occurrences-management{
+    --occ-management-card:var(--card,#fff);
+    --occ-management-soft:#f3f7fa;
+    --occ-management-field:#fff;
+    --occ-management-text:var(--text,#223647);
+    --occ-management-heading:var(--heading,#173b56);
+    --occ-management-muted:#526777;
+    --occ-management-line:var(--line,#d9e0e7);
+    --occ-management-primary:#245f89;
+    --occ-management-primary-hover:#194d73;
+    --occ-management-focus:#2c83bc;
+    --occ-management-selected:#eaf4fc;
+    --occ-management-success-bg:#eaf7ef;
+    --occ-management-success:#17673e;
+    --occ-management-error-bg:#fff1f1;
+    --occ-management-error:#a52c29;
+    position:fixed;inset:0;z-index:10050;display:grid;place-items:center;
+    padding:24px;overflow:hidden;isolation:isolate;color:var(--occ-management-text);
+  }
+  #occurrences-management[hidden]{display:none!important}
+  #occurrences-management .occ-team-management-backdrop{
+    position:absolute;inset:0;background:rgba(7,24,39,.72);backdrop-filter:blur(3px);
+  }
+  #occurrences-management .occ-team-management-dialog{
+    position:relative;display:flex;flex-direction:column;width:min(1160px,100%);
+    min-width:0;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+    overflow:hidden;border:1px solid var(--occ-management-line);border-radius:18px;
+    background:var(--occ-management-soft);color:var(--occ-management-text);
+    box-shadow:0 28px 80px rgba(0,0,0,.35);color-scheme:light;
+  }
+  #occurrences-management .occ-team-management-head{
+    position:relative;top:auto;z-index:2;flex:0 0 auto;display:flex;flex-direction:row;
+    align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 24px;
+    border-bottom:1px solid var(--occ-management-line);background:var(--occ-management-card);
+  }
+  #occurrences-management .occ-team-management-head>div{min-width:0}
+  #occurrences-management .eyebrow{color:var(--occ-management-primary);font-size:10px;letter-spacing:.12em}
+  #occurrences-management h3{margin:5px 0 7px;color:var(--occ-management-heading);font-size:21px;line-height:1.2}
+  #occurrences-management :is(h4,strong){color:var(--occ-management-heading)}
+  #occurrences-management .occ-team-management-head p{max-width:820px;margin:0;color:var(--occ-management-muted);font-size:13px;line-height:1.5}
+  #occurrences-management .occ-team-management-content{
+    display:grid;flex:1 1 auto;min-height:0;min-width:0;align-content:start;gap:18px;
+    padding:20px 24px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-gutter:stable;scrollbar-color:var(--occ-management-line) transparent;
+  }
+  #occurrences-management :is(.occ-team-management-content,.occ-team-management-content *){box-sizing:border-box;min-width:0}
+  #occurrences-management :is(p,span,small,strong,h3,h4){overflow-wrap:anywhere}
+  #occurrences-management :is(.hint,.muted,small){color:var(--occ-management-muted)}
+  #occurrences-management .hint{margin:0;font-size:12px;line-height:1.5}
+  #occurrences-management .occ-management-scope{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+    padding:15px 17px;border:1px solid var(--occ-management-line);border-radius:12px;
+    background:var(--occ-management-card);
+  }
+  #occurrences-management .occ-management-scope>div{grid-column:1/-1}
+  #occurrences-management .occ-management-scope h4{margin:0 0 5px;font-size:15px}
+  #occurrences-management .occ-management-fields{display:grid;gap:18px;min-width:0;margin:0;padding:0;border:0}
+  #occurrences-management .occ-management-fields>.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+  #occurrences-management .occ-management-fields:disabled :is(input,select,textarea){cursor:not-allowed}
+  #occurrences-management .occ-management-step{
+    display:grid;gap:16px;padding:18px;border:1px solid var(--occ-management-line);
+    border-radius:13px;background:var(--occ-management-card);
+  }
+  #occurrences-management :is(.occ-management-step-head,.occ-team-section-head){
+    display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  }
+  #occurrences-management .occ-management-step-head{display:grid;grid-template-columns:32px minmax(0,1fr);justify-content:start;gap:12px}
+  #occurrences-management .occ-management-step-number{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--occ-management-line);border-radius:10px;background:var(--occ-management-selected);color:var(--occ-management-primary);font-size:13px;font-weight:800}
+  #occurrences-management :is(.occ-management-step-head,.occ-team-section-head) h4{margin:0 0 5px;font-size:16px;line-height:1.35}
+  #occurrences-management :is(.occ-management-step-head,.occ-team-section-head) p{margin:0;color:var(--occ-management-muted);font-size:12px;line-height:1.5}
+  #occurrences-management label{display:grid;gap:7px;margin:0;color:var(--occ-management-heading);font-size:12px;font-weight:700;line-height:1.4}
+  #occurrences-management :is(input:not([type=checkbox]):not([type=radio]),select,textarea){
+    width:100%;min-width:0;max-width:100%;min-height:42px;margin:0;padding:10px 12px;
+    border:1px solid var(--occ-management-line);border-radius:9px;background:var(--occ-management-field);
+    color:var(--occ-management-text);font:inherit;font-size:13px;box-shadow:none;
+  }
+  #occurrences-management :is(select option,select optgroup){background:var(--occ-management-field);color:var(--occ-management-text)}
+  #occurrences-management :is(input,textarea)::placeholder{color:var(--occ-management-muted);opacity:1}
+  #occurrences-management :is(input[type=checkbox],input[type=radio]){width:18px;height:18px;flex:0 0 18px;margin:0;accent-color:var(--occ-management-primary);cursor:pointer}
+  #occurrences-management :is(button,input,select,textarea,a):focus-visible{outline:3px solid var(--occ-management-focus);outline-offset:3px}
+  #occurrences-management :is(input,select,textarea)[aria-invalid=true]{border-color:var(--occ-management-error)}
+  #occurrences-management button{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;
+    max-width:100%;padding:10px 15px;border:1px solid var(--occ-management-line);border-radius:9px;
+    background:var(--occ-management-card);color:var(--occ-management-primary);font-size:12px;
+    font-weight:800;line-height:1.35;cursor:pointer;box-shadow:none;white-space:normal;
+  }
+  #occurrences-management button.primary{border-color:var(--occ-management-primary);background:var(--occ-management-primary);color:#fff}
+  #occurrences-management button.secondary{border-color:var(--occ-management-line);background:var(--occ-management-field);color:var(--occ-management-primary)}
+  #occurrences-management button:not(:disabled):hover{border-color:var(--occ-management-primary);background:var(--occ-management-selected);transform:none}
+  #occurrences-management button.primary:not(:disabled):hover{border-color:var(--occ-management-primary-hover);background:var(--occ-management-primary-hover);color:#fff}
+  #occurrences-management button:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  #occurrences-management button:is(.is-loading,[aria-busy=true]){cursor:progress}
+  #occurrences-management .occ-team-management-head>button{flex:0 0 auto;width:auto;min-width:76px}
+  #occurrences-management .occ-coordinator-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(150px,.8fr) minmax(0,1.3fr) auto;align-items:end;gap:12px}
+  #occurrences-management .occ-coordinator-form>.actions{display:flex;flex-wrap:wrap;align-self:end;gap:8px}
+  #occurrences-management .occ-coordinator-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  #occurrences-management .occ-coordinator-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--occ-management-line);border-radius:10px;background:var(--occ-management-soft)}
+  #occurrences-management .occ-coordinator-row>div{display:grid;gap:4px}
+  #occurrences-management .occ-coordinator-row>div:first-child{flex:1 1 auto}
+  #occurrences-management .occ-coordinator-row>.actions{display:flex;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+  #occurrences-management .occ-coordinator-row>.actions button{min-height:36px;padding:7px 10px;font-size:11px}
+  #occurrences-management .occ-coordinator-row.is-inactive{border-style:dashed}
+  #occurrences-management .occ-coordinator-row strong{font-size:13px;line-height:1.4}
+  #occurrences-management .occ-coordinator-row :is(small,span){font-size:11px;line-height:1.4}
+  #occurrences-management .occ-coordinator-row>button{flex:0 0 auto;min-height:36px;padding:7px 10px;font-size:11px}
+  #occurrences-management .occ-team-cards{display:grid;gap:10px}
+  #occurrences-management .occ-team-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto;align-items:end;gap:14px;padding:14px;border:1px solid var(--occ-management-line);border-radius:10px;background:var(--occ-management-soft)}
+  #occurrences-management .occ-team-card-info{display:grid;gap:4px;align-self:center}
+  #occurrences-management .occ-team-card-info>strong{font-size:14px}
+  #occurrences-management .occ-team-card-info>span{color:var(--occ-management-muted);font-size:12px}
+  #occurrences-management .occ-team-card-info>small{display:flex;flex-wrap:wrap;gap:8px}
+  #occurrences-management .occ-team-card-info .green{color:var(--occ-management-success)}
+  #occurrences-management .occ-team-card-info .yellow{color:#8a5700}
+  #occurrences-management .occ-team-card-info .red{color:var(--occ-management-error)}
+  #occurrences-management .occ-management-toolbar{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) auto;align-items:end;gap:12px}
+  #occurrences-management .occ-employee-selection{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0;padding:11px 13px;border:1px solid var(--occ-management-line);border-radius:10px;background:var(--occ-management-soft)}
+  #occurrences-management .occ-employee-selection>label{display:flex;flex:1 1 170px;align-items:center;gap:9px;cursor:pointer}
+  #occurrences-management .occ-employee-selection>span{padding:5px 8px;border:1px solid var(--occ-management-line);border-radius:7px;background:var(--occ-management-card);color:var(--occ-management-muted);font-size:11px}
+  #occurrences-management .occ-employee-selection>button{min-height:36px;padding:7px 10px;font-size:11px}
+  #occurrences-management .occ-management-step>.table-wrap{max-height:360px;max-height:min(360px,45vh);min-width:0;overflow:auto;overscroll-behavior:contain;border:1px solid var(--occ-management-line);border-radius:10px;background:var(--occ-management-card)}
+  #occurrences-management .occ-management-table{width:100%;min-width:0;margin:0;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:12px}
+  #occurrences-management .occ-management-table th{position:sticky;top:0;z-index:1;background:var(--occ-management-soft);color:var(--occ-management-muted);font-size:10px;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
+  #occurrences-management .occ-management-table :is(th,td){padding:11px 12px;border:0;border-bottom:1px solid var(--occ-management-line);text-align:left;white-space:normal;overflow-wrap:anywhere;vertical-align:middle}
+  #occurrences-management .occ-management-table :is(th,td):first-child{width:76px;text-align:center}
+  #occurrences-management .occ-management-table tr:last-child td{border-bottom:0}
+  #occurrences-management .occ-management-table td{color:var(--occ-management-text);background:var(--occ-management-card)}
+  #occurrences-management .occ-management-table td strong{display:block;font-size:12px;line-height:1.4}
+  #occurrences-management .occ-management-table td small{display:block;margin-top:3px;font-size:11px;line-height:1.4}
+  #occurrences-management .occ-management-table tbody tr:hover td{background:var(--occ-management-soft)}
+  #occurrences-management .occ-management-table tr:is(.is-selected,[aria-selected=true]) td,
+  #occurrences-management .occ-management-table tr:has(input:checked) td{background:var(--occ-management-selected)}
+  #occurrences-management .occ-management-table tr:has(input:focus-visible){outline:2px solid var(--occ-management-focus);outline-offset:-2px}
+  #occurrences-management .occ-management-footer{position:relative;z-index:2;display:flex;flex:0 0 auto;align-items:center;justify-content:space-between;gap:14px;padding:15px 24px;border-top:1px solid var(--occ-management-line);background:var(--occ-management-card)}
+  #occurrences-management .occ-management-footer>div{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+  #occurrences-management .occ-management-footer :is(p,span){margin:0;color:var(--occ-management-muted);font-size:12px;line-height:1.5}
+  #occurrences-management .occ-management-footer>.occ-management-feedback{flex:1 1 auto}
+  #occurrences-management :is(.occ-management-feedback,.occ-management-empty){margin:0;padding:13px 15px;border:1px solid var(--occ-management-line);border-radius:9px;background:var(--occ-management-soft);color:var(--occ-management-muted);font-size:12px;line-height:1.5}
+  #occurrences-management .occ-management-empty{grid-column:1/-1;text-align:center}
+  #occurrences-management .occ-management-feedback:empty{display:none}
+  #occurrences-management .occ-management-feedback:is(.is-error,.error,[data-state=error],[role=alert]){border-color:var(--occ-management-error);background:var(--occ-management-error-bg);color:var(--occ-management-error)}
+  #occurrences-management .occ-management-feedback:is(.is-success,.success,[data-state=success]){border-color:var(--occ-management-success);background:var(--occ-management-success-bg);color:var(--occ-management-success)}
+  #occurrences-management :is(.occ-management-feedback,.occ-management-empty):is(.is-loading,[aria-busy=true]){display:flex;align-items:center;justify-content:center;gap:10px;color:var(--occ-management-primary)}
+  #occurrences-management :is(.occ-management-feedback,.occ-management-empty):is(.is-loading,[aria-busy=true]):before{content:"";width:14px;height:14px;flex:0 0 14px;border:2px solid var(--occ-management-line);border-top-color:var(--occ-management-primary);border-radius:50%;animation:occ-management-spin .8s linear infinite}
+  body.theme-dark #occurrences-management{
+    --occ-management-card:#1f2937;--occ-management-soft:#172935;--occ-management-field:#14232e;
+    --occ-management-text:#e5edf4;--occ-management-heading:#f9fafb;--occ-management-muted:#bdcbd7;
+    --occ-management-line:#526879;--occ-management-primary:#9bcff2;--occ-management-primary-hover:#184c70;
+    --occ-management-focus:#7cc7f6;--occ-management-selected:#24465c;
+    --occ-management-success-bg:#173828;--occ-management-success:#a7e9c2;
+    --occ-management-error-bg:#3d2026;--occ-management-error:#ffb9bd;
+  }
+  body.theme-dark #occurrences-management .occ-team-management-dialog{background:var(--occ-management-soft);color-scheme:dark}
+  body.theme-dark #occurrences-management .occ-team-management-head{background:var(--occ-management-card)}
+  body.theme-dark #occurrences-management :is(.occ-team-card,.occ-coordinator-row){background:var(--occ-management-soft)}
+  body.theme-dark #occurrences-management :is(select,select option,select optgroup,input,textarea){background:var(--occ-management-field);color:var(--occ-management-text);border-color:var(--occ-management-line);color-scheme:dark}
+  body.theme-dark #occurrences-management button.primary{border-color:#387ba5;background:#245f89;color:#fff}
+  body.theme-dark #occurrences-management button.secondary{background:var(--occ-management-field);color:var(--occ-management-primary)}
+  body.theme-dark #occurrences-management .occ-team-card-info .yellow{color:#ffd78b}
+  @keyframes occ-management-spin{to{transform:rotate(360deg)}}
+}
+@media screen and (max-width:960px){
+  #occurrences-management .occ-coordinator-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #occurrences-management .occ-management-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #occurrences-management .occ-management-toolbar>button{grid-column:1/-1;justify-self:start}
+}
+@media screen and (max-width:700px){
+  #occurrences-management{padding:10px}
+  #occurrences-management .occ-team-management-dialog{width:100%;max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px);border-radius:14px}
+  #occurrences-management .occ-team-management-head{gap:12px;padding:16px}
+  #occurrences-management h3{font-size:18px}
+  #occurrences-management .occ-team-management-head p{font-size:12px}
+  #occurrences-management .occ-team-management-content{gap:14px;padding:16px;scrollbar-gutter:auto}
+  #occurrences-management :is(.occ-management-scope,.occ-coordinator-list,.occ-team-card){grid-template-columns:1fr}
+  #occurrences-management .occ-coordinator-row{display:grid;grid-template-columns:1fr}
+  #occurrences-management .occ-coordinator-row>.actions{justify-content:flex-start}
+  #occurrences-management .occ-management-step{gap:14px;padding:14px}
+  #occurrences-management .occ-team-card button{width:100%}
+  #occurrences-management :is(.occ-management-step-head,.occ-team-section-head){align-items:flex-start;flex-direction:column;gap:8px}
+  #occurrences-management .occ-management-footer{align-items:stretch;flex-direction:column;gap:10px;padding:12px 16px}
+  #occurrences-management .occ-management-footer>div{display:grid;grid-template-columns:1fr;width:100%}
+  #occurrences-management .occ-management-footer button{width:100%}
+}
+@media screen and (max-width:620px){
+  #occurrences-management :is(.occ-coordinator-form,.occ-management-toolbar){grid-template-columns:1fr}
+  #occurrences-management .occ-management-toolbar>button{grid-column:auto;justify-self:stretch}
+  #occurrences-management .occ-management-table{display:block;table-layout:auto}
+  #occurrences-management .occ-management-table thead{display:block;border-bottom:1px solid var(--occ-management-line)}
+  #occurrences-management .occ-management-table thead tr{display:block}
+  #occurrences-management .occ-management-table thead th:not(:first-child){display:none}
+  #occurrences-management .occ-management-table thead th:first-child{display:block;width:auto;min-height:42px;text-align:left;padding-left:14px;border-bottom:0}
+  #occurrences-management .occ-management-table tbody{display:block}
+  #occurrences-management .occ-management-table tbody tr{display:grid;grid-template-columns:40px minmax(0,1fr);padding:10px 8px;border-bottom:1px solid var(--occ-management-line)}
+  #occurrences-management .occ-management-table tbody tr:last-child{border-bottom:0}
+  #occurrences-management .occ-management-table tbody td{display:block;grid-column:2;padding:5px 8px;border:0;background:transparent}
+  #occurrences-management .occ-management-table tbody td:first-child{grid-column:1;grid-row:1/8;width:40px;padding:9px 4px;text-align:center}
+  #occurrences-management .occ-management-table tbody td[colspan]{grid-column:1/-1;width:100%;text-align:center}
+  #occurrences-management .occ-management-table td[data-label]:before{content:attr(data-label);display:block;margin-bottom:3px;color:var(--occ-management-muted);font-size:10px;font-weight:700}
+  #occurrences-management .occ-management-table td:first-child[data-label]:before{display:none}
+  #occurrences-management .occ-management-table tbody tr:hover{background:var(--occ-management-soft)}
+  #occurrences-management .occ-management-table tbody tr:is(.is-selected,[aria-selected=true]),
+  #occurrences-management .occ-management-table tbody tr:has(input:checked){background:var(--occ-management-selected)}
+  #occurrences-management :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px}
+}
+@media screen and (prefers-reduced-motion:reduce){
+  #occurrences-management *,#occurrences-management *:before{transition:none;animation:none}
+}

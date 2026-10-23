@@ -5,9 +5,9 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 
-test('Painel de Pessoas possui visão executiva por equipe e turno',()=>{
+test('Controle de Ocorrências possui visão executiva por equipe e turno',()=>{
   const html=read('public/index.html');
-  assert.match(html,/Painel de Pessoas/);
+  assert.match(html,/Controle de Ocorrências/);
   assert.match(html,/Distribuição da Equipe/);
   assert.match(html,/Principais Ocorrências/);
   assert.match(html,/Situação por Turno/);
