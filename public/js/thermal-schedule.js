@@ -53,7 +53,7 @@
 
   function normalizeShiftDescription(description){
     return String(description||"")
-      .replace(/(^|[^\d])(\d{1,2})PRE/gi,"$1$2:00PRE")
+      .replace(/(^|[^\d:])(\d{1,2})PRE/gi,"$1$2:00PRE")
       .replace(/(^|[^\d])(\d):([0-5]\d)(?!\d)/g,(_all,prefix,hour,minute)=>`${prefix}0${hour}:${minute}`);
   }
 

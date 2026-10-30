@@ -1262,6 +1262,13 @@ function renderThermalShiftList(config=window.thermalRestSettings||{}){
   const body=$("thermal-shifts-list");
   if(!body)return;
   body.innerHTML=(catalogs.shifts||[]).map(shift=>{
+    if(typeof ShiftSchedule==="undefined"||typeof ShiftSchedule.validateDescription!=="function"){
+      return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>Revisar horário: validador indisponível. Atualize a página.</td><td>Revisar horário</td></tr>`;
+    }
+    const sourceValidation=ShiftSchedule.validateDescription(shift.description);
+    if(sourceValidation?.sourceOnlyAllowed){
+      return `<tr><td>${escapeHtml(shift.senior_code||"-")}</td><td>${escapeHtml(shift.name)}</td><td>${escapeHtml(shift.description||"-")}</td><td>Sem horário interpretado. Os minutos abreviados não serão completados automaticamente.</td><td>Descrição Senior preservada</td></tr>`;
+    }
     const assessment=ThermalSchedule.assessShiftPlanning(shift.description);
     const required=assessment.valid?ThermalSchedule.requiredShiftRestCount(shift.description):null;
     const rests=assessment.valid?ThermalSchedule.baseThermalRests(shift.description,config):[];
@@ -1580,6 +1587,31 @@ if($("employee-bulk-delete-visible")){
 
 let shiftImportPreview=null;
 
+function shiftImportCode(value){
+  return window.ShiftSchedule?.normalizeCode(value)??null;
+}
+
+function shiftImportProposalIssue(proposal,proposals=[]){
+  const code=shiftImportCode(proposal.code);
+  if(!code)return "Código Senior inválido. Confira o código numérico no relatório antes de cadastrar.";
+  if(proposals.filter(item=>shiftImportCode(item.code)===code).length>1){
+    return "O código aparece em mais de uma proposta. Revise as informações do relatório antes de cadastrar.";
+  }
+  return null;
+}
+
+function shiftImportIntelligenceCard(intelligence){
+  if(!intelligence)return "";
+  const score=Number(intelligence.score);
+  const level=String(intelligence.level||"BAIXA").toUpperCase();
+  return intelligentReaderCard({
+    score:Number.isFinite(score)?Math.max(0,Math.min(100,score)):0,
+    level:["ALTA","MEDIA","MÉDIA","BAIXA"].includes(level)?level:"BAIXA",
+    suggestedAction:escapeHtml(intelligence.suggestedAction||"Confira os dados antes de continuar."),
+    signals:(Array.isArray(intelligence.signals)?intelligence.signals:[]).map(escapeHtml)
+  });
+}
+
 function fillShiftImportBranches(){
   const companyId=$("shift-import-company")?.value;
   if(!$("shift-import-branch"))return;
@@ -1625,26 +1657,28 @@ function renderShiftImportPreview(data){
   $("shift-import-result").hidden=false;
 
   $("shift-import-summary").innerHTML=`
-    <article><span>Registros identificados</span><strong>${data.total||0}</strong></article>
-    <article><span>Prontos para atualizar</span><strong>${data.ready||0}</strong></article>
-    <article><span>Já configurados</span><strong>${data.alreadyConfigured||0}</strong></article>
-    <article><span>Não localizados</span><strong>${data.notFound||0}</strong></article>
-    <article><span>Códigos a vincular</span><strong>${data.unconfigured||0}</strong></article>
-    <article class="intelligence-summary"><span>Confiança do leitor</span><strong>${data.intelligence?.score??0}%</strong></article>
+    <article><span>Registros identificados</span><strong>${escapeHtml(data.total||0)}</strong></article>
+    <article><span>Prontos para atualizar</span><strong>${escapeHtml(data.ready||0)}</strong></article>
+    <article><span>Já configurados</span><strong>${escapeHtml(data.alreadyConfigured||0)}</strong></article>
+    <article><span>Não localizados</span><strong>${escapeHtml(data.notFound||0)}</strong></article>
+    <article><span>Códigos a vincular</span><strong>${escapeHtml(data.unconfigured||0)}</strong></article>
+    <article class="intelligence-summary"><span>Confiança do leitor</span><strong>${escapeHtml(data.intelligence?.score??0)}%</strong></article>
   `;
 
-  $("shift-import-feedback").innerHTML=intelligentReaderCard(data.intelligence);
-  const unresolvedShiftRegistrations=data.diagnostics?.unresolvedRegistrations||[];
+  $("shift-import-feedback").innerHTML=shiftImportIntelligenceCard(data.intelligence);
+  const unresolvedShiftRegistrations=Array.isArray(data.diagnostics?.unresolvedRegistrations)?data.diagnostics.unresolvedRegistrations:[];
   if(unresolvedShiftRegistrations.length){
     $("shift-import-feedback").innerHTML+=`
-      <div class="import-warning"><b>Não confirme:</b> ${unresolvedShiftRegistrations.length} matrícula(s) não foram montadas: ${unresolvedShiftRegistrations.join(", ")}.</div>
+      <div class="import-warning"><b>Não confirme:</b> ${unresolvedShiftRegistrations.length} matrícula(s) não foram montadas: ${unresolvedShiftRegistrations.map(escapeHtml).join(", ")}.</div>
     `;
   }
-  $("shift-import-confirm").disabled=unresolvedShiftRegistrations.length>0;
+  $("shift-import-confirm").disabled=unresolvedShiftRegistrations.length>0||Number(data.diagnostics?.unresolvedCount||0)>0;
 
   const proposals=Array.isArray(data.newShiftProposals)?data.newShiftProposals:[];
   const proposalPanel=$("shift-new-proposals");
-  const canApproveNewShifts=currentUser?.role==="ADMIN";
+  const isAdmin=currentUser?.role==="ADMIN";
+  const validationReady=Boolean(window.ShiftSchedule?.validateDescription);
+  const canApproveNewShifts=isAdmin&&validationReady;
   proposalPanel.hidden=!proposals.length;
   proposalPanel.innerHTML=proposals.length?`
     <div class="shift-proposal-head">
@@ -1653,38 +1687,41 @@ function renderShiftImportPreview(data){
         <p>Confira o código e os horários. O turno só será cadastrado depois da confirmação.</p>
       </div>
     </div>
-    ${proposals.map((proposal,index)=>`
-      <div class="shift-proposal-card ${proposal.canCreate?"ready":"manual-review"}">
+    ${proposals.map((proposal,index)=>{
+      const codeIssue=shiftImportProposalIssue(proposal,proposals);
+      const validation=window.ShiftSchedule?.validateDescription(proposal.description);
+      const ready=!codeIssue&&proposal.canCreate!==false&&validation?.valid;
+      const sourceOnly=validation?.sourceOnlyAllowed===true;
+      const reason=codeIssue||(sourceOnly?"Será cadastrado com a descrição original da Senior. Horários abreviados não serão completados automaticamente; o cálculo térmico exige conferência.":(!validation?.valid?validation?.reason:null))||proposal.reason||"Confira o código e informe dois horários (entrada e saída) ou quatro horários (com intervalo).";
+      return `
+      <div class="shift-proposal-card ${ready?"ready":"manual-review"}">
         <label class="shift-proposal-check">
           <input type="checkbox" data-new-shift-select="${index}" ${
-            canApproveNewShifts?"":"disabled"
+            canApproveNewShifts&&!codeIssue?"":"disabled"
           }>
-          Cadastrar este turno
+          ${sourceOnly?"Cadastrar com a descrição original da Senior":"Cadastrar este turno"}
         </label>
         <label>Código Senior
-          <input value="${proposal.displayCode||String(proposal.code||"").padStart(4,"0")}" disabled>
+          <input value="${escapeHtml(proposal.displayCode||String(proposal.code||"").padStart(4,"0"))}" disabled>
         </label>
         <label>Nome do turno
-          <input data-new-shift-name="${index}" maxlength="100" value="${proposal.suggestedName||""}" ${
+          <input data-new-shift-name="${index}" maxlength="100" value="${escapeHtml(proposal.suggestedName||"")}" ${
             canApproveNewShifts?"":"disabled"
           }>
         </label>
-        <label class="shift-proposal-description">${proposal.canCreate?"Horário do turno":"Informe os horários"}
+        <label class="shift-proposal-description">${sourceOnly?"Descrição original da Senior":ready?"Horário do turno":"Confira e informe os horários"}
           <input
             data-new-shift-description="${index}"
             maxlength="180"
-            value="${proposal.description||""}"
-            placeholder="Ex.: 07:00 às 12:00 / 13:00 às 16:00"
+            value="${escapeHtml(proposal.description||"")}"
+            placeholder="Ex.: 08:00 às 12:00 ou 08:00 às 12:00 / 13:00 às 17:00"
             ${canApproveNewShifts?"":"disabled"}
           >
         </label>
-        <p class="shift-proposal-reason">${
-          proposal.canCreate
-            ? (proposal.reason||"Confira antes de cadastrar.")
-            : "Os horários não vieram completos no PDF. Informe manualmente os 4 horários (entrada, saída, retorno e fim) antes de confirmar."
-        }${!canApproveNewShifts?" Somente o Administrador pode confirmar o novo turno.":""}</p>
+        ${proposal.rawDescription?`<p class="shift-proposal-reason"><b>Horário no PDF:</b> ${escapeHtml(proposal.rawDescription)}</p>`:""}
+        <p class="shift-proposal-reason">${escapeHtml(reason)}${!isAdmin?" Somente o Administrador pode confirmar o novo turno.":!validationReady?" Atualize a página antes de confirmar o cadastro.":""}</p>
       </div>
-    `).join("")}
+    `;}).join("")}
   `:"";
 
   const reviewUpdates=(data.rows||[]).filter(row=>row.result==="ATUALIZAR");
@@ -1709,13 +1746,13 @@ function renderShiftImportPreview(data){
   row.nameMatches===false ||
   data.intelligence?.requiresReview ? "" : "checked"
 }></td>
-        <td>${row.registration||"-"}</td>
+        <td>${escapeHtml(row.registration||"-")}</td>
         <td>
-          ${row.pdfName||"-"}
-          ${row.effectiveDate?`<small class="shift-effective-date">Escala em ${row.effectiveDate}</small>`:""}
+          ${escapeHtml(row.pdfName||"-")}
+          ${row.effectiveDate?`<small class="shift-effective-date">Escala em ${escapeHtml(row.effectiveDate)}</small>`:""}
         </td>
         <td>
-          ${row.fullName||"-"}
+          ${escapeHtml(row.fullName||"-")}
           ${row.nameMatches===false?`<small class="shift-name-warning">Nome diferente do PDF</small>`:""}
           ${!row.fullName&&row.registrationElsewhere?`
             <small class="shift-possible-match">
@@ -1733,16 +1770,16 @@ function renderShiftImportPreview(data){
             </small>
           `:""}
         </td>
-        <td><b>${row.rawShiftCode||row.shiftCode||"-"}</b></td>
-        <td><b>${row.targetShiftName||"Código não configurado"}</b></td>
-        <td>${row.currentShift||"Não definido"}</td>
+        <td><b>${escapeHtml(row.rawShiftCode||row.shiftCode||"-")}</b></td>
+        <td><b>${escapeHtml(row.targetShiftName||"Código não configurado")}</b></td>
+        <td>${escapeHtml(row.currentShift||"Não definido")}</td>
         <td>
           ${
             row.nameMatches===false
               ? `<span class="import-result DIVERGENCIA">DIVERGÊNCIA - CONFERIR CADASTRO</span>`
               : row.result==="NAO_LOCALIZADO"
                 ? `<span class="import-result NAO_LOCALIZADO">MATRÍCULA NÃO LOCALIZADA</span>`
-                : `<span class="import-result ${row.result}">${row.result.replaceAll("_"," ")}</span>`
+                : `<span class="import-result ${escapeHtml(row.result||"REVISAR")}">${escapeHtml(String(row.result||"REVISAR").replaceAll("_"," "))}</span>`
           }
         </td>
       </tr>
@@ -1877,23 +1914,36 @@ if($("shift-import-confirm")){
   $("shift-import-confirm").onclick=async()=>{
     if(!shiftImportPreview)return;
 
+    if($("shift-import-company")?.value!==String(shiftImportPreview.companyId)||$("shift-import-branch")?.value!==String(shiftImportPreview.branchId)){
+      toast("A empresa ou filial foi alterada. Leia o PDF novamente antes de confirmar os turnos.","warning");
+      return;
+    }
     if(Number(shiftImportPreview.diagnostics?.unresolvedCount||0)>0){
       toast("A atualização está bloqueada porque existem matrículas não reconhecidas no PDF.","warning");
       return;
     }
 
     const newShifts=(shiftImportPreview.newShiftProposals||[]).map((proposal,index)=>({
-      code:proposal.code,
+      code:shiftImportCode(proposal.code)||proposal.code,
       name:document.querySelector(`[data-new-shift-name="${index}"]`)?.value?.trim()||"",
       description:document.querySelector(`[data-new-shift-description="${index}"]`)?.value?.trim()||"",
+      rawDescription:String(proposal.rawDescription??proposal.description??"").trim(),
       selected:Boolean(document.querySelector(`[data-new-shift-select="${index}"]`)?.checked)
     })).filter(proposal=>proposal.selected);
+    if(newShifts.length&&currentUser?.role!=="ADMIN"){
+      toast("Somente o Administrador pode confirmar o cadastro de novos turnos.","warning");
+      return;
+    }
+    if(newShifts.length&&!window.ShiftSchedule?.validateDescription){
+      toast("Atualize a página para carregar a validação dos horários antes de cadastrar turnos.","warning");
+      return;
+    }
     const selectedNewCodes=new Set(newShifts.map(proposal=>String(proposal.code)));
 
     const rows=shiftImportPreview.rows.map((row,index)=>({
       ...row,
       selected:Boolean(document.querySelector(`[data-shift-import-index="${index}"]`)?.checked)||(
-        selectedNewCodes.has(String(row.shiftCode))&&
+        selectedNewCodes.has(String(shiftImportCode(row.shiftCode)||row.shiftCode))&&
         row.result==="CODIGO_NAO_CONFIGURADO"&&
         Boolean(row.employeeId)&&
         row.nameMatches!==false
@@ -1903,24 +1953,32 @@ if($("shift-import-confirm")){
     const selected=rows.filter(row=>
       row.selected &&
       row.result!=="NAO_LOCALIZADO" &&
-      (row.result!=="CODIGO_NAO_CONFIGURADO"||selectedNewCodes.has(String(row.shiftCode)))
+      (row.result!=="CODIGO_NAO_CONFIGURADO"||selectedNewCodes.has(String(shiftImportCode(row.shiftCode)||row.shiftCode)))
     );
 
     for(const proposal of newShifts){
+      const codeIssue=shiftImportProposalIssue(proposal,shiftImportPreview.newShiftProposals||[]);
+      if(codeIssue){
+        toast(codeIssue,"warning");
+        return;
+      }
       if(!proposal.name){
         toast(`Informe o nome do turno para o código ${proposal.code}.`,"warning");
         return;
       }
-      const times=(String(proposal.description||"").match(/\b(?:[01]\d|2[0-3]):[0-5]\d\b/g)||[]);
-      if(times.length!==4){
-        toast(`Informe exatamente 4 horários válidos para o código ${proposal.code}. Ex.: 07:00 às 12:00 / 13:00 às 16:00.`,"warning");
+      const validation=window.ShiftSchedule.validateDescription(proposal.description);
+      const preservesOriginal=validation.sourceOnlyAllowed===true&&proposal.description===proposal.rawDescription;
+      if(!validation.valid&&!preservesOriginal){
+        toast(`Código ${proposal.code}: ${validation.reason} Informe dois horários (entrada e saída) ou quatro horários (com intervalo), sem completar os minutos por suposição.`,"warning");
         const field=[...document.querySelectorAll("[data-new-shift-description]")]
           .find(input=>String(input.dataset.newShiftDescription)===String(
-            (shiftImportPreview.newShiftProposals||[]).findIndex(item=>String(item.code)===String(proposal.code))
+            (shiftImportPreview.newShiftProposals||[]).findIndex(item=>shiftImportCode(item.code)===shiftImportCode(proposal.code))
           ));
         field?.focus();
         return;
       }
+      proposal.preserveSource=preservesOriginal;
+      proposal.scheduleNeedsReview=preservesOriginal;
     }
 
     if(!selected.length&&!newShifts.length){
@@ -1939,7 +1997,7 @@ if($("shift-import-confirm")){
     }
 
     const confirmed=await confirmAction(
-      `${newShifts.length?`Cadastrar ${newShifts.length} novo(s) turno(s) após conferir código e horários. `:""}Atualizar o campo Turno no cadastro de ${selected.length} colaborador(es) selecionado(s)? Divergências de nome só serão atualizadas se você as tiver marcado manualmente. Nenhum colaborador novo será criado.`,
+      `${newShifts.length?`Cadastrar ${newShifts.length} novo(s) turno(s) após conferir código e descrição. `:""}${newShifts.some(proposal=>proposal.preserveSource)?"As descrições abreviadas serão preservadas como vieram da Senior, sem completar horários automaticamente. ":""}Atualizar o campo Turno no cadastro de ${selected.length} colaborador(es) selecionado(s)? Divergências de nome só serão atualizadas se você as tiver marcado manualmente. Nenhum colaborador novo será criado.`,
       newShifts.length?"Cadastrar e atualizar turnos":"Atualizar turnos"
     );
     if(!confirmed)return;
@@ -1998,19 +2056,24 @@ function renderUnknownSeniorCodes(companyId=""){
   list.innerHTML=unknownSeniorCodes.map(code=>`
     <div class="unknown-code-row">
       <div>
-        <strong>Código Senior ${code}</strong>
+        <strong>Código Senior ${escapeHtml(code)}</strong>
         <span>Encontrado no PDF e ainda sem vínculo.</span>
       </div>
-      <select data-unknown-code-shift="${code}">
+      <select data-unknown-code-shift="${escapeHtml(code)}">
         <option value="">Selecione o turno</option>
-        ${availableShifts.map(shift=>`<option value="${shift.id}">${formatShiftOptionLabel(shift)}</option>`).join("")}
+        ${availableShifts.map(shift=>`<option value="${escapeHtml(shift.id)}">${escapeHtml(formatShiftOptionLabel(shift))}</option>`).join("")}
       </select>
-      <button type="button" class="primary" data-ui-action="mapUnknownSeniorCode" data-ui-id="${code}">Vincular</button>
+      <button type="button" class="primary" data-ui-action="mapUnknownSeniorCode" data-ui-id="${escapeHtml(code)}">Vincular</button>
     </div>
   `).join("");
 }
 
 window.mapUnknownSeniorCode=async code=>{
+  const normalizedCode=shiftImportCode(code);
+  if(!normalizedCode){
+    toast("Confira o código numérico Senior antes de vincular o turno.","warning");
+    return;
+  }
   const select=document.querySelector(`[data-unknown-code-shift="${code}"]`);
   const shiftId=select?.value||"";
   if(!shiftId){
@@ -2030,7 +2093,7 @@ window.mapUnknownSeniorCode=async code=>{
       body:JSON.stringify({
         companyId:shift.company_id,
         shiftId,
-        seniorCode:code
+        seniorCode:normalizedCode
       })
     });
 

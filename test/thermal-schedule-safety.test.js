@@ -209,3 +209,20 @@ test('planejamento distingue erro de marcação, conferência de intervalo e ger
   assert.equal(thermal.dynamicPointRests(admissible).length,5);
   assert.equal(monthly(admissible).get('e|2026-10-01').length,5);
 });
+
+
+test('sufixo PRE de horário completo não transforma minutos em nova hora na prévia',()=>{
+  for(const [description,expected] of [
+    ['08:00-12:00PRE-13:30PRE-18:00','08:00-12:00-13:30-18:00'],
+    ['08:00-12:00PRE-13:00PRE-17:00','08:00-12:00-13:00-17:00'],
+    ['22:00-02:30PRE-03:00PRE-06:00','22:00-02:30-03:00-06:00']
+  ]){
+    const actual=thermal.parseShiftPeriods(description);
+    assert.equal(actual.valid,true,description);
+    assert.deepEqual(actual,thermal.parsePointPeriods(expected));
+    assert.deepEqual(thermal.baseThermalRests(description),thermal.dynamicPointRests(expected));
+    assert.ok(actual.markings.every(marking=>/^\d{2}:\d{2}$/.test(marking)));
+  }
+  assert.equal(thermal.parseShiftPeriods('6PRE-10:00-11:00-15:00').valid,true,'adaptação legada continua disponível');
+  assert.equal(thermal.parseShiftPeriods('08:00-12PRE-13:PRE-17:00').valid,false,'minutos ausentes após dois pontos continuam ambíguos');
+});

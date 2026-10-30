@@ -1473,14 +1473,17 @@
             </div>
           </details>
 
-          <details class="manual-chapter" id="manual-shifts" data-help-permission="settings.view|imports.manage" data-manual-keywords="turno escala horário senior código 46 96 56 administrativo comercial cadastrar novo aplicar atualizar">
+          <details class="manual-chapter" id="manual-shifts" data-help-permission="settings.view|imports.manage" data-manual-keywords="turno escala horário senior código 46 96 56 administrativo comercial cadastrar novo aplicar atualizar aprendiz duas marcações PRE descrição original">
             <summary><span class="manual-number">7</span><span><strong>Turnos e escalas</strong><small>Cadastro de turnos e atualização por PDF</small></span></summary>
             <div class="manual-body">
               <div class="manual-shift-clock" aria-label="Exemplo de horário"><span>06:00</span><i></i><b>1º TURNO</b><i></i><span>14:20</span></div>
               <h4 data-help-permission="admin">Cadastrar ou editar</h4><p data-help-permission="admin">Em <strong>Configurações → Turnos</strong>, selecione a empresa e informe nome, código Senior, descrição/horário e situação. O código permite a associação automática em futuras importações.</p>
               <h4 data-help-permission="admin">Folga padrão</h4><p data-help-permission="admin">Na lista de turnos cadastrados, marque os dias da semana e clique em <strong>Salvar folga</strong>, sem precisar abrir o turno em Editar. A configuração inicial usa domingo para 1º, 2º, ADM e Comercial e sábado para o 3º turno. As fichas dos colaboradores que seguem a regra do turno são atualizadas automaticamente.</p>
               <h4 data-help-permission="imports.manage">Atualizar por PDF</h4><ol data-help-permission="imports.manage"><li>Abra <strong>Importações → Turnos</strong>.</li><li>Selecione empresa/filial e o PDF da escala.</li><li>Clique em <strong>Ler e conferir turnos</strong>.</li><li>Confira cada matrícula e turno identificado.</li><li>Confirme somente os itens selecionados.</li></ol>
-              <p>Quando identifica um turno inexistente com código e horários completos, o leitor apresenta uma proposta de cadastro e associação.</p>
+              <p>Quando identifica um código ainda não cadastrado, o leitor apresenta uma proposta de <strong>novo turno</strong>. O Administrador deve conferir código, nome e descrição, marcar <strong>Cadastrar este turno</strong> e confirmar. Jornadas com <strong>dois horários</strong>, como <strong>08:00–12:00</strong> ou <strong>14:00–18:00</strong>, são aceitas sem inventar saída e retorno de refeição. Jornadas divididas podem ter <strong>quatro horários</strong>. O cadastro do turno não cria colaboradores e a associação continua sendo feita pelas matrículas selecionadas da empresa e filial.</p>
+              <p><strong>Descrição conforme a Senior:</strong> o cadastro preserva o texto do relatório, incluindo identificações de Aprendiz, dias e marcadores <strong>PRE</strong>. Uma descrição abreviada reconhecida, como <strong>08:00-12PRE-13:PRE-17:00sgAs</strong>, pode ser cadastrada como descrição de origem, com aviso de horários não interpretados. O sistema não completa minutos ausentes nem cria marcações para transformar esse texto em uma jornada calculável. Relógios inválidos, marcações extras, repetições ou sequências ambíguas não recebem aprovação automática de horários.</p>
+              <p><strong>Cadastro e cálculo são diferentes:</strong> o código permite identificar e vincular o turno mesmo quando a descrição da Senior está abreviada. A prévia de cálculo sinaliza descrições sem horários utilizáveis para revisão. O repouso automático continua dependendo das marcações reais do cartão confirmado, sem substituir o ponto pela descrição da escala.</p>
+              <p><strong>Aplicar esta atualização:</strong> após a publicação, pressione <strong>Ctrl+F5</strong> e leia novamente o mesmo PDF em <strong>Importações → Turnos</strong>. Confira e selecione as propostas que deseja cadastrar. Se a prévia informar <strong>validador indisponível</strong>, atualize a página antes de prosseguir; nenhum horário é calculado nessa condição. Os códigos já cadastrados são reutilizados; a leitura e a confirmação não devem criar um segundo turno para o mesmo código da empresa. Cadastros existentes permanecem preservados. Confira também a folga padrão em <strong>Configurações → Turnos</strong>.</p>
               <div class="manual-note danger"><strong>Proteção:</strong> a atualização deve ocorrer por matrícula e item selecionado. Não aplique um único turno para toda a lista.</div>
             </div>
           </details>
@@ -2863,17 +2866,18 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.102"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.103"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.92"></script>
-  <script src="/js/thermal-schedule.js?v=1.0.31-beta.101"></script>
+  <script src="/js/shift-schedule.js?v=1.0.31-beta.103"></script>
+  <script src="/js/thermal-schedule.js?v=1.0.31-beta.103"></script>
   <script src="/js/report-validator.js?v=1.0.31-beta.101"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
   <script src="/js/rest-audit.js?v=1.0.31-beta.101"></script>
   <script src="/js/calendar-reports.js?v=1.0.31-beta.101"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
-  <script src="/js/settings-system.js?v=1.0.31-beta.101"></script>
+  <script src="/js/settings-system.js?v=1.0.31-beta.103"></script>
   <script src="/js/bh-comparison.js?v=1.0.31-beta.99"></script>
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>

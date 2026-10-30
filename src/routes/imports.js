@@ -14,6 +14,7 @@ const {buildTimecardAudit}=require("../importers/timecard-audit");
 const {buildExpectedStorageSnapshot,normalizeStoredSnapshot,compareStorageSnapshots}=require("../importers/timecard-storage-audit");
 const {REVIEW_CONTROL_STATUSES,normalizeReviewControlStatus,reviewControlStatusLabel,reviewControlKey,nextStatusWhenIssueSeen}=require("../importers/timecard-review-control");
 const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors,reconstructSeniorDailyRows,extractSeniorFooterTotalsFromPage}=require("../importers/senior-column-layout");
+const ShiftSchedule=require("../../public/js/shift-schedule");
 
 const router=express.Router();
 
@@ -2470,51 +2471,56 @@ function extractSeniorSchedule(value,rawCode=""){
   let scheduleSource=source;
 
   if(normalizedCode&&/^\d+$/.test(normalizedCode)){
-    const codePattern=new RegExp(`0*${normalizedCode}\\b`);
+    const codePattern=new RegExp(`(?:^|\\s)0*${normalizedCode}\\b`);
     const match=codePattern.exec(source);
     if(match)scheduleSource=source.slice(match.index+match[0].length);
   }
 
-  // Algumas escalas comerciais da Senior compactam o fim do primeiro período
-  // e usam PRE como separador: 08:0012PRE13:30PRE18:00.
-  // Reconstrução calibrada: 08:00 12:00 13:30 18:00.
-  scheduleSource=scheduleSource
-    .replace(/(\d{2}:\d{2})(\d{2})(?=PRE)/gi,"$1 $2:00")
-    .replace(/PRE(?=\d{2}:\d{2})/gi," ")
-    .replace(/PRE/gi," ");
-
-  const times=(scheduleSource.match(/\b(?:[01]\d|2[0-3]):[0-5]\d(?=$|[^0-9:])/g)||[]).slice(0,4);
-  if(times.length<2)return null;
-
-  const raw=times.join("-");
-  const description=times.length>=4
-    ? `${times[0]} às ${times[1]} / ${times[2]} às ${times[3]}`
-    : `${times[0]} às ${times[1]}`;
+  const validation=ShiftSchedule.validateDescription(scheduleSource);
+  const times=validation.markings;
 
   return {
     times,
-    raw,
-    description,
-    complete:times.length===4
+    raw:validation.schedule,
+    rawDescription:scheduleSource.trim(),
+    description:validation.description,
+    normalizedDescription:validation.normalizedDescription,
+    complete:validation.valid,
+    type:validation.type,
+    hasMealBreak:validation.hasMealBreak,
+    reason:validation.reason,
+    validationCode:validation.code,
+    sourceOnlyAllowed:validation.sourceOnlyAllowed,
+    scheduleNeedsReview:validation.sourceOnlyAllowed,
+    preserveSource:validation.sourceOnlyAllowed
   };
 }
 
 function buildUnknownShiftProposals(rows=[],unknownCodes=[]){
   return unknownCodes.map(code=>{
     const schedules=new Map();
+    const sources=new Set();
+    const invalidReasons=new Set();
 
     for(const row of rows){
       if(normalizeSeniorShiftCode(row.shiftCode)!==normalizeSeniorShiftCode(code))continue;
       const schedule=row.schedule||extractSeniorSchedule(row.rawLine,row.rawShiftCode||row.shiftCode);
-      if(!schedule?.complete)continue;
-      const current=schedules.get(schedule.raw)||{...schedule,count:0};
+      if(schedule?.rawDescription)sources.add(schedule.rawDescription);
+      if(!schedule?.complete&&!schedule?.sourceOnlyAllowed){
+        invalidReasons.add(schedule?.reason||"Não foram encontrados 2 ou 4 horários completos no PDF.");
+        continue;
+      }
+      const key=schedule.raw||`SOURCE_ONLY:${schedule.rawDescription}`;
+      const current=schedules.get(key)||{...schedule,count:0};
       current.count++;
-      schedules.set(schedule.raw,current);
+      schedules.set(key,current);
     }
 
     const ranked=[...schedules.values()].sort((a,b)=>b.count-a.count);
     const best=ranked[0]||null;
-    const conflicting=ranked.length>1&&ranked[1].count===best?.count;
+    const conflicting=ranked.length>1;
+    const blocked=!best||conflicting||invalidReasons.size>0;
+    const requiresReview=blocked||Boolean(best?.sourceOnlyAllowed);
 
     return {
       code:normalizeSeniorShiftCode(code),
@@ -2522,13 +2528,24 @@ function buildUnknownShiftProposals(rows=[],unknownCodes=[]){
       suggestedName:buildSeniorShiftDisplayName(code,best),
       schedule:best?.raw||null,
       description:best?.description||null,
+      normalizedDescription:best?.normalizedDescription||null,
+      rawDescription:[...sources][0]||null,
+      sourceDescriptions:[...sources],
+      type:best?.type||null,
+      hasMealBreak:best?.hasMealBreak??null,
+      scheduleNeedsReview:Boolean(best?.sourceOnlyAllowed),
+      preserveSource:Boolean(best?.sourceOnlyAllowed),
       occurrences:best?.count||0,
-      canCreate:Boolean(best&&!conflicting),
-      requiresReview:!best||conflicting,
+      canCreate:!blocked,
+      requiresReview,
       reason:!best
-        ?"Horários completos não foram encontrados no PDF."
+        ?[...invalidReasons][0]||"Não foram encontrados 2 ou 4 horários completos no PDF."
         : conflicting
-          ?"O PDF apresenta horários diferentes com a mesma frequência para este código."
+          ?"O PDF apresenta horários diferentes para este código. Confira a origem e informe o horário correto antes de cadastrar."
+          : invalidReasons.size>0
+            ?[...invalidReasons][0]
+          : best.sourceOnlyAllowed
+            ?"A descrição será cadastrada exatamente como veio da Senior, sem completar minutos. Os horários abreviados ficam sem interpretação automática."
           :"Código e horários identificados. Confira antes de cadastrar."
     };
   });
@@ -2622,6 +2639,11 @@ function parseSeniorShiftRows(text,validCodes=[]){
   function pushCandidate(registration,pdfName,date,rawCode,rawLine){
     const shiftCode=normalizeSeniorShiftCode(rawCode);
     if(!isEmployeesByScale && !normalizedCodes.includes(shiftCode))return;
+    // No texto concatenado, a última escala da página pode vir seguida do
+    // rodapé com a hora de emissão. O rodapé não pertence ao campo Escala.
+    const rowSource=isEmployeesByScale
+      ?String(rawLine||"").split(/\bFPRE011\s*\.\s*COL\b/i)[0].trim()
+      :String(rawLine||"");
 
     const candidate={
       registration,
@@ -2630,8 +2652,8 @@ function parseSeniorShiftRows(text,validCodes=[]){
       rawShiftCode:rawCode,
       effectiveDate:date,
       historyCount:1,
-      rawLine:String(rawLine||"").slice(0,320),
-      schedule:extractSeniorSchedule(rawLine,rawCode)
+      rawLine:rowSource.slice(0,320),
+      schedule:extractSeniorSchedule(rowSource,rawCode)
     };
 
     if(!candidate.pdfName)return;
@@ -3199,7 +3221,8 @@ router.post("/shift-preview",upload.single("file"),async(req,res,next)=>{
 });
 
 router.post("/shift-confirm",async(req,res,next)=>{
-  const client=await pool.connect();
+  let client=null;
+  let transactionStarted=false;
   try{
     const {
       companyId,branchId,fileName,rows=[],
@@ -3215,8 +3238,9 @@ router.post("/shift-confirm",async(req,res,next)=>{
       return res.status(400).json({error:"Selecione a empresa e a filial."});
     }
 
-    if(!Array.isArray(rows)||!rows.length){
-      return res.status(400).json({error:"Nenhum registro de turno para atualizar."});
+    const hasSelectedNewShifts=Array.isArray(newShifts)&&newShifts.some(proposal=>proposal?.selected===true);
+    if(!Array.isArray(rows)||(!rows.length&&!hasSelectedNewShifts)){
+      return res.status(400).json({error:"Nenhum registro de colaborador ou novo turno foi selecionado para confirmar."});
     }
 
 
@@ -3235,24 +3259,62 @@ router.post("/shift-confirm",async(req,res,next)=>{
       });
     }
 
+    const approvedNewShifts=[];
+    const approvedCodes=new Map();
+    for(const proposal of Array.isArray(newShifts)?newShifts:[]){
+      if(proposal?.selected!==true)continue;
+      const code=ShiftSchedule.normalizeCode(proposal.code);
+      const name=String(proposal.name||"").trim().slice(0,100);
+      const validation=ShiftSchedule.validateDescription(proposal.description);
+      const preserveSource=proposal.preserveSource===true&&validation.sourceOnlyAllowed
+        &&String(proposal.rawDescription||"").trim()===String(proposal.description||"").trim();
+      if(code===null||!name||(!validation.valid&&!preserveSource)){
+        const error=new Error(`A proposta do turno ${code??"sem código"} exige código Senior, nome e 2 ou 4 horários válidos. ${validation.reason||""}`.trim());
+        error.status=400;
+        throw error;
+      }
+      const approved={
+        code,name,description:validation.description,
+        rawDescription:String(proposal.rawDescription||proposal.description||"").trim().slice(0,1000),
+        normalizedDescription:validation.normalizedDescription,schedule:validation.schedule,
+        type:validation.type,hasMealBreak:validation.hasMealBreak,scheduleNeedsReview:preserveSource,preserveSource
+      };
+      const previous=approvedCodes.get(code);
+      if(previous){
+        const sameSchedule=previous.schedule&&previous.schedule===approved.schedule;
+        if(previous.name!==approved.name||(!sameSchedule&&previous.description!==approved.description)){
+          const error=new Error(`Existem propostas diferentes para o código Senior ${formatSeniorShiftCode(code)}. Confira e selecione uma única proposta.`);
+          error.status=400;
+          throw error;
+        }
+        continue;
+      }
+      approvedCodes.set(code,approved);
+      approvedNewShifts.push(approved);
+    }
+
+    client=await pool.connect();
     await client.query("BEGIN");
+    transactionStarted=true;
+
+    // A trava da empresa serializa a criação por código, inclusive quando
+    // dois administradores confirmam o mesmo PDF em filiais diferentes.
+    const unit=await client.query(`
+      SELECT c.id FROM companies c
+      JOIN branches b ON b.company_id=c.id
+      WHERE c.id=$1 AND b.id=$2
+      ${approvedNewShifts.length?"FOR UPDATE OF c":""}
+    `,[companyId,branchId]);
+    if(!unit.rows.length){
+      const error=new Error("A filial não pertence à empresa selecionada.");
+      error.status=400;
+      throw error;
+    }
 
     let updated=0,alreadyConfigured=0,notFound=0,failed=0,createdShifts=0;
     const results=[];
 
-    for(const proposal of Array.isArray(newShifts)?newShifts:[]){
-      if(proposal?.selected===false)continue;
-
-      const code=normalizeSeniorShiftCode(proposal?.code);
-      const name=String(proposal?.name||"").trim().slice(0,100);
-      const description=String(proposal?.description||"").trim().slice(0,180);
-      const schedule=extractSeniorSchedule(description);
-
-      if(!code||!name||!description||!schedule?.complete){
-        const error=new Error(`A proposta do turno ${code||"sem código"} não possui nome e quatro horários válidos.`);
-        error.status=400;
-        throw error;
-      }
+    for(const {code,name,description} of approvedNewShifts){
 
       const existing=await client.query(`
         SELECT id,name
@@ -3347,6 +3409,7 @@ router.post("/shift-confirm",async(req,res,next)=>{
         alreadyConfigured,
         failed,
         createdShifts,
+        approvedNewShifts,
         readerUsed,
         optimizedPath,
         intelligence,
@@ -3355,6 +3418,7 @@ router.post("/shift-confirm",async(req,res,next)=>{
     ]);
 
     await client.query("COMMIT");
+    transactionStarted=false;
 
     await audit(req,"IMPORT_SHIFTS","employees",null,{
       fileName,total:rows.length,updated,alreadyConfigured,notFound,failed,createdShifts
@@ -3365,10 +3429,10 @@ router.post("/shift-confirm",async(req,res,next)=>{
       createdShifts,updated,alreadyConfigured,notFound,failed,results
     });
   }catch(error){
-    await client.query("ROLLBACK").catch(()=>{});
+    if(transactionStarted&&client)await client.query("ROLLBACK").catch(()=>{});
     next(error);
   }finally{
-    client.release();
+    client?.release();
   }
 });
 

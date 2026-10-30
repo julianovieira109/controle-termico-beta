@@ -5,6 +5,7 @@ const path=require('node:path');
 const Module=require('node:module');
 const vm=require('node:vm');
 const ThermalSchedule=require('../public/js/thermal-schedule');
+const ShiftSchedule=require('../public/js/shift-schedule');
 
 function settingsRouter(stored){
   let persisted=null;
@@ -77,17 +78,19 @@ test('administrador sem Master continua impedido de salvar repouso térmico',asy
   assert.equal(router.queries.length,0);
 });
 
-function shiftPreview(description,engine=ThermalSchedule){
+function shiftPreview(description,engine=ThermalSchedule,sourceReader=ShiftSchedule){
   const source=fs.readFileSync(path.join(__dirname,'../public/js/settings-system.js'),'utf8');
   const start=source.indexOf('function renderThermalShiftList(');
   const end=source.indexOf('\nif($("thermal-rest-form"))',start);
   const body={innerHTML:''};
-  vm.runInNewContext(source.slice(start,end)+'\nrenderThermalShiftList({});',{
+  const context={
     ThermalSchedule:engine,
     catalogs:{shifts:[{name:'Teste',description}]},
     $:id=>id==='thermal-shifts-list'?body:null,
     escapeHtml:value=>String(value??'')
-  });
+  };
+  if(sourceReader)context.ShiftSchedule=sourceReader;
+  vm.runInNewContext(source.slice(start,end)+'\nrenderThermalShiftList({});',context);
   return body.innerHTML;
 }
 
@@ -117,4 +120,41 @@ test('prévia informa revisão quando refeição curta não permite reiniciar a 
   const short=shiftPreview('08:00-08:40-08:45-09:25');
   assert.match(short,/Jornada curta: sem repouso calculado/);
   assert.doesNotMatch(short,/Revisar jornada|R\d+:/);
+});
+
+test('prévia não interpreta horários PRE cuja descrição original exige preservação',()=>{
+  const engine={
+    ...ThermalSchedule,
+    assessShiftPlanning(){throw new Error('A descrição abreviada não deve chegar ao cálculo térmico.');},
+    baseThermalRests(){throw new Error('A descrição abreviada não deve gerar horários calculados.');}
+  };
+  for(const description of ['08:00-12PRE-13:PRE-17:00','08:0012PRE13:30PRE18:00 SEG A SEX']){
+    const preview=shiftPreview(description,engine,ShiftSchedule);
+    assert.ok(preview.includes(description));
+    assert.match(preview,/Sem horário interpretado/);
+    assert.match(preview,/Descrição Senior preservada/);
+    assert.doesNotMatch(preview,/R\d+:|Prévia de planejamento/);
+  }
+});
+
+test('prévia PRE com minutos completos continua usando o cálculo térmico',()=>{
+  const preview=shiftPreview('08:00PRE12:00PRE13:30PRE17:00',ThermalSchedule,ShiftSchedule);
+  assert.match(preview,/R1:/);
+  assert.match(preview,/Prévia de planejamento/);
+  assert.doesNotMatch(preview,/Sem horário interpretado|Descrição Senior preservada/);
+});
+
+test('prévia sem validador de turnos não chama o cálculo térmico nem interpreta PRE',()=>{
+  const engine={
+    ...ThermalSchedule,
+    assessShiftPlanning(){throw new Error('Não deve calcular sem validar a descrição de origem.');},
+    baseThermalRests(){throw new Error('Não deve gerar horários sem validar a descrição de origem.');}
+  };
+  for(const missingReader of [null,{}]){
+    for(const description of ['08:00-12PRE-13:30-17:00','6PRE-10:00-11:00-15:00','08:00-12:00']){
+      const preview=shiftPreview(description,engine,missingReader);
+      assert.match(preview,/Revisar horário: validador indisponível\. Atualize a página/);
+      assert.doesNotMatch(preview,/R\d+:|Prévia de planejamento/);
+    }
+  }
 });
