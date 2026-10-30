@@ -62,7 +62,7 @@ async function preparePdfImport({scopeLoaded=false}={}){
 
   $("pdf-import-company").innerHTML=companies
     .filter(c=>c.active)
-    .map(c=>`<option value="${c.id}">${c.trade_name}</option>`).join("");
+    .map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.trade_name)}</option>`).join("");
   fillPdfImportBranches();
   await loadPdfImportHistory();
 }
@@ -74,7 +74,7 @@ function fillPdfImportBranches(){
     : branches.filter(b=>(currentUser.branchIds||[]).includes(b.id)&&b.active);
 
   $("pdf-import-branch").innerHTML=allowed
-    .map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
+    .map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(b.name)}</option>`).join("");
 }
 $("pdf-import-company").onchange=fillPdfImportBranches;
 
@@ -121,10 +121,10 @@ async function previewShiftPdfFromGenericImport(file,companyId,branchId,button){
     $("pdf-import-detection").hidden=false;
     $("pdf-import-detection").innerHTML=`
       <b>Arquivo reconhecido automaticamente como Escala/Turnos.</b>
-      <p>${data.total||0} colaborador(es) identificado(s). Continue no módulo <b>Atualizar turnos dos colaboradores</b>.</p>
+      <p>${escapeHtml(data.total||0)} colaborador(es) identificado(s). Continue no módulo <b>Atualizar turnos dos colaboradores</b>.</p>
     `;
 
-    toast(`Escala reconhecida: ${data.total||0} colaborador(es) para conferência.`,"success");
+    toast(`Escala reconhecida: ${escapeHtml(data.total||0)} colaborador(es) para conferência.`,"success");
     $("shift-import-panel").scrollIntoView({behavior:"smooth",block:"start"});
     return true;
   }finally{
@@ -159,9 +159,9 @@ $("pdf-import-form").onsubmit=async e=>{
         $("pdf-import-detection").hidden=false;
         $("pdf-import-detection").innerHTML=`
           <b>O arquivo foi identificado como Escala/Turnos, mas não pôde ser lido.</b>
-          <p>${error.message}</p>
+          <p>${escapeHtml(error.message)}</p>
         `;
-        toast(error.message,"error");
+        toast(escapeHtml(error.message),"error");
       }
       return;
     }
@@ -197,37 +197,37 @@ $("pdf-import-form").onsubmit=async e=>{
     if(!response.ok){
       $("pdf-import-detection").hidden=false;
       $("pdf-import-detection").innerHTML=`
-        <b>${data.error||"Não foi possível ler o PDF."}</b>
-        <p>${data.detail||""}</p>
+        <b>${escapeHtml(data.error||"Não foi possível ler o PDF.")}</b>
+        <p>${escapeHtml(data.detail||"")}</p>
         ${(data.readerAttempts||[]).length?`
           <details open>
             <summary>Diagnóstico dos leitores</summary>
             <ul class="reader-attempt-list">
               ${data.readerAttempts.map(item=>`
-                <li><b>${item.reader}</b>: ${item.success?"sucesso":item.error}</li>
+                <li><b>${escapeHtml(item.reader)}</b>: ${item.success?"sucesso":escapeHtml(item.error)}</li>
               `).join("")}
             </ul>
           </details>`:""}
         ${data.extractedTextSample?`
           <details open>
             <summary>Ver amostra do texto extraído</summary>
-            <pre class="extracted-text-sample">${data.extractedTextSample}</pre>
+            <pre class="extracted-text-sample">${escapeHtml(data.extractedTextSample)}</pre>
           </details>`:""}
       `;
-      toast(data.detail?`${data.error} ${data.detail}`:data.error,"error");
+      toast(escapeHtml(data.detail?`${data.error} ${data.detail}`:data.error),"error");
       return;
     }
 
     pdfImportPreview=data;
     renderPdfImportPreview();
-    toast(`${data.total} colaborador(es) reconhecido(s) no PDF.`,"success");
+    toast(`${escapeHtml(data.total)} colaborador(es) reconhecido(s) no PDF.`,"success");
   }catch(error){
     $("pdf-import-detection").hidden=false;
     $("pdf-import-detection").innerHTML=`
       <b>Falha ao acessar o importador.</b>
-      <p>${error.message}</p>
+      <p>${escapeHtml(error.message)}</p>
     `;
-    toast(error.message,"error");
+    toast(escapeHtml(error.message),"error");
   }finally{
     setButtonLoading(button,false);
   }
@@ -312,8 +312,8 @@ function renderPdfComparisonChecklist(checklist,{afterImport=false}={}){
   ].includes(item.status)).length;
 
   $("pdf-checklist-summary").innerHTML=`
-    <article><span>Lista Senior</span><strong>${checklist.seniorTotal||items.filter(item=>item.origin==="SENIOR").length}</strong></article>
-    <article><span>Ativos no sistema</span><strong>${checklist.systemActiveTotal??"—"}</strong></article>
+    <article><span>Lista Senior</span><strong>${escapeChecklistHtml(checklist.seniorTotal||items.filter(item=>item.origin==="SENIOR").length)}</strong></article>
+    <article><span>Ativos no sistema</span><strong>${escapeChecklistHtml(checklist.systemActiveTotal??"—")}</strong></article>
     <article><span>Conferidos</span><strong>${count("CONFERIDO")}</strong></article>
     <article><span>Cadastrados</span><strong>${count("CADASTRADO")}</strong></article>
     <article><span>Atualizados</span><strong>${count("ATUALIZADO")}</strong></article>
@@ -322,7 +322,7 @@ function renderPdfComparisonChecklist(checklist,{afterImport=false}={}){
   `;
 
   $("pdf-checklist-body").innerHTML=items.map(item=>`
-    <tr class="checklist-row ${item.status}">
+    <tr class="checklist-row ${escapeChecklistHtml(item.status)}">
       <td>${item.origin==="SENIOR"?"Lista Senior":"Sistema"}</td>
       <td>${escapeChecklistHtml(item.registration||"-")}</td>
       <td><b>${escapeChecklistHtml(item.fullName||"-")}</b>${
@@ -334,7 +334,7 @@ function renderPdfComparisonChecklist(checklist,{afterImport=false}={}){
           ?`<small>No sistema: ${escapeChecklistHtml(item.systemJobTitle)}</small>`:""
       }</td>
       <td>${escapeChecklistHtml(item.shiftName||"Não definido")}</td>
-      <td><span class="checklist-status ${item.status}">${checklistStatusLabel(item.status)}</span></td>
+      <td><span class="checklist-status ${escapeChecklistHtml(item.status)}">${escapeChecklistHtml(checklistStatusLabel(item.status))}</span></td>
       <td>${escapeChecklistHtml(item.details||"-")}</td>
     </tr>
   `).join("");
@@ -396,8 +396,58 @@ function printPdfComparisonChecklist(){
 
 if($("pdf-checklist-print"))$("pdf-checklist-print").onclick=printPdfComparisonChecklist;
 
+function pdfImportMatchesRegistration(row){
+  return Boolean(row.employeeId)||row.systemMatch===true;
+}
+
+function pdfImportResultCode(row,type){
+  if(type==="ADMITIDOS"&&pdfImportMatchesRegistration(row)&&["POSSIVEL_READMISSAO","NOVO","CONFERIR"].includes(row.result)){
+    return "ATUALIZAR";
+  }
+  return String(row.result||"CONFERIR");
+}
+
+function pdfImportResultLabel(row,type){
+  const result=pdfImportResultCode(row,type);
+  if(result==="ATUALIZAR"&&type==="ADMITIDOS")return "Atualizar cadastro pela matrícula";
+  if(result==="CONFERIDO"&&type==="ADMITIDOS")return "Cadastro conferido";
+  if(result==="CONFERIR")return "PRONTO PARA IMPORTAR";
+  if(result==="POSSIVEL_READMISSAO")return `POSSÍVEL READMISSÃO — NOVA MATRÍCULA${row.previousRegistration?` (anterior: ${row.previousRegistration})`:""}`;
+  return result;
+}
+
+function pdfImportBlockingIssues(preview){
+  const diagnostics=preview?.diagnostics||{};
+  const issues=[];
+  if(preview?.type==="ADMITIDOS"&&Number(diagnostics.unresolvedCount||0)>0){
+    issues.push(`${diagnostics.unresolvedCount} matrícula(s) do relatório não foram associadas com segurança. Releia e confira o PDF antes de confirmar.`);
+  }
+  const associations=Array.isArray(diagnostics.criticalAssociationIssues)?diagnostics.criticalAssociationIssues:[];
+  if(Number(diagnostics.criticalAssociationIssueCount||0)>0||associations.length){
+    issues.push("Há divergências críticas na associação entre matrícula e dados do relatório. A confirmação está bloqueada.");
+    issues.push(...associations.map(String));
+  }
+  if(preview?.canConfirm===false&&!issues.length){
+    issues.push("A leitura contém pendências que impedem a confirmação. Releia o PDF e confira o diagnóstico antes de importar.");
+  }
+  return issues;
+}
+
+function pdfImportIntelligenceCard(intelligence){
+  if(!intelligence)return "";
+  const score=Number(intelligence.score),level=String(intelligence.level||"BAIXA").toUpperCase();
+  return intelligentReaderCard({
+    score:Number.isFinite(score)?Math.max(0,Math.min(100,score)):0,
+    level:["ALTA","MEDIA","MÉDIA","BAIXA"].includes(level)?level:"BAIXA",
+    suggestedAction:escapeHtml(intelligence.suggestedAction||"Confira os dados antes de continuar."),
+    signals:(Array.isArray(intelligence.signals)?intelligence.signals:[]).map(escapeHtml)
+  });
+}
+
 function renderPdfImportPreview(){
   const p=pdfImportPreview;
+  const rows=Array.isArray(p.rows)?p.rows:[];
+  const blockingIssues=pdfImportBlockingIssues(p);
   $("pdf-import-detection").hidden=false;
   const d=p.diagnostics||{};
   $("pdf-import-detection").innerHTML=`
@@ -406,27 +456,28 @@ function renderPdfImportPreview(){
       p.type==="DEMITIDOS" ? "Relação de Demitidos" :
       "Relação de Colaboradores"
     }<br>
-    <b>Tipo detectado:</b> ${p.detectedType||p.type}<br>
+    <b>Tipo detectado:</b> ${escapeHtml(p.detectedType||p.type)}<br>
     <b>Leitor utilizado:</b> ${
       p.readerUsed?.includes("xref-repair")
-        ? `PDF reparado automaticamente (${p.readerUsed})`
+        ? `PDF reparado automaticamente (${escapeHtml(p.readerUsed)})`
         : p.readerUsed==="pdf2json"
           ? "Leitor alternativo (pdf2json)"
           : "Leitor principal (pdf-parse)"
     }<br>
-    <b>Empresa detectada:</b> ${p.detectedCompany||"Não identificada"}<br>
-    <b>Filial detectada:</b> ${p.detectedBranch||"Não identificada"}<br>
-    <b>Operação identificada:</b> ${p.detectedOperationalBranch||"Não identificada"}<br>
-    <b>Filial selecionada:</b> ${p.selectedBranchName||"Não identificada"}
-    ${intelligentReaderCard(p.intelligence)}
+    <b>Empresa detectada:</b> ${escapeHtml(p.detectedCompany||"Não identificada")}<br>
+    <b>Filial detectada:</b> ${escapeHtml(p.detectedBranch||"Não identificada")}<br>
+    <b>Operação identificada:</b> ${escapeHtml(p.detectedOperationalBranch||"Não identificada")}<br>
+    <b>Filial selecionada:</b> ${escapeHtml(p.selectedBranchName||"Não identificada")}
+    ${pdfImportIntelligenceCard(p.intelligence)}
     <div class="pdf-diagnostic-grid">
-      <article><span>Matrículas únicas</span><strong>${d.uniqueRegistrationCount??d.registrationCount??p.total}</strong></article>
-      <article><span>Datas</span><strong>${d.dateCount??p.total}</strong></article>
-      <article><span>Cartões</span><strong>${p.type==="ADMITIDOS"?(d.pointCardCount??p.total):"—"}</strong></article>
-      <article><span>Registros montados</span><strong>${d.parsedCount??p.total}</strong></article>
-      <article><span>Não reconhecidos</span><strong>${d.unresolvedCount??0}</strong></article>
+      <article><span>Matrículas únicas</span><strong>${escapeHtml(d.uniqueRegistrationCount??d.registrationCount??p.total)}</strong></article>
+      <article><span>Datas</span><strong>${escapeHtml(d.dateCount??p.total)}</strong></article>
+      <article><span>Cartões</span><strong>${escapeHtml(p.type==="ADMITIDOS"?(d.pointCardCount??rows.filter(row=>String(row.pointCard||"").trim()).length):"—")}</strong></article>
+      <article><span>Registros montados</span><strong>${escapeHtml(d.parsedCount??p.total)}</strong></article>
+      <article><span>Não reconhecidos</span><strong>${escapeHtml(d.unresolvedCount??0)}</strong></article>
     </div>
-    ${d.unresolvedCount?`<div class="import-warning"><b>Atenção:</b> ${d.unresolvedCount} matrícula(s) do texto não foram montadas. Não confirme antes de revisar: ${escapeHtml((d.unresolvedRegistrations||[]).join(", "))}.</div>`:""}
+    ${d.unresolvedCount?`<div class="import-warning"><b>Atenção:</b> ${escapeHtml(d.unresolvedCount)} matrícula(s) do texto não foram montadas. Não confirme antes de revisar: ${escapeHtml((d.unresolvedRegistrations||[]).join(", "))}.</div>`:""}
+    ${blockingIssues.length?`<div class="import-warning"><b>Confirmação bloqueada</b><ul>${blockingIssues.map(issue=>`<li>${escapeHtml(issue)}</li>`).join("")}</ul></div>`:""}
   `;
 
   $("pdf-import-preview-panel").hidden=false;
@@ -435,41 +486,40 @@ function renderPdfImportPreview(){
   if(p.type==="COLABORADORES"&&p.total){
     toast(`${p.total} colaboradores foram reconstruídos a partir do texto do PDF.`,"success");
   }
-  $("pdf-import-summary").textContent=`${p.total} colaborador(es) encontrados em ${p.fileName}.${p.possibleReadmissions?` ${p.possibleReadmissions} possível(is) readmissão(ões) identificada(s) — será criada nova matrícula sem alterar o vínculo antigo.`:""}`;
+  const readmissions=rows.filter(row=>pdfImportResultCode(row,p.type)==="POSSIVEL_READMISSAO").length;
+  $("pdf-import-summary").textContent=`${p.total} colaborador(es) encontrados em ${p.fileName}.${readmissions?` ${readmissions} possível(is) readmissão(ões) identificada(s) — será criada nova matrícula sem alterar o vínculo antigo.`:""}`;
+  $("pdf-import-confirm").disabled=blockingIssues.length>0;
 
   $("pdf-import-create-dismissed-option").hidden=p.type!=="DEMITIDOS";
   $("pdf-import-create-dismissed").checked=false;
   if(p.type==="ADMITIDOS"||p.type==="COLABORADORES"){
     $("pdf-import-head").innerHTML=`<tr><th><input type="checkbox" id="pdf-import-select-all" checked></th><th>Matrícula</th>${p.type==="COLABORADORES"?"<th>Tipo</th>":""}<th>Nome</th><th>Admissão</th><th>Cargo</th>${p.type==="ADMITIDOS"?"<th>Cartão</th>":""}<th>Resultado</th><th>Turno</th></tr>`;
-    $("pdf-import-body").innerHTML=p.rows.map((r,i)=>`<tr>
+    $("pdf-import-body").innerHTML=rows.map((r,i)=>{
+      const existing=p.type==="ADMITIDOS"&&pdfImportMatchesRegistration(r);
+      const result=pdfImportResultCode(r,p.type);
+      return `<tr>
       <td><input class="import-check" type="checkbox" data-import-index="${i}" ${p.intelligence?.requiresReview ? "" : "checked"}></td>
       <td>${escapeHtml(r.registration)}</td>
       ${p.type==="COLABORADORES"?`<td>${escapeHtml(r.employeeType||"-")}</td>`:""}
-      <td>${escapeHtml(r.fullName)}</td>
-      <td>${formatApiDate(r.admissionDate)}</td>
-      <td>${escapeHtml(r.jobTitle)}</td>
+      <td>${escapeHtml(r.fullName)}${existing?`<small>No cadastro atual: ${escapeHtml(r.currentName||"-")}</small>`:""}</td>
+      <td>${escapeHtml(formatApiDate(r.admissionDate))}${existing?`<small>No cadastro atual: ${escapeHtml(formatApiDate(r.currentAdmissionDate))}</small>`:""}</td>
+      <td>${escapeHtml(r.jobTitle)}${existing?`<small>No cadastro atual: ${escapeHtml(r.currentJobTitle||"-")}</small>`:""}</td>
       ${p.type==="ADMITIDOS"?`<td>${escapeHtml(r.pointCard||"-")}</td>`:""}
-      <td><span class="import-result ${escapeHtml(r.result)}">${
-        r.result==="CONFERIR"
-          ?"PRONTO PARA IMPORTAR"
-          : r.result==="POSSIVEL_READMISSAO"
-            ?`POSSÍVEL READMISSÃO — NOVA MATRÍCULA${r.previousRegistration?` (anterior: ${escapeHtml(r.previousRegistration)})`:""}`
-          : escapeHtml(r.result)
-      }</span></td>
-      <td>${r.hasShift?"Mantém o cadastrado":'<span class="shift-missing">Definir depois</span>'}</td>
-    </tr>`).join("");
+      <td><span class="import-result ${escapeHtml(result)}">${escapeHtml(pdfImportResultLabel(r,p.type))}</span>${existing&&Array.isArray(r.corrections)&&r.corrections.length?`<small>Campos a atualizar: ${escapeHtml(r.corrections.join(", "))}</small>`:""}</td>
+      <td>${r.hasShift?`Mantém o cadastrado${r.currentShift?`<small>${escapeHtml(r.currentShift)}</small>`:""}`:'<span class="shift-missing">Definir depois</span>'}</td>
+    </tr>`;}).join("");
   }else{
     $("pdf-import-head").innerHTML=`<tr><th><input type="checkbox" id="pdf-import-select-all" checked></th><th>Matrícula</th><th>Colaborador localizado</th><th>Demissão</th><th>Causa</th><th>Cargo cadastrado</th><th>Resultado</th></tr>`;
-    $("pdf-import-body").innerHTML=p.rows.map((r,i)=>`<tr>
+    $("pdf-import-body").innerHTML=rows.map((r,i)=>`<tr>
       <td><input class="import-check" type="checkbox" data-import-index="${i}" ${
         r.result==="NAO_LOCALIZADO" ? "disabled" : p.intelligence?.requiresReview ? "" : "checked"
       }></td>
       <td>${escapeHtml(r.registration)}</td>
       <td>${escapeHtml(r.currentName||r.fullName||"Não localizado")}</td>
-      <td>${formatApiDate(r.terminationDate)}</td>
+      <td>${escapeHtml(formatApiDate(r.terminationDate))}</td>
       <td>${escapeHtml(r.causeCode)}</td>
       <td>${escapeHtml(r.currentJobTitle||r.jobTitle||r.rawDescription||"-")}</td>
-      <td><span class="import-result ${escapeHtml(r.result)}">${r.canCreateHistorical?"CADASTRO HISTÓRICO DISPONÍVEL — habilite a opção acima":escapeHtml(r.result.replaceAll("_"," "))}</span></td>
+      <td><span class="import-result ${escapeHtml(r.result)}">${r.canCreateHistorical?"CADASTRO HISTÓRICO DISPONÍVEL — habilite a opção acima":escapeHtml(String(r.result||"").replaceAll("_"," "))}</span></td>
     </tr>`).join("");
   }
 
@@ -505,6 +555,11 @@ function renderPdfImportPreview(){
 $("pdf-import-confirm").onclick=async()=>{
   if(!pdfImportPreview)return;
 
+  const blockingIssues=pdfImportBlockingIssues(pdfImportPreview);
+  if(blockingIssues.length){
+    toast(escapeHtml(blockingIssues.join(" ")),"warning");
+    return;
+  }
   if(
     String($("pdf-import-company").value)!==String(pdfImportPreview.previewCompanyId||"") ||
     String($("pdf-import-branch").value)!==String(pdfImportPreview.previewBranchId||"")
@@ -517,7 +572,9 @@ $("pdf-import-confirm").onclick=async()=>{
   const confirmed=await confirmAction(
     isDismissed
       ? "Todos os colaboradores selecionados serão marcados como DEMITIDOS, sairão da aba Ativos e ficarão disponíveis na aba Demitidos. O histórico será preservado. Se habilitada a opção de cadastro histórico, os não localizados selecionados serão criados como demitidos, sem inventar a data de admissão. Deseja continuar?"
-      : "Os colaboradores selecionados serão cadastrados ou atualizados pela MATRÍCULA. Se existir o mesmo nome com outra matrícula, será criado um novo vínculo e o cadastro antigo será preservado. Deseja continuar?",
+      : pdfImportPreview.type==="ADMITIDOS"
+        ? "Os dados selecionados serão conferidos pela MATRÍCULA. Para matrículas já cadastradas, serão atualizados somente os dados divergentes da Senior, preservando empresa, filial e turno. Somente matrículas novas criam cadastros; um nome igual em outra matrícula é um aviso para conferência. Deseja continuar?"
+        : "Os colaboradores selecionados serão cadastrados ou atualizados pela MATRÍCULA. Se existir o mesmo nome com outra matrícula, será criado um novo vínculo e o cadastro antigo será preservado. Deseja continuar?",
     isDismissed?"Processar demitidos":"Confirmar importação"
   );
   if(!confirmed)return;
@@ -543,6 +600,7 @@ $("pdf-import-confirm").onclick=async()=>{
         previewBranchId:pdfImportPreview.previewBranchId,
         readerUsed:pdfImportPreview.readerUsed,
         intelligence:pdfImportPreview.intelligence,
+        parsingDiagnostics:pdfImportPreview.diagnostics,
         rows
       })
     });
@@ -550,8 +608,8 @@ $("pdf-import-confirm").onclick=async()=>{
     $("pdf-import-detection").innerHTML=`
       <div class="import-success">
         ${pdfImportPreview.type==="DEMITIDOS"
-          ? `Processamento concluído: ${result.created||0} histórico(s) cadastrado(s) como demitidos, ${result.updated||0} cadastro(s) atualizado(s), ${result.notFound} não processado(s) e ${result.failed||0} com erro(s).`
-          : `Importação concluída: ${result.created} cadastrado(s), ${result.updated} corrigido(s), ${result.unchanged||0} conferido(s) sem alteração e ${result.notFound} não processado(s)${result.readmissions?`, ${result.readmissions} possível(is) readmissão(ões) criada(s) com nova matrícula e histórico anterior preservado`:""}${result.failed?` e ${result.failed} com erro(s)`:''}.`
+          ? `Processamento concluído: ${escapeHtml(result.created||0)} histórico(s) cadastrado(s) como demitidos, ${escapeHtml(result.updated||0)} cadastro(s) atualizado(s), ${escapeHtml(result.notFound??0)} não processado(s) e ${escapeHtml(result.failed||0)} com erro(s).`
+          : `Importação concluída: ${escapeHtml(result.created??0)} cadastrado(s), ${escapeHtml(result.updated??0)} corrigido(s), ${escapeHtml(result.unchanged||0)} conferido(s) sem alteração e ${escapeHtml(result.notFound??0)} não processado(s)${result.readmissions?`, ${escapeHtml(result.readmissions)} possível(is) readmissão(ões) criada(s) com nova matrícula e histórico anterior preservado`:""}${result.failed?` e ${escapeHtml(result.failed)} com erro(s)`:''}.`
         }
       </div>`;
     $("pdf-import-preview-panel").hidden=true;
@@ -588,8 +646,8 @@ async function loadPdfImportHistory(){
       <td>${escapeHtml(r.file_name)}</td>
       <td>${escapeHtml(r.company_name||"-")}<br><small>${escapeHtml(r.branch_name||"-")}</small></td>
       <td>${r.import_type==="DEMITIDOS"
-        ? `${r.total_updated} demitido(s)/inativado(s), ${r.total_not_found} não localizado(s)`
-        : `${r.total_created} novo(s), ${r.total_updated} atualizado(s), ${r.total_not_found} não localizado(s)`
+        ? `${escapeHtml(r.total_updated)} demitido(s)/inativado(s), ${escapeHtml(r.total_not_found)} não localizado(s)`
+        : `${escapeHtml(r.total_created)} novo(s), ${escapeHtml(r.total_updated)} atualizado(s), ${escapeHtml(r.total_not_found)} não localizado(s)`
       }</td>
       <td>${escapeHtml(r.user_name||"-")}</td>
     </tr>`).join("")

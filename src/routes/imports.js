@@ -7,6 +7,7 @@ const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee,canCreateHistoricalDismissed}=require("../importers/dismissed-reader");
+const {reconcileAdmittedPreview,admittedParsingIssues}=require("../importers/admitted-reconciliation");
 const {readSeniorPdfPages}=require("../importers/senior-pdf-text");
 const {parseSeniorTimecard,canContinueTimecard}=require("../importers/timecard-reader");
 const {timecardPeriods,timecardPeriod,coversTimecardDate,replacementRanges}=require("../importers/timecard-periods");
@@ -15,6 +16,7 @@ const {buildExpectedStorageSnapshot,normalizeStoredSnapshot,compareStorageSnapsh
 const {REVIEW_CONTROL_STATUSES,normalizeReviewControlStatus,reviewControlStatusLabel,reviewControlKey,nextStatusWhenIssueSeen}=require("../importers/timecard-review-control");
 const {detectSeniorColumnAnchors,detectSeniorColumnAnchorsFromPage,groupPdf2JsonRows,splitSeniorRowByAnchors,reconstructSeniorDailyRows,extractSeniorFooterTotalsFromPage}=require("../importers/senior-column-layout");
 const ShiftSchedule=require("../../public/js/shift-schedule");
+const {readAdmittedPdf,parseAdmittedText,validIdentity:validAdmittedIdentity}=require("../importers/admitted-reader");
 
 const router=express.Router();
 
@@ -932,32 +934,6 @@ function splitByRegistrations(text){
   return blocks;
 }
 
-function parseAdmittedBlock(block){
-  const dateMatch=block.body.match(/(\d{2}\/\d{2}\/\d{4})/);
-  if(!dateMatch)return null;
-
-  const beforeDate=cleanCaptured(block.body.slice(0,dateMatch.index));
-  const afterDate=cleanCaptured(block.body.slice(dateMatch.index+dateMatch[0].length));
-
-  // Extração real:
-  // matrícula + código do cargo + cartão + nome + data + cargo
-  // Ex.: 00001147719 0002 CARLOS... 04/07/2026 CARREGADOR
-  const prefixMatch=beforeDate.match(/^(\d{1,3})\s*(\d{4})\s+(.+)$/);
-  if(!prefixMatch)return null;
-
-  const row={
-    registration:block.registration,
-    jobCode:prefixMatch[1],
-    pointCard:prefixMatch[2],
-    fullName:cleanCaptured(prefixMatch[3]),
-    admissionDate:toIsoDate(dateMatch[1]),
-    jobTitle:cleanCaptured(afterDate.replace(/^\s*-\s*/,"")),
-    status:"NOVO"
-  };
-
-  return row.fullName&&row.jobTitle?row:null;
-}
-
 function parseDismissedBlock(block){
   const dateMatch=block.body.match(/(\d{2}\/\d{2}\/\d{4})/);
   if(!dateMatch)return null;
@@ -1001,167 +977,22 @@ function parseDismissedBlock(block){
 }
 
 
-function parseAdmittedColumnar(text){
-  const source=String(text||"").replace(/\r/g,"\n");
-  if(!/Rela[cç][aã]o de Admitidos/i.test(source))return [];
-
-  // O FPRE004.COL pode ser extraído pelo pdf-parse em ordem de colunas:
-  // todas as matrículas, depois Nome/Data alternados, depois códigos de cargo,
-  // cargos e cartões. Este parser reconstrói as linhas pelo índice.
-  const lines=source
-    .split(/\n+/)
-    .map(line=>line.replace(/[ \t]+/g," ").trim())
-    .filter(Boolean);
-
-  const firstReg=lines.findIndex(line=>/^0\d{8}$/.test(line));
-  if(firstReg<0)return [];
-
-  const registrations=[];
-  let cursor=firstReg;
-  while(cursor<lines.length && /^0\d{8}$/.test(lines[cursor])){
-    registrations.push(lines[cursor]);
-    cursor++;
-  }
-
-  if(registrations.length<2)return [];
-
-  // Depois das matrículas, o PDF apresenta Nome / Data intercalados.
-  const names=[];
-  const dates=[];
-  while(cursor<lines.length && names.length<registrations.length){
-    const current=lines[cursor];
-
-    if(/^Total\b/i.test(current) || /^FPRE\d+/i.test(current))break;
-
-    if(/^\d{2}\/\d{2}\/\d{4}$/.test(current)){
-      // Data sem nome anterior: estrutura inesperada.
-      break;
-    }
-
-    const name=current;
-    const next=lines[cursor+1]||"";
-    if(!/^\d{2}\/\d{2}\/\d{4}$/.test(next))break;
-
-    names.push(cleanCaptured(name));
-    dates.push(next);
-    cursor+=2;
-  }
-
-  if(names.length!==registrations.length || dates.length!==registrations.length){
-    return [];
-  }
-
-  // Códigos de cargo: um número por colaborador.
-  const jobCodes=[];
-  while(cursor<lines.length && jobCodes.length<registrations.length){
-    const current=lines[cursor];
-    if(/^\d{1,4}$/.test(current)){
-      jobCodes.push(current);
-      cursor++;
-      continue;
-    }
-    break;
-  }
-
-  if(jobCodes.length!==registrations.length)return [];
-
-  // Cargos vêm como "- DESCRIÇÃO".
-  const jobTitles=[];
-  while(cursor<lines.length && jobTitles.length<registrations.length){
-    const current=lines[cursor];
-    if(/^-\s*.+/.test(current)){
-      jobTitles.push(cleanCaptured(current.replace(/^-\s*/,"")));
-      cursor++;
-      continue;
-    }
-    break;
-  }
-
-  if(jobTitles.length!==registrations.length)return [];
-
-  // Cartão ponto: normalmente 0002, um por colaborador.
-  const pointCards=[];
-  while(cursor<lines.length && pointCards.length<registrations.length){
-    const current=lines[cursor];
-    if(/^\d{4}$/.test(current)){
-      pointCards.push(current);
-      cursor++;
-      continue;
-    }
-    break;
-  }
-
-  if(pointCards.length!==registrations.length)return [];
-
-  return registrations.map((registration,index)=>({
-    registration,
-    fullName:names[index],
-    admissionDate:toIsoDate(dates[index]),
-    jobCode:jobCodes[index],
-    jobTitle:jobTitles[index],
-    pointCard:pointCards[index],
-    status:"NOVO"
-  }));
-}
-
 function isValidAdmittedRow(row){
   if(!row)return false;
+  if(!validAdmittedIdentity(row))return false;
   if(!isPlausibleRegistration(row.registration))return false;
   if(!isPlausibleEmployeeName(row.fullName))return false;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(row.admissionDate||"")))return false;
   if(!isPlausibleRole(row.jobTitle))return false;
   if(!String(row.jobTitle||"").trim())return false;
-  if(!/^\d{4}$/.test(String(row.pointCard||"").trim()))return false;
+  if(!/^(?:\d{4})?$/.test(String(row.pointCard||"").trim()))return false;
   return true;
 }
 
 function parseAdmitted(text){
-  let rows=[];
-  const lines=normalizePdfLines(text);
-  const lineRegex=/^(\d{9})\s+(.+?)\s+(\d{2}\/\d{2}\/\d{4})\s+(\d+)\s*-\s*(.+?)\s+(\d{4})$/;
-
-  // 1) Layout preservado por linha.
-  for(const line of lines){
-    if(isNoiseLine(line))continue;
-    const match=line.match(lineRegex);
-    if(!match)continue;
-
-    rows.push({
-      registration:match[1],
-      fullName:cleanCaptured(match[2]),
-      admissionDate:toIsoDate(match[3]),
-      jobCode:match[4],
-      jobTitle:cleanCaptured(match[5]),
-      pointCard:match[6],
-      status:"NOVO"
-    });
-  }
-
-  // 2) Layout FPRE004.COL extraído em ordem de colunas (caso real do Render).
-  if(!rows.length){
-    rows=parseAdmittedColumnar(text);
-  }
-
-  // 3) Compatibilidade com PDFs antigos concatenados.
-  if(!rows.length){
-    for(const block of splitByRegistrations(text)){
-      const row=parseAdmittedBlock(block);
-      if(row)rows.push(row);
-    }
-  }
-
-  // Nunca permite que totalização, rodapé, horário ou usuário virem colaborador.
-  rows=rows
-    .map(normalizeImportItem)
-    .filter(isValidAdmittedRow);
-
-  const unique=new Map();
-  for(const row of rows){
-    if(!unique.has(row.registration))unique.set(row.registration,row);
-  }
-
-  return [...unique.values()];
+  return parseAdmittedText(text).map(normalizeImportItem).filter(isValidAdmittedRow);
 }
+
 
 function parseDismissed(text){
   const rows=[];
@@ -1681,12 +1512,18 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
     const movementReport=
       ["ADMITIDOS","DEMITIDOS"].includes(requestedType) ||
       /Admitidos|Demitidos|Demiss[aã]o/i.test(req.file.originalname||"");
-    const extraction=movementReport
+    let extraction=movementReport
       ? await extractSeniorMovementPdfText(req.file.buffer)
       : await extractPdfText(req.file.buffer,{
           skipPdf2Json:/Senior|Escala|Turno|Colaboradores/i.test(req.file.originalname||"")
         });
-    const text=extraction.text||"";
+    let text=extraction.text||"";
+    // AUTO also covers arbitrary file names such as "admissão.pdf". Once
+    // identified, use the same row-aware reader as explicit ADMITIDOS.
+    if(requestedType==="AUTO"&&detectImportType(text)==="ADMITIDOS"&&!Array.isArray(extraction.admittedRows)){
+      extraction=await extractSeniorMovementPdfText(req.file.buffer);
+      text=extraction.text||"";
+    }
 
     const branchCheck=await validatePdfOperationalBranch({
       text,
@@ -1715,7 +1552,7 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
 
     const header=detectHeader(text);
     let rows=(
-      type==="ADMITIDOS" ? parseAdmitted(text) :
+      type==="ADMITIDOS" ? (extraction.admittedRows??parseAdmitted(text)) :
       type==="DEMITIDOS" ? parseDismissed(text) :
       parseCollaborators(text)
     ).map(normalizeImportItem);
@@ -1749,6 +1586,16 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
     // estruturais forem plausíveis. Ruídos de Total/Usuário/horário são descartados.
     if(type==="ADMITIDOS"){
       rows=rows.filter(isValidAdmittedRow);
+      const registrations=[...new Set(rows.map(row=>row.registration))];
+      const existing=registrations.length?await pool.query(`
+        SELECT e.id,e.registration,e.full_name,e.admission_date,e.status,e.shift_id,e.point_card,e.job_title,
+               COALESCE(jr.name,e.job_title,'') effective_job_title,s.name current_shift
+        FROM employees e
+        LEFT JOIN job_roles jr ON jr.id=e.job_role_id
+        LEFT JOIN shifts s ON s.id=e.shift_id
+        WHERE e.company_id=$1 AND e.branch_id=$2 AND e.registration=ANY($3::text[])
+      `,[companyId,branchId,registrations]):{rows:[]};
+      rows=reconcileAdmittedPreview(rows,existing.rows,detectEmployeeCorrections);
     }
 
     if(!rows.length){
@@ -1770,7 +1617,7 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
     if(type==="ADMITIDOS"||type==="COLABORADORES"){
       try{
         const names=[...new Set(
-          rows
+          rows.filter(row=>type!=="ADMITIDOS"||!row.registrationExists)
             .map(row=>String(row.fullName||"").trim())
             .filter(Boolean)
         )];
@@ -1781,10 +1628,12 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
             FROM employees
             WHERE LOWER(REGEXP_REPLACE(TRIM(full_name),'\\s+',' ','g'))
               = ANY($1::text[])
+              ${type==="ADMITIDOS"?"AND company_id=$2 AND branch_id=$3":""}
             ORDER BY full_name,created_at
-          `,[names.map(name=>name.toLowerCase().replace(/\s+/g," "))]);
+          `,type==="ADMITIDOS"?[names.map(name=>name.toLowerCase().replace(/\s+/g," ")),companyId,branchId]:[names.map(name=>name.toLowerCase().replace(/\s+/g," "))]);
 
           for(const row of rows){
+            if(type==="ADMITIDOS"&&row.registrationExists)continue;
             const normalizedName=String(row.fullName||"").trim().toLowerCase().replace(/\s+/g," ");
             const previous=sameNameRows.rows.find(existing=>
               String(existing.full_name||"").trim().toLowerCase().replace(/\s+/g," ")===normalizedName &&
@@ -1815,6 +1664,8 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
         row.selected=false;
         row.blockReason=`Cargo bloqueado: ${row.jobTitle}`;
         blockedByRole++;
+      }else if(type==="ADMITIDOS"&&row.registrationExists){
+        row.result=row.corrections?.length?"ATUALIZAR":"CONFERIDO";
       }else if(row.possibleReadmission){
         row.result="POSSIVEL_READMISSAO";
       }else{
@@ -1822,10 +1673,15 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
           ? (row.systemMatch===false?"NAO_LOCALIZADO":"LOCALIZAR")
           : "CONFERIR";
       }
-      row.hasShift=false;
+      row.hasShift=type==="ADMITIDOS"&&row.registrationExists?Boolean(row.currentShiftId||row.currentShift):false;
     }
 
     const diagnostics=buildImportDiagnostics(text,type,rows);
+    if(type==="ADMITIDOS"){
+      diagnostics.admissionParsing=extraction.admissionParsing||null;
+      diagnostics.criticalAssociationIssues=Array.isArray(extraction.admissionParsing?.errors)?extraction.admissionParsing.errors.map(String):[];
+      diagnostics.criticalAssociationIssueCount=diagnostics.criticalAssociationIssues.length;
+    }
     const comparisonChecklist=await buildSeniorSystemChecklist({
       rows,companyId,branchId,type
     });
@@ -1846,6 +1702,7 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
       readerUsed:extraction.readerUsed,
       readerAttempts:extraction.attempts,
       diagnostics,
+      canConfirm:type!=="ADMITIDOS"||admittedParsingIssues(diagnostics).length===0,
       comparisonChecklist,
       intelligence,
       fileName:req.file.originalname,
@@ -1877,7 +1734,7 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
         ).join(" | ")
       : "";
 
-    return res.status(500).json({
+    return res.status(error.status===422?422:500).json({
       error:"Não foi possível ler o arquivo PDF.",
       detail:[
         error.message||"Falha desconhecida durante a leitura.",
@@ -2044,6 +1901,27 @@ function extractPdfiumFlateText(buffer,options={}){
 
 async function extractSeniorMovementPdfText(buffer){
   const attempts=[];
+
+  // A identidade de Admitidos vem da mesma linha física e das âncoras de
+  // coluna, qualquer que seja o produtor do PDF. A ordem dos objetos de texto
+  // não define qual matrícula pertence a qual nome.
+  let admitted=null;
+  try{
+    admitted=await readAdmittedPdf(buffer);
+  }catch(error){
+    attempts.push({reader:"senior-admitted-columns",success:false,error:error.message||String(error)});
+  }
+  if(admitted?.recognized){
+    if(!admitted.diagnostics.complete){
+      const error=new Error(`Leitura de Admitidos incompleta: ${admitted.diagnostics.errors.join(" ")}`);
+      error.status=422;
+      error.readerAttempts=[...attempts,{reader:"senior-admitted-columns",success:false,error:error.message}];
+      error.admissionParsing=admitted.diagnostics;
+      throw error;
+    }
+    return {text:admitted.text,readerUsed:"senior-admitted-columns",admittedRows:admitted.rows,admissionParsing:admitted.diagnostics,
+      attempts:[...attempts,{reader:"senior-admitted-columns",success:true}]};
+  }
 
   // Os relatórios FPRE004.COL e FPRE005.COL gerados pelo PDFium guardam
   // coordenadas confiáveis. O pdf-parse pode ler esses mesmos arquivos por
@@ -3438,7 +3316,7 @@ router.post("/shift-confirm",async(req,res,next)=>{
 
 
 router.post("/confirm",async(req,res,next)=>{
-  const client=await pool.connect();
+  let client=null;
   let transactionCommitted=false;
 
   try{
@@ -3448,6 +3326,7 @@ router.post("/confirm",async(req,res,next)=>{
       previewCompanyId,previewBranchId,
       readerUsed=null,
       intelligence=null,
+      parsingDiagnostics=null,
       rows=[]
     }=req.body;
     if(!["ADMITIDOS","DEMITIDOS","COLABORADORES"].includes(type)){
@@ -3460,6 +3339,13 @@ router.post("/confirm",async(req,res,next)=>{
       return res.status(400).json({error:"Nenhum registro para importar."});
     }
     assertScope(req,companyId,branchId);
+
+    if(type==="ADMITIDOS"&&admittedParsingIssues(parsingDiagnostics||{}).length){
+      return res.status(409).json({
+        error:"A leitura das admissões precisa ser conferida antes de gravar.",
+        detail:admittedParsingIssues(parsingDiagnostics||{}).join(" ")+" Leia novamente o PDF; nenhum cadastro foi alterado."
+      });
+    }
 
     if(String(previewCompanyId||"")!==String(companyId)||String(previewBranchId||"")!==String(branchId)){
       return res.status(409).json({
@@ -3495,7 +3381,11 @@ router.post("/confirm",async(req,res,next)=>{
         error:"Nenhum registro válido foi selecionado para importar."
       });
     }
+    if(type==="ADMITIDOS"&&sanitizedRows.length!==rows.filter(item=>item&&item.selected!==false).length){
+      return res.status(422).json({error:"Há admissões selecionadas com dados inválidos. Leia o PDF novamente e confira matrícula, nome, data e cargo antes de gravar."});
+    }
 
+    client=await pool.connect();
     await client.query("BEGIN");
     let created=0,updated=0,unchanged=0,demitted=0,notFound=0,failed=0,blockedByRole=0,readmissions=0;
     const results=[];
@@ -3624,11 +3514,12 @@ router.post("/confirm",async(req,res,next)=>{
             WHERE LOWER(REGEXP_REPLACE(TRIM(full_name),'\\s+',' ','g'))
                   = LOWER(REGEXP_REPLACE(TRIM($1),'\\s+',' ','g'))
               AND COALESCE(registration,'')<>$2
+              ${type==="ADMITIDOS"?"AND company_id=$3 AND branch_id=$4":""}
             ORDER BY
               CASE WHEN status='DEMITIDO' THEN 0 ELSE 1 END,
               created_at DESC
             LIMIT 1
-          `,[item.fullName,registration]);
+          `,type==="ADMITIDOS"?[item.fullName,registration,companyId,branchId]:[item.fullName,registration]);
 
           const previous=priorSameName.rows[0]||null;
 
@@ -3791,7 +3682,7 @@ router.post("/confirm",async(req,res,next)=>{
       results
     });
   }catch(e){
-    if(!transactionCommitted){
+    if(client&&!transactionCommitted){
       try{await client.query("ROLLBACK");}catch{}
     }
     console.error("[IMPORT_PDF_CONFIRM]",{
@@ -3807,7 +3698,7 @@ router.post("/confirm",async(req,res,next)=>{
       step:"CONFIRMAR_IMPORTACAO"
     });
   }finally{
-    client.release();
+    client?.release();
   }
 });
 
@@ -4533,15 +4424,15 @@ router.post("/timecard-resolve-new-hires",timecardUpload.single("file"),async(re
       return res.status(400).json({error:"Nenhuma matrícula pendente foi informada para regularização."});
     }
 
-    // A Relação de Admitidos (FPRE004.COL) é um relatório PDFium. Ela precisa
-    // usar o mesmo leitor especializado da importação normal de Admitidos; o
+    // A Relação de Admitidos (FPRE004.COL) precisa usar o mesmo leitor
+    // especializado por linhas da importação normal de Admitidos; o
     // leitor genérico pode perder/reordenar o cabeçalho e causar falso
     // "arquivo não reconhecido".
     const extraction=await extractSeniorMovementPdfText(req.file.buffer);
     const sourceText=extraction.text||"";
     const type=detectImportType(sourceText);
 
-    const admittedRows=parseAdmitted(sourceText)
+    const admittedRows=(extraction.admittedRows??parseAdmitted(sourceText))
       .map(normalizeImportItem)
       .filter(isValidAdmittedRow);
     const matched=admittedRows.filter(row=>requestedMap.has(normalizePointRegistration(row.registration)));
