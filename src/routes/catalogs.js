@@ -4,6 +4,9 @@ const {authenticate,requireAdmin,applyScope}=require("../middleware/auth");
 const audit=require("../db/audit");
 const router=express.Router();
 router.use(authenticate,applyScope);
+router.use(require("../middleware/validate-filters").validateFilters);
+router.param("id",require("../middleware/validate-filters").validateId);
+router.param("branchId",require("../middleware/validate-filters").validateId);
 
 const tables={shifts:"shifts",job_roles:"job_roles",departments:"departments"};
 

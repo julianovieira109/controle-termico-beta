@@ -117,6 +117,8 @@ async function ensureAutomaticHolidays(year,settings){
 }
 
 router.use(authenticate,applyScope,requirePermission("calendar.manage"));
+router.use(require("../middleware/validate-filters").validateFilters);
+router.param("id",require("../middleware/validate-filters").validateId);
 
 router.get("/holiday-types",async(_req,res,next)=>{
   try{

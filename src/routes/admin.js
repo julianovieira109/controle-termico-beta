@@ -6,6 +6,8 @@ const audit=require("../db/audit");
 const {authenticate,requireAdmin,requireMasterAdmin}=require("../middleware/auth");
 const router=express.Router();
 router.use(authenticate,requireAdmin);
+router.use(require("../middleware/validate-filters").validateFilters);
+router.param("id",require("../middleware/validate-filters").validateId);
 
 function requesterIsMaster(req){
   return req.user?.role==="ADMIN"&&req.user?.isMasterAdmin===true;

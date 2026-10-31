@@ -1495,6 +1495,7 @@
             <summary><span class="manual-number">8</span><span><strong>Relatórios e impressão</strong><small>Repouso térmico e Refeitório</small></span></summary>
             <div class="manual-body">
               <div class="manual-report-preview" aria-label="Exemplo de ficha mensal"><b>FICHA MENSAL</b><span>Empresa • Filial • Colaborador • Matrícula</span><i></i><i></i><i></i><small>Assinatura do colaborador</small></div>
+              <p>Em <strong>Painel, Relatórios e Ocorrências</strong>, informe uma competência existente no formato AAAA-MM (meses de 01 a 12). Nos filtros de demissão de <strong>Colaboradores</strong>, use datas existentes e data inicial anterior ou igual à final; em <strong>Configurações → Feriados e folgas</strong>, use ano com quatro dígitos. Filtros ou identificadores inválidos são recusados com uma mensagem de validação, sem alterar dados. O Controle de Ocorrências consulta seus dados ao abrir a área após o login e exige Master ou administrador autorizado. Após atualizar, use Ctrl+F5 e repita a consulta; não é necessário reimportar dados já cadastrados.</p>
               <h4>Regra utilizada e condições de aplicação</h4><p>O planejamento de <strong>100 minutos de trabalho contínuo e 20 minutos de repouso</strong> usa como referência o <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del5452.htm#art253" target="_blank" rel="noopener noreferrer">art. 253 da CLT</a>, para o trabalho abrangido pela proteção ao frio. Os 20 minutos integram o tempo de serviço; o sistema não desconta as pausas calculadas do Trabalho ou do BH informado pela Senior. O ponto, sozinho, não identifica temperatura, tempo de exposição ou condições do local. O DP e a Segurança do Trabalho devem confirmar quais atividades e colaboradores estão abrangidos, incluindo normas específicas e instrumentos coletivos aplicáveis. O resultado <strong>Cálculo conferido</strong> (Conforme na auditoria) refere-se ao cálculo; não certifica cumprimento da legislação nem comprova repousos realizados.</p>
               <h4>Planejamento automático e conferência do repouso</h4><p>O cálculo usa <strong>pausas de 20 minutos</strong> e mantém cada trecho de trabalho contínuo em <strong>até 100 minutos</strong>, inclusive antes da primeira pausa, entre pausas e após a última. O intervalo de refeição separa os trechos do planejamento quando tem pelo menos 20 minutos; ele não é registrado como pausa térmica. Um intervalo menor não reinicia automaticamente a contagem. Se o trabalho acumulado exceder 100 minutos nessa situação, a ficha automática exige revisão. As pausas podem ser antecipadas pela distribuição da jornada, sempre dentro das marcações reais. Não há teto diário fixo no sistema: a quantidade acompanha a jornada. A ficha usa até quatro colunas de repouso por página e cria <strong>continuação</strong> para apresentar todas as pausas necessárias, inclusive em jornadas com horas extras.</p>
               <p>Em <strong>Relatórios → Validação prévia → Conferir cálculo do repouso</strong>, selecione o dia para visualizar a jornada e a conferência. O mesmo motor é usado na prévia dos turnos, no cálculo do dia e na ficha. A auditoria verifica os horários recebidos, incluindo duração, ordem, sobreposições, refeição, encaixe na jornada e o trecho final. Uma falha impede a ficha automática; nenhum repouso isolado recebe <strong>Conforme</strong> quando o dia falha na conferência.</p>
@@ -2869,7 +2870,7 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.105"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.106"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -2884,6 +2885,6 @@
   <script src="/js/bh-comparison.js?v=1.0.31-beta.99"></script>
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
-  <script src="/js/occurrences-control.js?v=1.0.31-beta.102"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.103"></script>
 </body>
 </html>

@@ -65,6 +65,8 @@ function isBlockedEmployeeRole(value){
 }
 
 router.use(authenticate,applyScope,requirePermission("employees.view"));
+router.use(require("../middleware/validate-filters").validateFilters);
+router.param("id",require("../middleware/validate-filters").validateId);
 router.use((req,res,next)=>{
   if(req.method==="GET")return next();
   return requirePermission("employees.manage")(req,res,next);

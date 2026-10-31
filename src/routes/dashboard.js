@@ -6,6 +6,7 @@ const OccurrencesManagement=require("../lib/occurrences-management");
 const audit=require("../db/audit");
 const router=express.Router();
 router.use(authenticate,applyScope,requirePermission("dashboard.view"));
+router.use(require("../middleware/validate-filters").validateFilters);
 
 function parseBhBreakdown(occurrence){
   const text=String(occurrence||"").split(" | ")[0].trim();

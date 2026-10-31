@@ -1242,9 +1242,8 @@
     $("occurrences-print-selector")?.addEventListener("change",()=>{if($("occ-print-selector-error"))$("occ-print-selector-error").hidden=true;updatePrintSelectedCount();});
     window.addEventListener("afterprint",clearPrintMode);
     document.querySelectorAll("#occurrences-summary article[data-key]").forEach(card=>card.addEventListener("click",()=>selectKey(card.dataset.key)));
-    loadScopeOptions().then(()=>load(true)).catch(error=>{
-      if($("occurrences-import-status"))$("occurrences-import-status").textContent=error.message||"Não foi possível carregar empresas e filiais.";
-    });
+    // Os dados protegidos são carregados pela navegação autorizada para Ocorrências.
+    // DOMContentLoaded também ocorre na tela de login, sem sessão autenticada.
   }
 
   document.addEventListener("DOMContentLoaded",init);

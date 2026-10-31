@@ -3,6 +3,7 @@ const pool=require("../db/pool");
 const {authenticate,applyScope,requirePermission}=require("../middleware/auth");
 const router=express.Router();
 router.use(authenticate,applyScope,requirePermission("reports.view"));
+router.use(require("../middleware/validate-filters").validateFilters);
 
 router.get("/employees",async(req,res,next)=>{
   try{
