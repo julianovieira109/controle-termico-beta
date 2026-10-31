@@ -22,7 +22,7 @@ function preview(overrides={}){
     type:'ADMITIDOS',detectedType:'ADMITIDOS',readerUsed:'pdf-parse',fileName:'Admitidos.pdf',
     previewCompanyId:'company',previewBranchId:'branch',total:1,canConfirm:true,
     diagnostics:{unresolvedCount:0,criticalAssociationIssueCount:0,criticalAssociationIssues:[]},
-    rows:[{registration:'11687',fullName:'Nome na Senior',admissionDate:'2026-10-01',jobTitle:'Aprendiz',pointCard:'',result:'ATUALIZAR',employeeId:'employee',currentName:'Nome antigo',currentAdmissionDate:'2026-09-01',currentJobTitle:'Cargo antigo',currentShift:'Turno preservado',hasShift:true,corrections:['nome','admissão','cargo/função']}],
+    rows:[{registration:'11687',fullName:'Nome na Senior',admissionDate:'2026-10-01',jobTitle:'Aprendiz',pointCard:'',result:'ATUALIZAR',employeeId:'employee',currentName:'Nome antigo',currentAdmissionDate:'2026-09-01',currentJobTitle:'Cargo antigo',currentShift:'Turno preservado',currentStatus:'ATIVO',currentTerminationDate:null,preserveEmploymentState:true,hasShift:true,corrections:['nome','admissão','cargo/função']}],
     ...overrides
   };
 }
@@ -82,6 +82,37 @@ test('admitidos mostram dados atuais por matrícula e preservam turno já cadast
   assert.equal(sent.rows[0].pointCard,'');
   assert.deepEqual(sent.parsingDiagnostics,data.diagnostics);
   assert.ok(h.confirmations[0].message.includes('preservando empresa, filial e turno'));
+  assert.ok(h.confirmations[0].message.includes('situação e da data de demissão já registradas'));
+  assert.match(h.element('pdf-import-detection').innerHTML,/situação e a data de demissão das matrículas existentes foram preservadas/);
+});
+
+for(const status of ['DEMITIDO','AFASTADO','INATIVO']){
+  test(`correção da própria matrícula mostra e mantém a situação ${status} sem prometer reativação`,async()=>{
+    const data=preview();
+    Object.assign(data.rows[0],{currentStatus:status,currentTerminationDate:'2026-10-20'});
+    const h=harness(data);
+    h.render();
+    const body=h.element('pdf-import-body').innerHTML;
+    assert.match(h.element('pdf-import-head').innerHTML,/<th>Situação<\/th>/);
+    assert.ok(body.includes(`${status}<small>Situação preservada</small>`));
+    assert.match(body,/Demissão preservada: 20\/10\/2026/);
+    assert.doesNotMatch(body,/Ativo — novo vínculo|Campos a atualizar: situação/);
+    assert.match(h.element('pdf-import-summary').textContent,/Matrículas já cadastradas mantêm a situação e a data de demissão/);
+    await h.confirm();
+    assert.equal(h.requests.length,1);
+    assert.equal(h.requests[0].body.rows[0].currentStatus,status);
+    assert.equal(h.requests[0].body.rows[0].currentTerminationDate,'2026-10-20');
+    assert.match(h.element('pdf-import-detection').innerHTML,/situação e a data de demissão das matrículas existentes foram preservadas/);
+  });
+}
+
+test('situação ausente na prévia existente não é presumida como Ativo',()=>{
+  const data=preview();
+  delete data.rows[0].currentStatus;
+  const h=harness(data);
+  h.render();
+  assert.match(h.element('pdf-import-body').innerHTML,/Não informada<small>Situação preservada<\/small>/);
+  assert.doesNotMatch(h.element('pdf-import-body').innerHTML,/Ativo — novo vínculo/);
 });
 
 test('mesma matrícula não vira readmissão porque o nome aparece em outro vínculo',()=>{
@@ -108,6 +139,7 @@ test('cadastro igual é conferido e matrículas novas conservam os avisos de rev
   assert.match(body,/PRONTO PARA IMPORTAR/);
   assert.match(body,/POSSÍVEL READMISSÃO — NOVA MATRÍCULA \(anterior: 99\)/);
   assert.match(body,/NOVO/);
+  assert.match(body,/Ativo — novo vínculo/);
   assert.match(body,/Definir depois/);
   assert.match(h.element('pdf-import-summary').textContent,/1 possível/);
 });
@@ -164,7 +196,7 @@ test('prévia escapa metadados do PDF, valores atuais e resultados antes de inse
     diagnostics:{unresolvedCount:1,unresolvedRegistrations:[injection],criticalAssociationIssueCount:1,criticalAssociationIssues:[injection],parsedCount:injection},
     comparisonChecklist:{seniorTotal:injection,systemActiveTotal:injection,items:[{origin:'SENIOR',registration:injection,fullName:injection,status:injection,details:injection}]}
   });
-  Object.assign(data.rows[0],{registration:injection,fullName:injection,currentName:injection,jobTitle:injection,currentJobTitle:injection,currentShift:injection,corrections:[injection],pointCard:injection,result:injection});
+  Object.assign(data.rows[0],{registration:injection,fullName:injection,currentName:injection,jobTitle:injection,currentJobTitle:injection,currentShift:injection,currentStatus:injection,currentTerminationDate:injection,corrections:[injection],pointCard:injection,result:injection});
   const h=harness(data);
   h.render();
   for(const id of ['pdf-import-detection','pdf-import-body','pdf-checklist-body','pdf-checklist-summary']){

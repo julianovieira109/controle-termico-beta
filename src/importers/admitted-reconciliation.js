@@ -13,6 +13,8 @@ function reconcileAdmittedPreview(rows,employees,detectCorrections){
       matchBasis:'MATRICULA',
       currentName:existing.full_name||'',
       currentAdmissionDate:existing.admission_date||null,
+      currentStatus:existing.status||null,
+      currentTerminationDate:existing.termination_date||null,
       currentJobTitle:existing.effective_job_title||existing.job_title||'',
       currentShift:existing.current_shift||null,
       currentShiftId:existing.shift_id||null,

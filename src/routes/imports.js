@@ -1460,7 +1460,7 @@ function comparableImportedDate(value){
 
 // A matrícula identifica o vínculo. Estes campos podem mudar na Senior e
 // precisam ser corrigidos no cadastro sem criar um segundo colaborador.
-function detectEmployeeCorrections(existing,item){
+function detectEmployeeCorrections(existing,item,{preserveEmploymentState=false}={}){
   const corrections=[];
   if(comparableImportedText(existing?.full_name)!==comparableImportedText(item?.fullName)){
     corrections.push("nome");
@@ -1474,7 +1474,7 @@ function detectEmployeeCorrections(existing,item){
   if(item?.pointCard&&String(existing?.point_card||"").trim()!==String(item.pointCard).trim()){
     corrections.push("cartão-ponto");
   }
-  if(String(existing?.status||"").trim().toUpperCase()!=="ATIVO"){
+  if(!preserveEmploymentState&&String(existing?.status||"").trim().toUpperCase()!=="ATIVO"){
     corrections.push("situação");
   }
   return corrections;
@@ -1588,14 +1588,16 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
       rows=rows.filter(isValidAdmittedRow);
       const registrations=[...new Set(rows.map(row=>row.registration))];
       const existing=registrations.length?await pool.query(`
-        SELECT e.id,e.registration,e.full_name,e.admission_date,e.status,e.shift_id,e.point_card,e.job_title,
+        SELECT e.id,e.registration,e.full_name,e.admission_date,e.status,e.termination_date,e.shift_id,e.point_card,e.job_title,
                COALESCE(jr.name,e.job_title,'') effective_job_title,s.name current_shift
         FROM employees e
         LEFT JOIN job_roles jr ON jr.id=e.job_role_id
         LEFT JOIN shifts s ON s.id=e.shift_id
         WHERE e.company_id=$1 AND e.branch_id=$2 AND e.registration=ANY($3::text[])
       `,[companyId,branchId,registrations]):{rows:[]};
-      rows=reconcileAdmittedPreview(rows,existing.rows,detectEmployeeCorrections);
+      rows=reconcileAdmittedPreview(rows,existing.rows,(employee,row)=>
+        detectEmployeeCorrections(employee,row,{preserveEmploymentState:true})
+      );
     }
 
     if(!rows.length){
@@ -3468,7 +3470,12 @@ router.post("/confirm",async(req,res,next)=>{
         }
 
         if(current.rows[0]){
-          const corrections=detectEmployeeCorrections(current.rows[0],item);
+          const corrections=detectEmployeeCorrections(current.rows[0],item,{
+            preserveEmploymentState:type==="ADMITIDOS"
+          });
+          // A list of admissions can predate a dismissal or leave. Repairing
+          // this registration's metadata must not change its employment state.
+          // A genuine readmission is a new registration, handled below.
           await client.query(`
             UPDATE employees
             SET company_id=$1,
@@ -3478,8 +3485,7 @@ router.post("/confirm",async(req,res,next)=>{
                 job_role_id=$5,
                 job_title=$6,
                 point_card=COALESCE($7,point_card),
-                status='ATIVO',
-                termination_date=NULL,
+                ${type==="COLABORADORES"?"status='ATIVO',termination_date=NULL,":""}
                 source=$9,
                 last_imported_at=NOW(),
                 updated_at=NOW()
@@ -3662,7 +3668,7 @@ router.post("/confirm",async(req,res,next)=>{
       readmissions,
       action:type==="DEMITIDOS"
         ?(createMissingDismissed===true?"CADASTRAR_HISTORICO_E_INATIVAR_COMO_DEMITIDO":"INATIVAR_COMO_DEMITIDO")
-        : (type==="ADMITIDOS"?"CADASTRAR_OU_REATIVAR":"ATUALIZAR")
+        : (type==="ADMITIDOS"?"CADASTRAR_OU_CORRIGIR_PRESERVANDO_SITUACAO":"ATUALIZAR")
     });
 
     res.json({
@@ -4524,13 +4530,13 @@ router.post("/timecard-resolve-new-hires",timecardUpload.single("file"),async(re
       }
 
       if(existing){
-        const corrections=detectEmployeeCorrections(existing,item);
+        const corrections=detectEmployeeCorrections(existing,item,{preserveEmploymentState:true});
         if(corrections.length){
           await client.query(`
             UPDATE employees
             SET company_id=$1,branch_id=$2,full_name=$3,admission_date=$4,
                 job_role_id=$5,job_title=$6,point_card=COALESCE($7,point_card),
-                status='ATIVO',termination_date=NULL,source='SENIOR_TIMECARD_ADMITIDOS',
+                source='SENIOR_TIMECARD_ADMITIDOS',
                 last_imported_at=NOW(),updated_at=NOW()
             WHERE id=$8
           `,[companyId,branchId,item.fullName,item.admissionDate,roleId,roleName,item.pointCard||null,existing.id]);

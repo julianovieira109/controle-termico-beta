@@ -487,16 +487,17 @@ function renderPdfImportPreview(){
     toast(`${p.total} colaboradores foram reconstruídos a partir do texto do PDF.`,"success");
   }
   const readmissions=rows.filter(row=>pdfImportResultCode(row,p.type)==="POSSIVEL_READMISSAO").length;
-  $("pdf-import-summary").textContent=`${p.total} colaborador(es) encontrados em ${p.fileName}.${readmissions?` ${readmissions} possível(is) readmissão(ões) identificada(s) — será criada nova matrícula sem alterar o vínculo antigo.`:""}`;
+  $("pdf-import-summary").textContent=`${p.total} colaborador(es) encontrados em ${p.fileName}.${p.type==="ADMITIDOS"?" Matrículas já cadastradas mantêm a situação e a data de demissão.":""}${readmissions?` ${readmissions} possível(is) readmissão(ões) identificada(s) — confira o novo vínculo com a matrícula informada no PDF; o vínculo anterior será preservado.`:""}`;
   $("pdf-import-confirm").disabled=blockingIssues.length>0;
 
   $("pdf-import-create-dismissed-option").hidden=p.type!=="DEMITIDOS";
   $("pdf-import-create-dismissed").checked=false;
   if(p.type==="ADMITIDOS"||p.type==="COLABORADORES"){
-    $("pdf-import-head").innerHTML=`<tr><th><input type="checkbox" id="pdf-import-select-all" checked></th><th>Matrícula</th>${p.type==="COLABORADORES"?"<th>Tipo</th>":""}<th>Nome</th><th>Admissão</th><th>Cargo</th>${p.type==="ADMITIDOS"?"<th>Cartão</th>":""}<th>Resultado</th><th>Turno</th></tr>`;
+    $("pdf-import-head").innerHTML=`<tr><th><input type="checkbox" id="pdf-import-select-all" checked></th><th>Matrícula</th>${p.type==="COLABORADORES"?"<th>Tipo</th>":""}<th>Nome</th><th>Admissão</th><th>Cargo</th>${p.type==="ADMITIDOS"?"<th>Cartão</th><th>Situação</th>":""}<th>Resultado</th><th>Turno</th></tr>`;
     $("pdf-import-body").innerHTML=rows.map((r,i)=>{
       const existing=p.type==="ADMITIDOS"&&pdfImportMatchesRegistration(r);
       const result=pdfImportResultCode(r,p.type);
+      const currentStatus=String(r.currentStatus||"").trim();
       return `<tr>
       <td><input class="import-check" type="checkbox" data-import-index="${i}" ${p.intelligence?.requiresReview ? "" : "checked"}></td>
       <td>${escapeHtml(r.registration)}</td>
@@ -505,6 +506,7 @@ function renderPdfImportPreview(){
       <td>${escapeHtml(formatApiDate(r.admissionDate))}${existing?`<small>No cadastro atual: ${escapeHtml(formatApiDate(r.currentAdmissionDate))}</small>`:""}</td>
       <td>${escapeHtml(r.jobTitle)}${existing?`<small>No cadastro atual: ${escapeHtml(r.currentJobTitle||"-")}</small>`:""}</td>
       ${p.type==="ADMITIDOS"?`<td>${escapeHtml(r.pointCard||"-")}</td>`:""}
+      ${p.type==="ADMITIDOS"?`<td>${existing?`${escapeHtml(currentStatus||"Não informada")}<small>Situação preservada</small>${r.currentTerminationDate?`<small>Demissão preservada: ${escapeHtml(formatApiDate(r.currentTerminationDate))}</small>`:""}`:"Ativo — novo vínculo"}</td>`:""}
       <td><span class="import-result ${escapeHtml(result)}">${escapeHtml(pdfImportResultLabel(r,p.type))}</span>${existing&&Array.isArray(r.corrections)&&r.corrections.length?`<small>Campos a atualizar: ${escapeHtml(r.corrections.join(", "))}</small>`:""}</td>
       <td>${r.hasShift?`Mantém o cadastrado${r.currentShift?`<small>${escapeHtml(r.currentShift)}</small>`:""}`:'<span class="shift-missing">Definir depois</span>'}</td>
     </tr>`;}).join("");
@@ -573,7 +575,7 @@ $("pdf-import-confirm").onclick=async()=>{
     isDismissed
       ? "Todos os colaboradores selecionados serão marcados como DEMITIDOS, sairão da aba Ativos e ficarão disponíveis na aba Demitidos. O histórico será preservado. Se habilitada a opção de cadastro histórico, os não localizados selecionados serão criados como demitidos, sem inventar a data de admissão. Deseja continuar?"
       : pdfImportPreview.type==="ADMITIDOS"
-        ? "Os dados selecionados serão conferidos pela MATRÍCULA. Para matrículas já cadastradas, serão atualizados somente os dados divergentes da Senior, preservando empresa, filial e turno. Somente matrículas novas criam cadastros; um nome igual em outra matrícula é um aviso para conferência. Deseja continuar?"
+        ? "Os dados selecionados serão conferidos pela MATRÍCULA. Para matrículas já cadastradas, serão atualizados somente os dados divergentes da Senior, preservando empresa, filial e turno, além da situação e da data de demissão já registradas. Somente matrículas novas criam cadastros; um nome igual em outra matrícula é um aviso para conferência do novo vínculo. Deseja continuar?"
         : "Os colaboradores selecionados serão cadastrados ou atualizados pela MATRÍCULA. Se existir o mesmo nome com outra matrícula, será criado um novo vínculo e o cadastro antigo será preservado. Deseja continuar?",
     isDismissed?"Processar demitidos":"Confirmar importação"
   );
@@ -609,7 +611,7 @@ $("pdf-import-confirm").onclick=async()=>{
       <div class="import-success">
         ${pdfImportPreview.type==="DEMITIDOS"
           ? `Processamento concluído: ${escapeHtml(result.created||0)} histórico(s) cadastrado(s) como demitidos, ${escapeHtml(result.updated||0)} cadastro(s) atualizado(s), ${escapeHtml(result.notFound??0)} não processado(s) e ${escapeHtml(result.failed||0)} com erro(s).`
-          : `Importação concluída: ${escapeHtml(result.created??0)} cadastrado(s), ${escapeHtml(result.updated??0)} corrigido(s), ${escapeHtml(result.unchanged||0)} conferido(s) sem alteração e ${escapeHtml(result.notFound??0)} não processado(s)${result.readmissions?`, ${escapeHtml(result.readmissions)} possível(is) readmissão(ões) criada(s) com nova matrícula e histórico anterior preservado`:""}${result.failed?` e ${escapeHtml(result.failed)} com erro(s)`:''}.`
+          : `Importação concluída: ${escapeHtml(result.created??0)} cadastrado(s), ${escapeHtml(result.updated??0)} corrigido(s), ${escapeHtml(result.unchanged||0)} conferido(s) sem alteração e ${escapeHtml(result.notFound??0)} não processado(s)${result.readmissions?`, ${escapeHtml(result.readmissions)} possível(is) readmissão(ões) criada(s) com nova matrícula e histórico anterior preservado`:""}${result.failed?` e ${escapeHtml(result.failed)} com erro(s)`:''}.${pdfImportPreview.type==="ADMITIDOS"?" A situação e a data de demissão das matrículas existentes foram preservadas.":""}`
         }
       </div>`;
     $("pdf-import-preview-panel").hidden=true;
