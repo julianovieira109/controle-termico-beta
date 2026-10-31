@@ -971,16 +971,16 @@
             <div id="point-import-summary" class="checklist-summary"></div>
             <section id="point-missing-employees-panel" class="point-missing-employees" hidden>
               <div class="point-missing-employees-head">
-                <div><span>NOVOS COLABORADORES / CADASTRO PENDENTE</span><strong id="point-missing-employees-title">Regularize as matrículas antes da confirmação</strong><p id="point-missing-employees-help">A leitura do ponto fica preservada. Envie a Relação de Admitidos da Senior para cadastrar somente as matrículas que estão faltando.</p></div>
+                <div><span>VÍNCULOS CADASTRAIS / NOMES DIVERGENTES</span><strong id="point-missing-employees-title">Regularize as matrículas antes da confirmação</strong><p id="point-missing-employees-help">A leitura do ponto fica preservada. Envie a Relação de Admitidos da Senior para cadastrar as matrículas ausentes ou corrigir os nomes divergentes sinalizados, sem alterar a situação e o histórico existentes.</p></div>
                 <span id="point-missing-employees-count" class="point-missing-employees-count">0</span>
               </div>
               <div id="point-missing-employees-list" class="point-missing-employees-list"></div>
               <div class="point-missing-employees-actions">
                 <label>Relação de Admitidos da Senior
                   <input id="point-admitted-file" type="file" accept="application/pdf,.pdf">
-                  <small>Somente os colaboradores pendentes deste Cartão de Ponto serão cadastrados/vinculados.</small>
+                  <small>Somente as matrículas sinalizadas neste Cartão de Ponto serão cadastradas ou corrigidas.</small>
                 </label>
-                <button type="button" id="point-resolve-new-hires" class="primary">Cadastrar novatos e revalidar</button>
+                <button type="button" id="point-resolve-new-hires" class="primary">Regularizar cadastros e revalidar</button>
               </div>
               <p id="point-missing-employees-feedback" class="feedback" aria-live="polite"></p>
             </section>
@@ -1463,7 +1463,7 @@
               <p><strong>Arquivos grandes:</strong> aguarde a leitura. Se a resposta for interrompida ou não puder ser interpretada, confira o histórico antes de repetir uma confirmação. PDFs sem texto reconhecível precisam ser exportados novamente da Senior. Se os totais do rodapé estiverem truncados ou diferentes da soma dos dias, confira o relatório de origem; o sistema não completa valores para forçar a conciliação.</p>
               <div class="manual-note warning" data-help-permission="master"><strong>Limpar pontos de teste:</strong> remove somente os pontos, o histórico de importação de ponto e os acompanhamentos da empresa/filial selecionada no ambiente Beta. Empresas, filiais e colaboradores são mantidos. Alertas cadastrais continuam aparecendo e filiais sem ponto podem voltar a ser sinalizadas. Esta opção é diferente de <strong>Zerar sistema</strong>.</div>
               <h4>Passo a passo</h4><ol><li>Abra <strong>Importações → Colaboradores</strong>.</li><li>Escolha o tipo ou deixe o sistema detectar; selecione empresa/filial e carregue o PDF.</li><li>Clique em <strong>Ler e conferir PDF</strong>.</li><li>Revise confiança, registros montados, não reconhecidos e o <strong>Checklist Sistema × Lista Senior</strong>.</li><li>Marque somente os registros corretos e confirme.</li></ol>
-              <h4>Admitidos: matrícula e dados da mesma linha</h4><p>A leitura do FPRE004.COL associa matrícula, nome, admissão e cargo pela <strong>mesma linha e pelas colunas do PDF</strong>, inclusive quando o extrator muda a ordem do texto. Cartão Ponto e Filial são campos diferentes: <strong>0002 na coluna Filial não vira nome nem cartão</strong>. O Cartão Ponto pode estar vazio; o sistema não inventa um valor e preserva um cartão já cadastrado quando o arquivo não o informa. Divergências entre total impresso e linhas reconhecidas, ou associações incompletas, impedem a gravação até nova conferência.</p>
+              <h4>Admitidos: matrícula e dados da mesma linha</h4><p>A leitura do FPRE004.COL associa matrícula, nome, admissão e cargo pela <strong>mesma linha e pelas colunas do PDF</strong>, inclusive quando o extrator muda a ordem do texto. Cartão Ponto e Filial são campos diferentes: <strong>0002 na coluna Filial não vira nome nem cartão</strong>. O Cartão Ponto pode estar vazio; o sistema não inventa um valor e preserva cartões legítimos já cadastrados quando o arquivo não o informa. A correção pode remover somente um código de cargo comprovadamente gravado como cartão pelo leitor antigo em cadastro com nome contaminado. Divergências entre total impresso e linhas reconhecidas, ou associações incompletas, impedem a gravação até nova conferência.</p>
               <p><strong>Cadastros existentes:</strong> a prévia de Admitidos procura a própria matrícula na empresa e filial selecionadas. Mostra <strong>Atualizar cadastro pela matrícula</strong> quando há diferenças, apresentando nome, admissão e cargo atuais para comparar com a Senior. Sem diferenças, mostra <strong>Cadastro conferido</strong>. A coluna <strong>Situação</strong> mostra a situação atual e a data de demissão, quando cadastrada: ambas são preservadas. Corrigir os dados de uma matrícula existente não reativa um demitido, afastado ou inativo e não apaga sua demissão. Um nome encontrado em outra matrícula é apenas aviso de possível readmissão para um vínculo novo; não substitui a matrícula e não transforma uma matrícula já existente em um novo cadastro.</p>
               <p><strong>Corrigir uma importação anterior com dados desalinhados:</strong> gere e guarde um backup em <strong>Configurações → Backup e dados</strong>. Após a atualização, pressione <strong>Ctrl+F5</strong>, abra <strong>Importações → Colaboradores</strong>, selecione <strong>Admitidos</strong> ou detecção automática e leia novamente o PDF original na empresa e filial corretas. Confira todas as linhas e seus valores atuais, selecione os registros corretos e confirme. A confirmação corrige os dados pela matrícula, mantendo o identificador do cadastro, situação, data de demissão, pontos, BH, vínculos de coordenador, turno e folgas já existentes. A regularização de colaboradores pendentes dentro da importação do Cartão de Ponto também preserva a situação e a demissão de matrículas já cadastradas. Matrículas ausentes podem ser cadastradas uma vez; repetir a conferência não deve duplicar pessoas. Depois, leia e confirme novamente a <strong>Escala em Importações → Turnos</strong> para associar os turnos pelas matrículas corretas.</p>
               <div class="manual-import-types"><article><b>Admitidos</b><span>Cadastra novos vínculos e corrige dados da própria matrícula sem mudar sua situação.</span></article><article><b>Demitidos</b><span>Atualiza a situação e permite cadastrar históricos ausentes.</span></article><article><b>Relação de Colaboradores</b><span>Cadastra ausentes e atualiza nome, cargo e função.</span></article></div>
@@ -1534,6 +1534,7 @@
               <h4 data-help-permission="admin">Cargos e relatórios</h4><p data-help-permission="admin">A prioridade é: <strong>exceção do colaborador → regra da filial → regra geral do cargo</strong>. Cargo/função nova encontrada na importação é cadastrada como <strong>Pendente</strong> até o Administrador definir os relatórios permitidos.</p>
               <h4 data-help-permission="admin">Perfil Coordenador</h4><p data-help-permission="admin">O perfil padrão <strong>Coordenador</strong> possui somente a permissão de Relatórios. Ao cadastrar o usuário, escolha a empresa e as filiais que ele poderá consultar.</p>
               <h4 data-help-permission="calendar.manage">Feriados e folgas</h4><p data-help-permission="calendar.manage">Gere os feriados do ano, acrescente datas manuais ou marque folga específica. Essas informações aparecem nas fichas.</p>
+              <p data-help-permission="imports.manage"><strong>Conferência de admissões:</strong> a prévia é válida por duas horas e somente para o usuário, empresa e filial da leitura. Dados alterados ou prévia expirada exigem reler o PDF. Em Importações → Cartão de Ponto, o quadro de vínculos distingue matrícula sem cadastro de nome divergente; a Relação de Admitidos regulariza somente as matrículas sinalizadas. O cartão vazio preserva cartões legítimos; um código de cargo comprovadamente gravado como cartão pelo leitor antigo é removido na correção do cadastro contaminado. Nome, admissão e cargo são conferidos pela mesma linha da Senior. IDs, situação, demissão, turno, folgas e históricos são preservados; as correções registram os campos anteriores e novos na auditoria. Após atualizar, use Ctrl+F5 e releia os PDFs. Publicar uma atualização não corrige cadastros antigos automaticamente: regularize os vínculos antes de confirmar o ponto.</p>
               <h4 data-help-permission="imports.manage">Histórico de importação</h4><p data-help-permission="imports.manage">Fica recolhido por padrão. Abra somente para consultar data, arquivo, tipo e resultado anterior.</p>
               <div class="manual-note info" data-help-permission="admin"><strong>Backup:</strong> Administradores podem gerar e baixar a cópia de segurança, executar testes e corrigir duplicidades.</div>
               <div class="manual-note danger" data-help-permission="master"><strong>Proteção Master:</strong> restaurar backup e “Zerar sistema” são ações exclusivas do Administrador Master.</div>
@@ -2870,7 +2871,7 @@
   })();
   </script>
   <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.106"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.107"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -2879,7 +2880,7 @@
   <script src="/js/report-validator.js?v=1.0.31-beta.101"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
   <script src="/js/rest-audit.js?v=1.0.31-beta.101"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.101"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.102"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.103"></script>
   <script src="/js/bh-comparison.js?v=1.0.31-beta.99"></script>

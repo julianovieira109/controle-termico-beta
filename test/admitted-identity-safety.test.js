@@ -59,6 +59,15 @@ test('0002 na coluna Filial não vira nome nem cartão de ponto ausente',()=>{
   assert.equal(withCard.rows[0].branchCode,'0002');
 });
 
+test('quatorze linhas mantêm a própria identidade e o último registro com objetos fora de ordem',async()=>{
+  const input=Array.from({length:14},(_,index)=>({registration:'000000'+String(101+index),name:'PESSOA TESTE '+String.fromCharCode(65+index)}));
+  const original=page(input,{total:14});original.Texts.reverse();
+  const result=await readerWithPages([original]).readAdmittedPdf(Buffer.from('adapter'));
+  assert.equal(result.diagnostics.complete,true);assert.equal(result.rows.length,14);
+  assert.deepEqual(result.rows.map(row=>[row.registration,row.fullName]),input.map(row=>[row.registration,row.name]));
+  assert.ok(result.rows.every(row=>row.pointCard===''&&row.branchCode==='0002'&&row.jobCode==='000086'));
+});
+
 test('páginas com as mesmas posições Y não misturam registros entre si',async()=>{
   const result=await readerWithPages([page([first]),page([second],{total:2})]).readAdmittedPdf(Buffer.from('adapter'));
   assert.equal(result.diagnostics.complete,true);

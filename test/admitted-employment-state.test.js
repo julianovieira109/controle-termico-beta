@@ -4,6 +4,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const Module=require('node:module');
 const {reconcileAdmittedPreview}=require('../src/importers/admitted-reconciliation');
+const {signAdmission}=require('../src/importers/admitted-integrity');
+process.env.JWT_SECRET='isolated-admission-regression-test-key';
 
 const admitted={registration:'000011687',fullName:'IZACO LOPES GERONIMO GUAJAJARA',
   admissionDate:'2026-10-09',jobCode:'000086',jobTitle:'CARREGADOR',pointCard:'',branchCode:'0002',selected:true};
@@ -17,7 +19,7 @@ function api(existing=employee,{previous=null}={}){
   const client={release(){},async query(sql,values=[]){
     const query=sql.replace(/\s+/g,' ').trim();queries.push({query,values});
     if(/^(?:BEGIN|COMMIT|ROLLBACK|SAVEPOINT |RELEASE SAVEPOINT |ROLLBACK TO SAVEPOINT )/.test(query))return {rows:[]};
-    if(query.startsWith('SELECT e.*'))return {rows:existing?[existing]:[]};
+    if(query.startsWith('SELECT e.*'))return {rows:Array.isArray(existing)?existing:existing?[existing]:[]};
     if(query.startsWith('SELECT id FROM job_roles'))return {rows:[{id:'stable-role'}]};
     if(query.startsWith('UPDATE job_roles')||query.startsWith('UPDATE employees'))return {rows:[]};
     if(query.startsWith('SELECT id,registration,full_name,status,admission_date,termination_date'))return {rows:previous?[previous]:[]};
@@ -41,8 +43,10 @@ function api(existing=employee,{previous=null}={}){
     const handler=mod.exports.router.stack.find(layer=>layer.route?.path===route).route.stack.at(-1).handle;
     const output={status:200};
     const res={status(code){output.status=code;return this;},json(value){output.body=value;return this;}};
-    await handler({body:{companyId:'company',branchId:'branch',previewCompanyId:'company',previewBranchId:'branch',
-      type:'ADMITIDOS',fileName:'admissão.pdf',rows:[admitted],...body},scope:{isAdmin:true},user:{sub:'user'},...extra},res,error=>{output.error=error;output.status=error.status||500;});
+    const payload={companyId:'company',branchId:'branch',previewCompanyId:'company',previewBranchId:'branch',
+      type:'ADMITIDOS',fileName:'admissão.pdf',rows:[admitted],...body};
+    if(payload.type==='ADMITIDOS'&&!extra.unsigned)payload.rows=payload.rows.map(row=>row.admissionProof?row:signAdmission(row,{companyId:'company',branchId:'branch',userId:'user'}));
+    await handler({body:payload,scope:{isAdmin:true},user:{sub:'user'},...extra},res,error=>{output.error=error;output.status=error.status||500;});
     assert.equal(output.error,undefined);
     return output;
   }
@@ -135,4 +139,44 @@ test('regularização de cadastro já conferido não escreve para reativá-lo',a
   assert.equal(response.body.updated,0);
   assert.equal(response.body.alreadyLinked,1);
   assert.equal(h.queries.filter(({query})=>query.startsWith('UPDATE employees')).length,0);
+});
+
+test('confirmação recusa prévia antiga sem assinatura antes de abrir transação',async()=>{
+  const h=api();const response=await h.call('/confirm',{}, {unsigned:true});
+  assert.equal(response.status,409);assert.equal(h.queries.length,0);
+});
+
+test('confirmação recusa nome ou data trocados após a leitura sem escrita parcial',async()=>{
+  for(const change of [{fullName:'OUTRA PESSOA'},{admissionDate:'2026-10-21'},{pointCard:'0086'}]){
+    const row=signAdmission(admitted,{companyId:'company',branchId:'branch',userId:'user'});
+    const h=api();const response=await h.call('/confirm',{rows:[{...row,...change}]});
+    assert.equal(response.status,409);assert.equal(h.queries.length,0);
+  }
+});
+
+test('confirmação recusa matrícula repetida mesmo com assinatura válida',async()=>{
+  const h=api();const response=await h.call('/confirm',{rows:[admitted,admitted]});
+  assert.equal(response.status,422);assert.equal(h.queries.length,0);
+});
+
+test('regularização corrige artefato do cartão e registra antes/depois sem tocar no histórico',async()=>{
+  const h=api({...employee,source:'SENIOR_TIMECARD_ADMITIDOS',full_name:'0002 OUTRA PESSOA',point_card:'0086'});
+  h.setSource([{...admitted,identitySource:'PDF_COORDINATES'}]);
+  const response=await h.call('/timecard-resolve-new-hires',{registrations:[admitted.registration]},
+    {file:{buffer:Buffer.from('teste'),originalname:'admissão.pdf'}});
+  assert.equal(response.status,200);assert.equal(response.body.updated,1);
+  const update=h.queries.find(q=>q.query.startsWith('UPDATE employees'));
+  assert.equal(update.values[6],null);
+  assert.doesNotMatch(update.query,/\b(?:status|termination_date|registration|shift_id|weekly_days_off)\s*=/);
+  assert.deepEqual(response.body.results[0].changes.point_card,{from:'0086',to:null});
+  assert.ok(h.audits.some(details=>details.changes?.point_card?.to===null));
+});
+
+test('regularização recusa matrícula ambígua e reverte sem editar colaboradores',async()=>{
+  const h=api([employee,{...employee,id:'duplicate'}]);h.setSource([admitted]);
+  const response=await h.call('/timecard-resolve-new-hires',{registrations:[admitted.registration]},
+    {file:{buffer:Buffer.from('teste'),originalname:'admissão.pdf'}});
+  assert.equal(response.status,409);
+  assert.equal(h.queries.filter(q=>q.query.startsWith('UPDATE employees')).length,0);
+  assert.ok(h.queries.some(q=>q.query==='ROLLBACK'));
 });

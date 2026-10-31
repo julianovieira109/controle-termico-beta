@@ -666,10 +666,15 @@ function renderPointImportPreview(data){
   renderPointAudit(data.diagnostic||{});
 }
 
+function pointRegistryIssues(data){
+  return Array.isArray(data?.registryIssues)?data.registryIssues:
+    Array.isArray(data?.missingEmployees)?data.missingEmployees:[];
+}
+
 function renderPointMissingEmployees(data){
   const panel=$("point-missing-employees-panel");
   if(!panel)return;
-  const missing=Array.isArray(data?.missingEmployees)?data.missingEmployees:[];
+  const missing=pointRegistryIssues(data);
   panel.hidden=!missing.length;
   if(!missing.length){
     if($("point-missing-employees-list"))$("point-missing-employees-list").innerHTML="";
@@ -683,12 +688,12 @@ function renderPointMissingEmployees(data){
       <div><span>Matrícula</span><strong>${escapeHtml(item.registration||"-")}</strong></div>
       <div><span>Colaborador no Cartão</span><strong>${escapeHtml(item.name||"-")}</strong></div>
       <div><span>Origem</span><strong>${item.page?`Pág. ${escapeHtml(item.page)}`:"Cartão Senior"}</strong></div>
-      <div><span>Situação</span><strong>Cadastro pendente</strong></div>
+      <div><span>Situação</span><strong>${item.result==="CONFERIR_NOME"?"Nome divergente":"Cadastro pendente"}</strong>${item.systemName?`<small>No sistema: ${escapeHtml(item.systemName)}</small>`:""}</div>
     </article>`).join("");
 }
 
 async function resolvePointNewHires(){
-  const missing=Array.isArray(pointImportPreview?.missingEmployees)?pointImportPreview.missingEmployees:[];
+  const missing=pointRegistryIssues(pointImportPreview);
   if(!missing.length)return toast("Não há colaboradores pendentes neste Cartão de Ponto.","success");
   const admittedFile=$("point-admitted-file")?.files?.[0];
   if(!admittedFile)return toast("Selecione a Relação de Admitidos da Senior.","warning");
@@ -698,7 +703,7 @@ async function resolvePointNewHires(){
   const button=$("point-resolve-new-hires");
   const feedback=$("point-missing-employees-feedback");
   try{
-    setButtonLoading(button,true,"Cadastrando novatos");
+    setButtonLoading(button,true,"Regularizando cadastros");
     if(feedback){feedback.className="feedback";feedback.textContent="Conferindo a Relação de Admitidos e vinculando somente as matrículas pendentes...";}
     const form=new FormData();
     form.append("file",admittedFile);
@@ -994,8 +999,9 @@ function renderPointAudit(diagnostic){
     statusBox.querySelector(".point-audit-status-icon").textContent=status==="TRUSTED"?"✓":status==="WARNING"||registryPending?"!":"×";
   }
   if($("point-audit-status-title"))$("point-audit-status-title").textContent=diagnostic.statusLabel||"Leitura não validada";
+  const matching=diagnostic.matching||{};
   if($("point-audit-status-text"))$("point-audit-status-text").textContent=registryPending
-    ?"A leitura e a conciliação do Cartão Senior estão corretas. Regularize os colaboradores sem cadastro para liberar a gravação."
+    ?`A leitura e a conciliação do Cartão Senior estão corretas. Há ${Number(matching.notFound||0)} matrícula(s) sem cadastro e ${Number(matching.nameMismatch||0)} nome(s) divergente(s). Regularize os vínculos com a Relação de Admitidos para liberar a gravação.`
     :status==="TRUSTED"?"As colunas e os totais fecharam com o Cartão Senior.":status==="WARNING"?"A leitura fechou, mas existem itens que precisam de conferência.":"Os dados não podem ser gravados enquanto houver divergências.";
   if($("point-audit-confidence"))$("point-audit-confidence").textContent=`${Number(diagnostic.confidence||0)}%`;
   if($("point-source-policy")){
@@ -1024,7 +1030,7 @@ function renderPointAudit(diagnostic){
     :registryPending?"Aguardando vínculo cadastral":"Confirmação bloqueada pela conferência";
   if($("point-audit-confirm-help"))$("point-audit-confirm-help").textContent=diagnostic.canConfirm
     ?"O arquivo será relido e validado novamente antes da gravação."
-    :registryPending?"Use a Relação de Admitidos acima para cadastrar os novatos. O mesmo Cartão de Ponto será revalidado automaticamente."
+    :registryPending?"Use a Relação de Admitidos acima para cadastrar ou corrigir somente as matrículas sinalizadas. O mesmo Cartão de Ponto será revalidado automaticamente."
     :"Abra o diagnóstico e corrija as divergências antes de importar.";
   renderPointReviewQueue();
   renderPointIndicators();

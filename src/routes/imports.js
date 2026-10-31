@@ -8,6 +8,7 @@ const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission,requireMasterAdmin}=require("../middleware/auth");
 const {normalizeDismissedCause,reconcileDismissedWithEmployee,canCreateHistoricalDismissed}=require("../importers/dismissed-reader");
 const {reconcileAdmittedPreview,admittedParsingIssues}=require("../importers/admitted-reconciliation");
+const {signAdmission,verifyAdmission,admissionPointCard,admissionChanges}=require("../importers/admitted-integrity");
 const {readSeniorPdfPages}=require("../importers/senior-pdf-text");
 const {parseSeniorTimecard,canContinueTimecard}=require("../importers/timecard-reader");
 const {timecardPeriods,timecardPeriod,coversTimecardDate,replacementRanges}=require("../importers/timecard-periods");
@@ -1471,7 +1472,7 @@ function detectEmployeeCorrections(existing,item,{preserveEmploymentState=false}
   if(comparableImportedText(existing?.effective_job_title??existing?.job_title)!==comparableImportedText(item?.jobTitle)){
     corrections.push("cargo/função");
   }
-  if(item?.pointCard&&String(existing?.point_card||"").trim()!==String(item.pointCard).trim()){
+  if(String(existing?.point_card||"").trim()!==String(admissionPointCard(existing,item)||"")){
     corrections.push("cartão-ponto");
   }
   if(!preserveEmploymentState&&String(existing?.status||"").trim().toUpperCase()!=="ATIVO"){
@@ -1588,7 +1589,7 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
       rows=rows.filter(isValidAdmittedRow);
       const registrations=[...new Set(rows.map(row=>row.registration))];
       const existing=registrations.length?await pool.query(`
-        SELECT e.id,e.registration,e.full_name,e.admission_date,e.status,e.termination_date,e.shift_id,e.point_card,e.job_title,
+        SELECT e.id,e.registration,e.full_name,e.admission_date,e.status,e.termination_date,e.shift_id,e.point_card,e.job_title,e.source,
                COALESCE(jr.name,e.job_title,'') effective_job_title,s.name current_shift
         FROM employees e
         LEFT JOIN job_roles jr ON jr.id=e.job_role_id
@@ -1697,6 +1698,10 @@ router.post("/preview",upload.single("file"),async(req,res)=>{
       blockedByRole,
       possibleReadmissions
     });
+
+    if(type==="ADMITIDOS"&&admittedParsingIssues(diagnostics).length===0){
+      rows=rows.map(row=>signAdmission(row,{companyId,branchId,userId:req.user.sub}));
+    }
 
     return res.json({
       type,
@@ -3386,6 +3391,15 @@ router.post("/confirm",async(req,res,next)=>{
     if(type==="ADMITIDOS"&&sanitizedRows.length!==rows.filter(item=>item&&item.selected!==false).length){
       return res.status(422).json({error:"Há admissões selecionadas com dados inválidos. Leia o PDF novamente e confira matrícula, nome, data e cargo antes de gravar."});
     }
+    if(type==="ADMITIDOS"){
+      const scope={companyId,branchId,userId:req.user.sub};
+      if(sanitizedRows.some(row=>!verifyAdmission(row,scope))){
+        return res.status(409).json({error:"A prévia de Admitidos está desatualizada, expirou ou seus dados foram alterados. Leia novamente o PDF antes de confirmar. Nenhum cadastro foi alterado."});
+      }
+      if(new Set(sanitizedRows.map(row=>normalizePointRegistration(row.registration))).size!==sanitizedRows.length){
+        return res.status(422).json({error:"Há matrículas repetidas na seleção. Leia novamente o PDF antes de confirmar."});
+      }
+    }
 
     client=await pool.connect();
     await client.query("BEGIN");
@@ -3484,7 +3498,7 @@ router.post("/confirm",async(req,res,next)=>{
                 admission_date=$4,
                 job_role_id=$5,
                 job_title=$6,
-                point_card=COALESCE($7,point_card),
+                point_card=$7,
                 ${type==="COLABORADORES"?"status='ATIVO',termination_date=NULL,":""}
                 source=$9,
                 last_imported_at=NOW(),
@@ -3492,7 +3506,7 @@ router.post("/confirm",async(req,res,next)=>{
             WHERE id=$8
           `,[
             companyId,branchId,item.fullName,item.admissionDate,roleId,roleName,
-            item.pointCard||null,
+            admissionPointCard(current.rows[0],item),
             current.rows[0].id,
             type==="COLABORADORES"?"SENIOR_PDF_COLABORADORES":"SENIOR_PDF_ADMITIDOS"
           ]);
@@ -3502,7 +3516,8 @@ router.post("/confirm",async(req,res,next)=>{
               registration,
               result:"ATUALIZADO",
               id:current.rows[0].id,
-              corrections
+              corrections,
+              changes:type==="ADMITIDOS"?admissionChanges(current.rows[0],item,roleId):undefined
             });
           }else{
             unchanged++;
@@ -3670,6 +3685,10 @@ router.post("/confirm",async(req,res,next)=>{
         ?(createMissingDismissed===true?"CADASTRAR_HISTORICO_E_INATIVAR_COMO_DEMITIDO":"INATIVAR_COMO_DEMITIDO")
         : (type==="ADMITIDOS"?"CADASTRAR_OU_CORRIGIR_PRESERVANDO_SITUACAO":"ATUALIZAR")
     });
+
+    if(type==="ADMITIDOS")for(const item of results.filter(row=>row.result==="ATUALIZADO")){
+      await audit(req,"CORRECT_ADMITTED","employees",item.id,{fileName,changes:item.changes,preserveEmploymentState:true});
+    }
 
     res.json({
       success:true,
@@ -4345,6 +4364,10 @@ router.post("/timecard-preview",timecardUpload.single("file"),async(req,res,next
           period:row.period||null,
           result:row.result
         })),
+      registryIssues:result.rows.filter(row=>row.result!=="APTO").map(row=>({
+        registration:row.registration,name:row.name,systemName:row.systemName,
+        result:row.result,page:row.page||null
+      })),
       rows:result.rows.map(({days,...row})=>row)
     });
   }catch(error){
@@ -4492,8 +4515,9 @@ router.post("/timecard-resolve-new-hires",timecardUpload.single("file"),async(re
         LEFT JOIN branches b ON b.id=e.branch_id
         WHERE COALESCE(NULLIF(LTRIM(REGEXP_REPLACE(COALESCE(e.registration,''),'[^0-9]','','g'),'0'),''),'0')=$1
         ORDER BY e.created_at
-        LIMIT 1
+        LIMIT 2 FOR UPDATE OF e
       `,[key]);
+      if(current.rows.length>1)throw Object.assign(new Error("Matrícula ambígua no cadastro. Nenhuma regularização foi mantida."),{status:409});
       const existing=current.rows[0]||null;
       const sameUnit=Boolean(existing)&&String(existing.company_id)===String(companyId)&&String(existing.branch_id)===String(branchId);
 
@@ -4535,13 +4559,14 @@ router.post("/timecard-resolve-new-hires",timecardUpload.single("file"),async(re
           await client.query(`
             UPDATE employees
             SET company_id=$1,branch_id=$2,full_name=$3,admission_date=$4,
-                job_role_id=$5,job_title=$6,point_card=COALESCE($7,point_card),
+                job_role_id=$5,job_title=$6,point_card=$7,
                 source='SENIOR_TIMECARD_ADMITIDOS',
                 last_imported_at=NOW(),updated_at=NOW()
             WHERE id=$8
-          `,[companyId,branchId,item.fullName,item.admissionDate,roleId,roleName,item.pointCard||null,existing.id]);
+          `,[companyId,branchId,item.fullName,item.admissionDate,roleId,roleName,admissionPointCard(existing,item),existing.id]);
           updated++;
-          results.push({registration:item.registration,fullName:item.fullName,result:"ATUALIZADO",corrections});
+          results.push({registration:item.registration,fullName:item.fullName,id:existing.id,result:"ATUALIZADO",corrections,
+            changes:admissionChanges(existing,item,roleId)});
         }else{
           alreadyLinked++;
           results.push({registration:item.registration,fullName:item.fullName,result:"JA_VINCULADO"});
@@ -4571,6 +4596,9 @@ router.post("/timecard-resolve-new-hires",timecardUpload.single("file"),async(re
       companyId,branchId,fileName:req.file.originalname,
       requested:requestedMap.size,matched:matched.length,created,updated,alreadyLinked,unresolved,results
     });
+    for(const item of results.filter(row=>row.result==="ATUALIZADO")){
+      await audit(req,"CORRECT_ADMITTED","employees",item.id,{fileName:req.file.originalname,changes:item.changes,preserveEmploymentState:true});
+    }
 
     res.json({
       success:true,
