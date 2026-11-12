@@ -15,6 +15,18 @@
     --panel-soft:#172935;
     --line:#526879;
   }
+  /* Validation statuses use dark surfaces instead of the paper palette. */
+  body.theme-dark #app .report-validation-panel{background:#172935;border-color:#526879;color:#e5e7eb}
+  body.theme-dark #app .report-validation-panel.is-ok{background:#173828;border-color:#507e62}
+  body.theme-dark #app .report-validation-panel.has-warning{background:#3c321d;border-color:#9d824a}
+  body.theme-dark #app .report-validation-panel.has-blocker{background:#3d2026;border-color:#a76670}
+  body.theme-dark #app .report-validation-counts>div{background:#172935;border-color:#526879}
+  body.theme-dark #app .report-validation-panel :is(strong,h4,li){color:#e5e7eb}
+  body.theme-dark #app .report-validation-panel :is(small,.report-validation-counts span){color:#bdcbd7}
+  body.theme-dark #app .report-validation-badge{background:#294654;color:#c7e9fc}
+  body.theme-dark #app .report-validation-panel.is-ok .report-validation-badge{background:#173828;color:#b6f0ce}
+  body.theme-dark #app .report-validation-panel.has-warning .report-validation-badge{background:#3c321d;color:#ffd78b}
+  body.theme-dark #app .report-validation-panel.has-blocker .report-validation-badge{background:#3d2026;color:#ffb9bd}
   body.theme-dark #app :is(.dashboard-chart-card,.dashboard-alert-center,.dashboard-alert-group,.dashboard-alert-summary article,.thermal-save-bar){background:#1f2937;border-color:#526879;color:#e5e7eb}
   body.theme-dark #app :is(.dashboard-management-head,.dashboard-charts-head,.dashboard-alert-head) p,
   body.theme-dark #app :is(.dashboard-management-grid,.dashboard-chart-card,.dashboard-alert-center) :is(span,small){color:#bdcbd7}
