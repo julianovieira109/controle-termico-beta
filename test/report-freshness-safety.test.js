@@ -186,3 +186,20 @@ test('intervalo curto recebido do ponto bloqueia nova geração e não libera im
   assert.match(elements['report-validation-details'].innerHTML,/intervalo registrado de 10/);
   assert.equal(employee.point_schedules[workDate],'08:00-09:30-09:40-11:10');
 });
+
+test('afastamento em toda a competência retira todas as fichas e preserva situação atual do cadastro',async()=>{
+  const {context,elements,employee}=harness();
+  const api=context.api;
+  const days=context.reportMonthDays(month);
+  context.api=async path=>path.startsWith('/api/reports/point-days?')
+    ?days.map(day=>({employee_id:employee.id,work_date:day.iso,point_state:'AFASTAMENTO',occurrence:'Auxílio Doença',eligible_for_automatic_rest:false,markings:[]}))
+    :api(path);
+  let skipped=[];
+  context.showReportSkippedDetails=items=>{skipped=items;};
+  await elements['report-generate'].onclick();
+  assert.equal(elements['report-output'].innerHTML,'');
+  assert.match(elements['report-generation-summary'].textContent,/afastados durante toda a competência/);
+  assert.equal(skipped.length,1);assert.equal(skipped[0].type,'leave');
+  assert.equal(employee.status,'ATIVO');
+  assert.equal(context.validateReportPrint(),false);
+});

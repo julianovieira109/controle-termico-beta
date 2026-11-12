@@ -26,6 +26,15 @@
   function issue(level,code,message,employee=null){
     return {level,code,message,employeeId:employee?.id??null,employeeName:text(employee?.full_name)||null};
   }
+  function fullyAway(employee,month){
+    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(text(month)))return false;
+    const [year,number]=month.split('-').map(Number);
+    const total=new Date(Date.UTC(year,number,0)).getUTCDate();
+    const admission=text(employee.admission_date).slice(0,10),termination=text(employee.termination_date).slice(0,10);
+    const dates=Array.from({length:total},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`).filter(date=>(!admission||date>=admission)&&(!termination||date<=termination));
+    const away=new Set(['AFASTAMENTO','LEAVE','LICENCA','LICENSE','ATESTADO','MEDICAL']);
+    return dates.length>0&&dates.every(date=>away.has(upper(employee.point_states?.[date]))&&!text(employee.point_schedules?.[date]));
+  }
   function validate({month,employees=[],thermalConfig={},pointCompetenceBranches=[]}={}){
     const blockers=[]; const warnings=[]; const ok=[];
     const branchSet=new Set([...pointCompetenceBranches].map(String));
@@ -39,6 +48,10 @@
     }
     for(const employee of employees){
       const name=text(employee.full_name)||'Colaborador sem nome';
+      if(fullyAway(employee,month)){
+        warnings.push(issue('warning','FULL_PERIOD_LEAVE',`${name}: afastado durante toda a competência confirmada; excluído das fichas de repouso térmico e refeição.`,employee));
+        continue;
+      }
       if(!active(employee)){
         warnings.push(issue('warning','INACTIVE',`${name}: situação não ativa; a ficha será ignorada.`,employee));
         continue;
@@ -149,5 +162,5 @@
     }
     return {valid:blockers.length===0,blockers};
   }
-  return {validate,validatePlan,active,policyAllows,automaticAllowed};
+  return {validate,validatePlan,active,policyAllows,automaticAllowed,fullyAway};
 });

@@ -65,3 +65,21 @@ test('ponto ausente em filiais diferentes gera um bloqueio por filial',()=>{
   const missing=r.blockers.filter(x=>x.code==='POINT_COMPETENCE_MISSING');
   assert.equal(missing.length,2);
 });
+
+test('afastamento integral exclui da validação; atestado parcial e falta de cobertura não excluem',()=>{
+  const states=Object.fromEntries(Array.from({length:30},(_,i)=>[`2026-09-${String(i+1).padStart(2,'0')}`,'AFASTAMENTO']));
+  const e=employee({point_schedules:{},point_states:states});
+  assert.equal(validator.fullyAway(e,'2026-09'),true);
+  const result=validator.validate({month:'2026-09',employees:[e],thermalConfig:cfg,pointCompetenceBranches:['10']});
+  assert.equal(result.valid,true);assert.equal(result.ok.length,0);
+  assert.ok(result.warnings.some(x=>x.code==='FULL_PERIOD_LEAVE'));
+  delete states['2026-09-01'];
+  assert.equal(validator.fullyAway(e,'2026-09'),false);
+  e.admission_date='2026-09-02';
+  assert.equal(validator.fullyAway(e,'2026-09'),true);
+  e.point_schedules={'2026-09-03':'08:00-17:00'};
+  assert.equal(validator.fullyAway(e,'2026-09'),false);
+  e.point_schedules={};states['2026-09-03']='WORKED';
+  assert.equal(validator.fullyAway(e,'2026-09'),false);
+  assert.equal(validator.fullyAway({...e,admission_date:'2026-10-01'},'2026-09'),false);
+});
