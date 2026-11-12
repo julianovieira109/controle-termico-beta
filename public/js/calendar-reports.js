@@ -463,6 +463,10 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
         :(automatic
           ?(pointState&&pointState!=="WORKED"?(pointLabels[pointState]||pointState):pointState?"":employmentDayStatus(employee,d)||"PONTO NÃO IMPORTADO")
           :dayStatus(employee,d));
+      if(!blankCopy&&automatic&&['AFASTAMENTO','LEAVE'].includes(pointState)){
+        const occurrence=employee.point_occurrences?.[d.iso]||'';
+        status=/AUX[ÍI]LIO[\s-]+DOEN[ÇC]A/i.test(occurrence)?'AUXÍLIO-DOENÇA — SEM JORNADA':'AFASTAMENTO — SEM JORNADA';
+      }
       if(!blankCopy&&automatic&&pointState==="WORKED"){
         const assessment=ThermalSchedule.assessPointPlanning(employee.point_schedules?.[d.iso]||"");
         if(!assessment.valid)status=assessment.code==="MEAL_BREAK_TOO_SHORT"?"REVISAR INTERVALO — PLANEJAMENTO NÃO CONFIRMADO":"REVISAR MARCAÇÕES DO PONTO";
@@ -1247,7 +1251,7 @@ async function applyPointDataToEmployees(month){
   pointDataActive=false;
   pointCompetenceBranches=new Set();
   pointCompetenceInfo={month:null,imports:[]};
-  reportEmployees.forEach(employee=>{employee.point_schedules={};employee.point_states={};});
+  reportEmployees.forEach(employee=>{employee.point_schedules={};employee.point_states={};employee.point_occurrences={};});
   const [rows,competence]=await Promise.all([
     api(`/api/reports/point-days?month=${encodeURIComponent(month)}&_=${Date.now()}`),
     api(`/api/reports/point-competence?month=${encodeURIComponent(month)}&_=${Date.now()}`)
@@ -1261,7 +1265,7 @@ async function applyPointDataToEmployees(month){
     const id=String(row.employee_id);
     const employee=employeesById.get(id);
     if(!employee)return;
-    if(!byEmployee.has(id))byEmployee.set(id,{schedules:{},states:{}});
+    if(!byEmployee.has(id))byEmployee.set(id,{schedules:{},states:{},occurrences:{}});
     const target=byEmployee.get(id);
     const sourceDate=String(row.work_date).slice(0,10);
     const date=ThermalSchedule.pointReportDate(sourceDate,employee);
@@ -1269,12 +1273,14 @@ async function applyPointDataToEmployees(month){
     const monthEnd=reportMonthDays(month).slice(-1)[0]?.iso||monthStart;
     if(date<monthStart||date>monthEnd)return;
     target.states[date]=row.point_state;
+    target.occurrences[date]=row.occurrence||"";
     if(row.eligible_for_automatic_rest&&Array.isArray(row.markings)&&[2,4].includes(row.markings.length))target.schedules[date]=row.markings.join("-");
   });
   reportEmployees.forEach(employee=>{
-    const data=byEmployee.get(String(employee.id))||{schedules:{},states:{}};
+    const data=byEmployee.get(String(employee.id))||{schedules:{},states:{},occurrences:{}};
     employee.point_schedules=data.schedules;
     employee.point_states=data.states;
+    employee.point_occurrences=data.occurrences;
   });
   return rows;
 }

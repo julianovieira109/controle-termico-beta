@@ -97,3 +97,30 @@ test('intervalo curto sem necessidade de reiniciar a contagem mantém a jornada 
   assert.equal(validator.validatePlan({employees:[e],monthDays:days,plan}).valid,true);
   assert.match(sheet(e,plan),/SEM REPOUSO NECESSÁRIO/);
 });
+
+test('auxílio-doença confirmado não calcula pausas nem usa jornada residual inválida',()=>{
+  const e={...employee('08:00-08:00'),point_states:{'2026-10-01':'AFASTAMENTO'},point_occurrences:{'2026-10-01':'Auxílio Doença Noturno'}};
+  const result=validator.validate({month:'2026-10',employees:[e],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']});
+  assert.equal(result.valid,true);
+  assert.ok(result.warnings.some(x=>x.code==='CONFIRMED_LEAVE'));
+  const plan=ThermalSchedule.buildMonthPlan([e],days,{usePointData:true});
+  assert.equal(plan.size,0);
+  const html=sheet(e,plan);
+  assert.match(html,/AUXÍLIO-DOENÇA — SEM JORNADA/);
+  assert.doesNotMatch(html,/class="thermal-time-cell">\d\d:\d\d/);
+  assert.equal(validator.validatePlan({employees:[e],monthDays:days,plan}).valid,true);
+});
+
+test('afastamento parcial não encobre dia trabalhado com intervalo curto nem ausência de cobertura',()=>{
+  const e={...employee('08:00-12:00-12:19-17:00'),point_states:{'2026-10-02':'AFASTAMENTO'}};
+  const result=validator.validate({month:'2026-10',employees:[e],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']});
+  assert.equal(result.valid,false);
+  assert.ok(result.blockers.some(x=>x.code==='MEAL_BREAK_TOO_SHORT'));
+  e.point_schedules={};
+  const partial=validator.validate({month:'2026-10',employees:[e],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']});
+  assert.ok(partial.warnings.some(x=>x.code==='POINT_PARTIAL_COVERAGE'));
+  e.point_states={};
+  const absent=validator.validate({month:'2026-10',employees:[e],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']});
+  assert.equal(absent.valid,false);
+  assert.ok(absent.blockers.some(x=>x.code==='NO_POINT_ROWS'));
+});

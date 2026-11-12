@@ -73,14 +73,14 @@
         const inMonth=date=>String(date).startsWith(`${month}-`);
         const dates=[...new Set([...Object.keys(schedules),...Object.keys(states)].filter(inMonth))];
         if(dates.length===0){
-          blockers.push(issue('blocker','NO_POINT_ROWS',`${name}: não há dias de ponto deste colaborador na competência. A escala prevista não pode preencher a ficha automática. Importe e confirme o cartão correspondente.`,employee));
+          blockers.push(issue('blocker','NO_POINT_ROWS',`${name}: não há dias de ponto deste colaborador na competência. A escala prevista não pode preencher a ficha automática. Importe e confirme o cartão correspondente, incluindo os dias de afastamento. Se houve auxílio-doença, confirme as datas na Senior; a ausência de ponto, sozinha, não comprova afastamento.`,employee));
           continue;
         }
         if(!ThermalSchedule?.parsePointPeriods||!ThermalSchedule?.assessPointPlanning){
           blockers.push(issue('blocker','THERMAL_MODULE_MISSING','O módulo de cálculo não foi carregado. Atualize a página antes de gerar fichas.',employee));
           continue;
         }
-        const invalid=Object.entries(schedules).filter(([date,description])=>inMonth(date)&&!ThermalSchedule.parsePointPeriods(description).valid);
+        const invalid=Object.entries(schedules).filter(([date,description])=>inMonth(date)&&(!states[date]||upper(states[date])==='WORKED')&&!ThermalSchedule.parsePointPeriods(description).valid);
         if(invalid.length){
           blockers.push(issue('blocker','INVALID_POINT_SCHEDULE',`${name}: ${invalid.length} dia(s) com marcações inválidas ou ambíguas (${invalid.map(([date])=>date.split('-').reverse().join('/')).join(', ')}). Confira a Senior e reimporte o ponto; nenhum horário será inventado.`,employee));
           continue;
@@ -94,6 +94,10 @@
             blockers.push(issue('blocker',assessment.code||'THERMAL_PLANNING_REVIEW',`${name} — ${assessment.date.split('-').reverse().join('/')}: ${assessment.reason} A ficha automática aguarda conferência; nenhum horário será completado pela escala.`,employee));
           }
           continue;
+        }
+        const leaveDays=dates.filter(date=>['AFASTAMENTO','LEAVE','LICENCA','LICENSE','ATESTADO','MEDICAL'].includes(upper(states[date])));
+        if(leaveDays.length){
+          warnings.push(issue('warning','CONFIRMED_LEAVE',`${name}: ${leaveDays.length} dia(s) de afastamento, licença ou atestado confirmados no ponto importado; sem repousos calculados nesses dias. As datas sem informação continuam pendentes.`,employee));
         }
         const pending=dates.filter(date=>['REVIEW','NO_MARKINGS'].includes(upper(states[date]))||(upper(states[date])==='WORKED'&&!schedules[date]));
         if(pending.length){
