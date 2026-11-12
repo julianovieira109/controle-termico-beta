@@ -38,13 +38,12 @@
     const actualWorked=parsed.valid?workedMinutes(periods):null;
     const mealMinutes=parsed.valid&&parsed.meal?parsed.meal.end-parsed.meal.start:null;
     const hasShortMeal=mealMinutes!==null&&mealMinutes<RULE_REST_MINUTES;
-    const shortMealRequiresReview=hasShortMeal&&actualWorked>RULE_WORK_MINUTES;
     const registeredWorked=registered.valid?workedMinutes(registered.periods):0;
     const overtimeMinutes=actualWorked!==null&&registeredWorked>0?Math.max(0,actualWorked-registeredWorked):0;
     const issues=[];
     const addIssue=(code,message,details={})=>issues.push({code,message,...details});
     if(!parsed.valid)addIssue("INVALID_POINT",parsed.reason||"As marcações do ponto não delimitam uma jornada válida.");
-    if(shortMealRequiresReview)addIssue("MEAL_BREAK_TOO_SHORT",`O intervalo registrado entre os trechos tem ${mealMinutes} minutos e a jornada soma ${actualWorked} minutos de trabalho. O cálculo automático requer conferência: esse intervalo inferior aos ${RULE_REST_MINUTES} minutos adotados não pode reiniciar a contagem de ${RULE_WORK_MINUTES} minutos. As marcações originais permanecem preservadas.`,{mealMinutes,actualWorked});
+
     if(!Array.isArray(rests))addIssue("INVALID_RESTS","A lista de repousos recebida é inválida.");
     const received=Array.isArray(rests)?Array.from(rests):[rests];
     const items=received.map((rest,index)=>{
@@ -137,8 +136,8 @@
       actualWorked,registeredWorked,overtimeMinutes,dailyLimit:null,
       restCount:items.length,items,valid,status:valid?"Conforme":"Revisar",issues,segments,
       maxContinuousMinutes:parsed.valid?Math.max(0,...segments.map(s=>s.duration)):null,
-      requiredRestCount:parsed.valid&&!shortMealRequiresReview?periods.reduce((sum,p)=>sum+requiredRests(p),0):null,
-      missingRestCount:parsed.valid&&!shortMealRequiresReview?missingRestCount:null
+      requiredRestCount:parsed.valid?Math.max(periods.reduce((sum,p)=>sum+requiredRests(p),0),hasShortMeal?Math.max(0,Math.ceil((actualWorked-RULE_WORK_MINUTES)/(RULE_WORK_MINUTES+RULE_REST_MINUTES))):0):null,
+      missingRestCount:parsed.valid?missingRestCount:null
     };
   }
 

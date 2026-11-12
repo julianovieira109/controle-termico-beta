@@ -139,23 +139,23 @@ test('quantidade não é limitada a três ou quatro pausas e omissão de pausa �
 test('intervalo menor que 20 minutos não reinicia contagem em jornada acima de 100',()=>{
   const audit=RestAudit.auditDay('08:00-09:30-09:40-11:10',[]);
   assert.equal(audit.valid,false);
-  assert.ok(hasIssue(audit,'MEAL_BREAK_TOO_SHORT'));
+  assert.equal(hasIssue(audit,'MEAL_BREAK_TOO_SHORT'),false);
   assert.equal(hasIssue(audit,'INVALID_POINT'),false);
   assert.equal(audit.periods.length,2);
   assert.equal(audit.actualWorked,180);
-  assert.equal(audit.requiredRestCount,null);
-  assert.equal(audit.missingRestCount,null);
+  assert.equal(audit.requiredRestCount,1);
+  assert.equal(audit.missingRestCount,0);
   assert.equal(audit.maxContinuousMinutes,180);
   assert.ok(audit.issues.some(issue=>issue.code==='CONTINUOUS_WORK_EXCEEDED'&&issue.acrossMeal&&issue.duration===180));
 });
 
-test('auditoria mantém todos os repousos em revisão quando a refeição curta exige conferência',()=>{
+test('auditoria aprova pausa térmica separada com refeição curta',()=>{
   const audit=RestAudit.auditDay('08:00-09:30-09:40-11:10',[{start:580,end:600}]);
-  assert.equal(audit.valid,false);
-  assert.ok(hasIssue(audit,'MEAL_BREAK_TOO_SHORT'));
-  assert.equal(audit.items[0].status,'Revisar');
+  assert.equal(audit.valid,true);
+  assert.equal(hasIssue(audit,'MEAL_BREAK_TOO_SHORT'),false);
+  assert.equal(audit.items[0].status,'Conforme');
   assert.equal(audit.items[0].continuousBefore,90);
-  assert.equal(audit.requiredRestCount,null);
+  assert.equal(audit.requiredRestCount,1);
 });
 
 test('intervalo curto em jornada de até 100 minutos não exige pausa nem reinício',()=>{
@@ -178,7 +178,7 @@ test('intervalo de exatamente 20 minutos mantém a separação dos trechos',()=>
 test('intervalo curto noturno é preservado e o trabalho acumulado não inclui os minutos de intervalo',()=>{
   const audit=RestAudit.auditDay('22:00-23:30-23:40-01:10',[]);
   assert.equal(audit.valid,false);
-  assert.ok(hasIssue(audit,'MEAL_BREAK_TOO_SHORT'));
+  assert.equal(hasIssue(audit,'MEAL_BREAK_TOO_SHORT'),false);
   assert.equal(audit.maxContinuousMinutes,180);
   assert.equal(audit.meal.end-audit.meal.start,10);
   assert.equal(audit.periods[1].end,1510);

@@ -112,11 +112,11 @@ test('prévia diferencia jornada curta de plano incompleto ou não calculável',
   assert.doesNotMatch(short,/Revisar jornada|R\d+:/);
 });
 
-test('prévia informa revisão quando refeição curta não permite reiniciar a contagem',()=>{
+test('prévia calcula pausas térmicas separadas da refeição curta',()=>{
   const preview=shiftPreview('08:00-10:00-10:05-12:00');
-  assert.match(preview,/Revisar jornada/);
-  assert.match(preview,/20/);
-  assert.doesNotMatch(preview,/Jornada curta|Prévia de planejamento|R\d+:/);
+  assert.doesNotMatch(preview,/Revisar jornada/);
+  assert.match(preview,/Prévia de planejamento/);
+  assert.match(preview,/R\d+:/);
   const short=shiftPreview('08:00-08:40-08:45-09:25');
   assert.match(short,/Jornada curta: sem repouso calculado/);
   assert.doesNotMatch(short,/Revisar jornada|R\d+:/);

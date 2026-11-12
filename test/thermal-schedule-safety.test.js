@@ -58,17 +58,15 @@ test('só intervalo de ao menos 20 min reinicia ciclo em jornada longa, inclusiv
         assert.deepEqual(parsed.meal,{start:breakStart,end:breakEnd});
         const periods=[{start,end:breakStart},{start:breakEnd,end}];
         const assessment=thermal.assessPointPlanning(description);
-        if(meal<20&&first+second>100){
-          assert.equal(assessment.valid,false,description);
-          assert.equal(assessment.code,'MEAL_BREAK_TOO_SHORT');
-          assert.equal(assessment.parsed.valid,true,'fonte permanece válida');
-          assert.equal(thermal.requiredRestCount(description),null,'necessidade exige conferência');
-          assert.deepEqual(thermal.dynamicPointRests(description),[]);
-          assert.equal(monthly(description).size,0,'dia não recebe plano automático');
-        }else{
-          assert.equal(assessment.valid,true,description);
-          checkCoverage(periods,thermal.dynamicPointRests(description));
-          if(meal<20)assert.equal(thermal.requiredRestCount(description),0);
+        assert.equal(assessment.valid,true,description);
+        const rests=thermal.dynamicPointRests(description);
+        checkCoverage(periods,rests);
+        const audit=require('../public/js/rest-audit').auditDay(description,rests);
+        assert.equal(audit.valid,true,description+JSON.stringify(audit.issues));
+        if(meal<20){
+          const tail=breakStart-(rests.filter(r=>r.end<=breakStart).at(-1)?.end??start);
+          const head=(rests.find(r=>r.start>=breakEnd)?.start??end)-breakEnd;
+          assert.ok(tail+head<=100,'trabalho acumulado atravessando refeição curta');
         }
       }
     }
@@ -154,19 +152,16 @@ test('prévia de escala aceita notação legada sem relaxar a leitura das marca�
 });
 
 
-test('intervalo de 1 ou 19 min não reinicia contador de dois trechos com 100 min cada',()=>{
-  for(const gap of [1,19]){
+test('refeição curta mantém fonte e recebe pausa térmica separada sem reiniciar contador',()=>{
+  for(const gap of [1,16,18,19]){
     const description=[480,580,580+gap,680+gap].map(clock).join('-');
-    const original=thermal.parsePointPeriods(description);
-    assert.equal(original.valid,true);
     const assessment=thermal.assessPointPlanning(description);
-    assert.equal(assessment.valid,false);
-    assert.equal(assessment.code,'MEAL_BREAK_TOO_SHORT');
-    assert.deepEqual(assessment.parsed,original,'dados e validade da fonte preservados');
-    assert.match(assessment.reason,/exposição e as pausas reais/);
-    assert.deepEqual(thermal.dynamicPointRests(description),[]);
-    assert.deepEqual(thermal.baseThermalRests(description),[]);
-    assert.equal(monthly(description).has('e|2026-10-01'),false);
+    assert.equal(assessment.valid,true);
+    const rests=thermal.dynamicPointRests(description);
+    checkCoverage(assessment.parsed.periods,rests);
+    assert.equal(require('../public/js/rest-audit').auditDay(description,rests).valid,true);
+    assert.equal(monthly(description).has('e|2026-10-01'),true);
+    assert.deepEqual(thermal.parsePointPeriods(description),assessment.parsed);
   }
 });
 
@@ -181,7 +176,8 @@ test('jornada total de até 100 min não precisa de reinício mesmo com interval
     assert.deepEqual(monthly(description).get('e|2026-10-01'),[]);
   }
   const beyond=[480,520,521,582].map(clock).join('-');
-  assert.equal(thermal.assessPointPlanning(beyond).code,'MEAL_BREAK_TOO_SHORT');
+  assert.equal(thermal.assessPointPlanning(beyond).valid,true);
+  assert.ok(thermal.dynamicPointRests(beyond).length>0);
 });
 
 test('intervalo de exatamente 20 min permite reinício do ciclo de trabalho',()=>{
@@ -198,10 +194,10 @@ test('planejamento distingue erro de marcação, conferência de intervalo e ger
   assert.equal(invalid.parsed.valid,false);
   assert.equal(thermal.requiredRestCount('08:00-08:00'),null);
   const short=thermal.assessShiftPlanning('8:00-9:40-9:41-11:21');
-  assert.equal(short.valid,false);
-  assert.equal(short.code,'MEAL_BREAK_TOO_SHORT');
+  assert.equal(short.valid,true);
+  assert.equal(short.code,null);
   assert.equal(short.parsed.valid,true);
-  assert.equal(thermal.requiredShiftRestCount('8:00-9:40-9:41-11:21'),null);
+  assert.equal(thermal.requiredShiftRestCount('8:00-9:40-9:41-11:21'),1);
   const admissible='08:00-12:00-13:00-20:00';
   assert.equal(thermal.assessPointPlanning(admissible).valid,true);
   assert.equal(thermal.requiredRestCount(admissible),5);

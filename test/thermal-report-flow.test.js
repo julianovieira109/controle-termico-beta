@@ -72,21 +72,17 @@ test('jornada curta válida e ausência Senior ficam distinguidas de falha de c�
   const result=validator.validate({month:'2026-10',employees:[absent],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']});
   assert.equal(result.valid,true);assert.match(sheet(absent,new Map()),/FALTA/);
 });
-test('intervalo curto preserva a leitura e bloqueia a ficha sem chamá-la de jornada curta',()=>{
-  const e=employee('08:00-09:30-09:40-11:10');
-  assert.equal(ThermalSchedule.parsePointPeriods(e.point_schedules[days[0].iso]).valid,true);
-  const plan=ThermalSchedule.buildMonthPlan([e],days,{usePointData:true});
-  assert.equal(plan.size,0);
-  const result=validator.validate({month:'2026-10',employees:[e],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']});
-  assert.equal(result.valid,false);
-  const blocker=result.blockers.find(item=>item.code==='MEAL_BREAK_TOO_SHORT');
-  assert.ok(blocker);assert.match(blocker.message,/01\/10\/2026/);
-  assert.match(blocker.message,/180 minutos/);assert.match(blocker.message,/preservados/);
-  assert.equal(validator.validatePlan({employees:[e],monthDays:days,plan}).valid,false);
-  for(const supplied of [plan,new Map([['e|2026-10-01',[{start:500,end:520}]]])]){
-    const html=sheet(e,supplied);
-    assert.match(html,/REVISAR INTERVALO/);assert.doesNotMatch(html,/SEM REPOUSO NECESSÁRIO/);
-    assert.doesNotMatch(html,/class="thermal-time-cell">\d\d:\d\d/);
+test('refeição curta não bloqueia ficha com pausas térmicas independentes e auditadas',()=>{
+  for(const description of ['08:00-09:30-09:40-11:10','13:58-19:26-19:44-22:21','22:00-02:00-02:16-06:00']){
+    const e=employee(description);
+    const plan=ThermalSchedule.buildMonthPlan([e],days,{usePointData:true});
+    assert.equal(plan.size,1);
+    assert.equal(validator.validate({month:'2026-10',employees:[e],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']}).valid,true);
+    assert.equal(validator.validatePlan({employees:[e],monthDays:days,plan}).valid,true);
+    const html=sheet(e,plan);
+    assert.doesNotMatch(html,/REVISAR INTERVALO|REVISAR MARCAÇÕES/);
+    assert.match(html,/class="thermal-time-cell">\d\d:\d\d/);
+    assert.equal(e.point_schedules[days[0].iso],description);
   }
 });
 test('intervalo curto sem necessidade de reiniciar a contagem mantém a jornada válida',()=>{
@@ -111,11 +107,11 @@ test('auxílio-doença confirmado não calcula pausas nem usa jornada residual i
   assert.equal(validator.validatePlan({employees:[e],monthDays:days,plan}).valid,true);
 });
 
-test('afastamento parcial não encobre dia trabalhado com intervalo curto nem ausência de cobertura',()=>{
-  const e={...employee('08:00-12:00-12:19-17:00'),point_states:{'2026-10-02':'AFASTAMENTO'}};
+test('afastamento parcial não encobre marcações inválidas nem ausência de cobertura',()=>{
+  const e={...employee('08:00-08:00'),point_states:{'2026-10-02':'AFASTAMENTO'}};
   const result=validator.validate({month:'2026-10',employees:[e],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']});
   assert.equal(result.valid,false);
-  assert.ok(result.blockers.some(x=>x.code==='MEAL_BREAK_TOO_SHORT'));
+  assert.ok(result.blockers.some(x=>x.code==='INVALID_POINT_SCHEDULE'));
   e.point_schedules={};
   const partial=validator.validate({month:'2026-10',employees:[e],thermalConfig:{mode:'AUTOMATIC'},pointCompetenceBranches:['b']});
   assert.ok(partial.warnings.some(x=>x.code==='POINT_PARTIAL_COVERAGE'));

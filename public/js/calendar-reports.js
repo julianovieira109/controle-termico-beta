@@ -470,7 +470,7 @@ function buildThermalSheet(employee,month,thermalPlan,{blankCopy=false}={}){
       }
       if(!blankCopy&&automatic&&pointState==="WORKED"){
         const assessment=ThermalSchedule.assessPointPlanning(employee.point_schedules?.[d.iso]||"");
-        if(!assessment.valid)status=assessment.code==="MEAL_BREAK_TOO_SHORT"?"REVISAR INTERVALO — PLANEJAMENTO NÃO CONFIRMADO":"REVISAR MARCAÇÕES DO PONTO";
+        if(!assessment.valid)status="REVISAR MARCAÇÕES DO PONTO";
         else if(!allRests.length)status="SEM REPOUSO NECESSÁRIO NESTA JORNADA";
       }
       if(status)return `<tr class="non-work-row"><td>${d.br}</td><td>${d.weekName}</td><td colspan="${slots*2+1}">${escapeHtml(status)}</td></tr>`;

@@ -74,16 +74,6 @@
 
   function assessParsedPlanning(parsed){
     if(!parsed.valid)return {valid:false,code:"INVALID_MARKINGS",reason:parsed.reason,parsed};
-    const workedMinutes=parsed.periods.reduce((sum,period)=>sum+period.end-period.start,0);
-    const mealMinutes=parsed.meal?parsed.meal.end-parsed.meal.start:null;
-    if(mealMinutes!==null&&mealMinutes<REST_DURATION_MINUTES&&workedMinutes>REST_AFTER_MINUTES){
-      return {
-        valid:false,
-        code:"MEAL_BREAK_TOO_SHORT",
-        reason:`O intervalo registrado de ${mealMinutes} minuto(s) não completa os ${REST_DURATION_MINUTES} minutos adotados para reiniciar o ciclo. Como há ${workedMinutes} minutos de trabalho nos dois trechos, confira a exposição e as pausas reais antes de gerar automaticamente. Os dados da Senior foram preservados.`,
-        parsed
-      };
-    }
     return {valid:true,code:null,reason:null,parsed};
   }
 
@@ -113,6 +103,22 @@
         const start=cursor+interval,end=start+REST_DURATION_MINUTES;
         rests.push({start,end,periodStart:period.start,periodEnd:period.end,interval,duration:REST_DURATION_MINUTES});
         cursor=end;
+      }
+    }
+    // A short meal is not a thermal rest and does not reset accumulated work.
+    // Keep its original times and add a separate 20-minute thermal rest at
+    // the boundary if the work on either side would exceed 100 minutes.
+    if(periods.length===2&&periods[1].start-periods[0].end<REST_DURATION_MINUTES){
+      const [first,second]=periods;
+      const last=rests.filter(rest=>rest.periodStart===first.start).at(-1);
+      const next=rests.find(rest=>rest.periodStart===second.start);
+      const tail=first.end-(last?.end??first.start);
+      const head=(next?.start??second.end)-second.start;
+      if(tail+head>REST_AFTER_MINUTES){
+        const period=tail>=REST_DURATION_MINUTES?first:second;
+        const start=period===first?first.end-REST_DURATION_MINUTES:second.start;
+        rests.push({start,end:start+REST_DURATION_MINUTES,periodStart:period.start,periodEnd:period.end,interval:period===first?tail-REST_DURATION_MINUTES:tail,duration:REST_DURATION_MINUTES});
+        rests.sort((a,b)=>a.start-b.start);
       }
     }
     return rests;
