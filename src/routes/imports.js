@@ -1802,8 +1802,10 @@ function extractPdfiumFlateText(buffer,options={}){
 
   const streamRegex=/stream\r?\n/g;
   let streamMatch;
+  let contentStream=0;
 
   while((streamMatch=streamRegex.exec(latin))!==null){
+    const streamId=contentStream++;
     const start=streamMatch.index+streamMatch[0].length;
     const end=latin.indexOf("endstream",start);
     if(end<0)break;
@@ -1855,7 +1857,7 @@ function extractPdfiumFlateText(buffer,options={}){
         .replace(/\s+/g," ")
         .trim();
 
-      if(text)items.push({x,y,text});
+      if(text)items.push({x,y,text,streamId});
     }
 
     streamRegex.lastIndex=end+9;
@@ -1865,29 +1867,35 @@ function extractPdfiumFlateText(buffer,options={}){
     throw new Error("O leitor PDFium/Flate não encontrou blocos de texto.");
   }
 
-  items.sort((a,b)=>b.y-a.y||a.x-b.x);
+  // Coordinates repeat on every page. Never combine independent content
+  // streams into one row just because their Y positions match.
+  items.sort((a,b)=>a.streamId-b.streamId||b.y-a.y||a.x-b.x);
 
   const rows=[];
   for(const item of items){
-    let row=rows.find(existing=>Math.abs(existing.y-item.y)<=1.2);
+    let row=rows.find(existing=>existing.streamId===item.streamId&&Math.abs(existing.y-item.y)<=1.2);
     if(!row){
-      row={y:item.y,items:[]};
+      row={streamId:item.streamId,y:item.y,items:[]};
       rows.push(row);
     }
     row.items.push(item);
   }
 
-  rows.sort((a,b)=>b.y-a.y);
+  rows.sort((a,b)=>a.streamId-b.streamId||b.y-a.y);
 
+  let previousStream=null;
   const text=rows
-    .map(row=>
+    .map(row=>{
+      const separator=previousStream!==null&&previousStream!==row.streamId?"\f":"";
+      previousStream=row.streamId;
+      return separator+
       row.items
         .sort((a,b)=>a.x-b.x)
         .map(item=>item.text)
         .join(" ")
         .replace(/\s+/g," ")
-        .trim()
-    )
+        .trim();
+    })
     .filter(Boolean)
     .join("\n");
 

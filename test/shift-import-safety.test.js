@@ -33,7 +33,7 @@ function loadImportApi(existing=[],options={}){
     if(name==='../db/audit')return async()=>{};
     return Module.prototype.require.call(this,name);
   };
-  mod._compile(fs.readFileSync(filename,'utf8')+'\nmodule.exports={router,extractSeniorSchedule,buildUnknownShiftProposals,parseSeniorShiftRows};',filename);
+  mod._compile(fs.readFileSync(filename,'utf8')+'\nmodule.exports={router,extractSeniorSchedule,buildUnknownShiftProposals,parseSeniorShiftRows,extractPdfiumFlateText,evaluateSeniorShiftCandidate};',filename);
   const api=mod.exports;
   const confirm=api.router.stack.find(layer=>layer.route?.path==='/shift-confirm').route.stack.at(-1).handle;
   async function call(body,scope={isAdmin:true}){
@@ -259,4 +259,36 @@ test('falha ao obter conexão é encaminhada ao tratamento de erro sem promessa 
   assert.match(result.error.message,/Banco indisponível/);
   assert.equal(api.created.length,0);
   assert.equal(api.queries.length,0);
+});
+
+
+test('PDFium multipágina não mistura matrículas, nomes e escalas nas mesmas coordenadas',()=>{
+  const api=loadImportApi();
+  const zlib=require('node:zlib');
+  const fragments=[Buffer.from('%PDF-1.4\n/Producer (PDFium)\n')];
+  const expected=[];
+  for(let page=0;page<4;page++){
+    const lines=['BT 1 0 0 1 20 800 Tm (Empregados por Escala) Tj ET'];
+    for(let index=0;index<27;index++){
+      const registration=String(page*27+index+1).padStart(9,'0');
+      const name=`COLABORADOR ${String.fromCharCode(65+page)}${String.fromCharCode(65+Math.floor(index/26))}${String.fromCharCode(65+index%26)}`;
+      const code=page%2?'0009':'0046';
+      const schedule=page%2?'14:00-18:00':'06:00-11:00-12:00-14:20';
+      expected.push({registration,name,code:code.replace(/^0+/,'')});
+      const y=760-index*20;
+      for(const [x,text] of [[20,registration],[120,name],[350,`${code} - ${schedule}`]])lines.push(`BT 1 0 0 1 ${x} ${y} Tm (${text}) Tj ET`);
+    }
+    const compressed=zlib.deflateSync(Buffer.from(lines.join('\n'),'latin1'));
+    fragments.push(Buffer.from(`${page+1} 0 obj\n<< /Filter /FlateDecode /Length ${compressed.length} >>\nstream\n`),compressed,Buffer.from('\nendstream\nendobj\n'));
+  }
+  const text=api.extractPdfiumFlateText(Buffer.concat(fragments));
+  const rows=api.parseSeniorShiftRows(text,['46','9']);
+  assert.equal(rows.length,108);
+  assert.equal(api.evaluateSeniorShiftCandidate(text,['46','9']).completeCoverage,100);
+  for(const wanted of expected){
+    const row=rows.find(row=>row.registration===wanted.registration);
+    assert.equal(row.pdfName,wanted.name);
+    assert.equal(row.shiftCode,wanted.code);
+    assert.equal(row.schedule.complete,true);
+  }
 });
