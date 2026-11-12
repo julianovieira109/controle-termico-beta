@@ -120,3 +120,15 @@ test('afastamento parcial não encobre marcações inválidas nem ausência de c
   assert.equal(absent.valid,false);
   assert.ok(absent.blockers.some(x=>x.code==='NO_POINT_ROWS'));
 });
+
+test('ocorrências ficam na ficha automática de ativos sem horários térmicos inventados',()=>{
+  for(const [state,label] of [['ATESTADO','ATESTADO'],['FALTA','FALTA'],['LICENCA','LICENÇA'],['FOLGA','FOLGA / SEM JORNADA']]){
+    const e={...employee(),point_states:{[days[0].iso]:state}};
+    const plan=ThermalSchedule.buildMonthPlan([e],days,{usePointData:true});
+    const html=sheet(e,plan);
+    assert.ok(html.includes(label),state);
+    assert.match(html,/class="report-sheet/);
+    assert.doesNotMatch(html,/class="thermal-time-cell">\d\d:\d\d/);
+    assert.equal(plan.size,0);
+  }
+});

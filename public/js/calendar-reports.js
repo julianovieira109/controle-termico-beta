@@ -316,7 +316,6 @@ function reportPolicyAllows(policy,type){
 }
 
 function reportSkippedReason(employee,type){
-  if(type==="leave")return "Afastado em toda a competência — sem ficha de repouso térmico ou refeição";
   if(type==="status")return `Situação ${String(employee?.status||"não ativa").toLowerCase()} — somente colaboradores ativos geram ficha`;
   if(type==="shift")return "Sem turno cadastrado";
   const policy=String(employee?.report_policy||"PENDING").toUpperCase();
@@ -1741,15 +1740,6 @@ $("report-generate").onclick=async()=>{
   }
 
   const skippedEmployees=[];
-  const fullyAway=selectedEmployees.filter(employee=>window.ReportValidator?.fullyAway?.(employee,month));
-  fullyAway.forEach(employee=>skippedEmployees.push({employee,type:"leave"}));
-  selectedEmployees=selectedEmployees.filter(employee=>!fullyAway.includes(employee));
-  if(!selectedEmployees.length){
-    summary.textContent="Nenhuma ficha gerada: os colaboradores selecionados estão afastados durante toda a competência confirmada.";
-    showReportSkippedDetails(skippedEmployees);
-    return;
-  }
-
   const validation=validateReportBeforeGeneration(month,selectedEmployees);
   if(!validation.valid){
     showReportSkippedDetails(skippedEmployees);
