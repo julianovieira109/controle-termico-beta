@@ -189,3 +189,4 @@ body{background:var(--roster-bg)}
 .operational-issue-card p{margin:6px 0}.operational-issue-card small{display:block;margin-bottom:9px;color:var(--roster-muted)}
 .operational-preview,.operational-team,.operational-blockers{scroll-margin-top:12px}
 :host([data-theme="dark"]) .operational-blockers>summary{color:#ffb6a0}
+.beta-roster .operational-generator label.operational-confirm{flex-direction:row}
