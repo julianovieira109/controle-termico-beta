@@ -162,3 +162,12 @@ body{background:var(--roster-bg)}
 @media(max-width:800px){.beta-roster .tools>select[aria-label="Filtrar por coordenador"]{width:100%;max-width:none}}
 .planning-guide{padding:15px 18px;margin-bottom:16px;border:1px solid var(--roster-line);border-radius:12px;background:var(--roster-soft)}
 .planning-guide>summary{font-weight:700;cursor:pointer}.planning-guide p,.planning-guide li{font-size:13px;line-height:1.6}.planning-guide label{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}
+.pending-actions,.pending-return{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0}
+.pending-instruction{margin:6px 0 0;max-width:560px;font-size:13px;line-height:1.5}
+.pending-return{padding:12px 15px;border:1px solid var(--roster-line);border-radius:12px;background:var(--roster-soft)}
+.pending-return span{font-size:13px;color:var(--roster-muted)}
+.leadership-review-list{max-height:50vh;overflow:auto;border:1px solid var(--roster-line);border-radius:10px}
+.beta-roster .leadership-review-person{display:flex;align-items:flex-start;gap:12px;padding:14px;border-bottom:1px solid var(--roster-line);cursor:pointer;line-height:1.5}
+.leadership-review-person input{flex:0 0 auto;width:17px;height:17px;margin:3px 0 0}
+.leadership-review-person span{min-width:0}.leadership-review-person small{display:block;color:var(--roster-muted);font-size:12px;font-weight:400}
+@media(max-width:600px){.pending-actions>button{width:100%}.beta-roster .pendingWorkspace .dataTable{min-width:690px}}
