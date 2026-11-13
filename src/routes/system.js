@@ -16,6 +16,8 @@ const upload=multer({
 router.use(authenticate,requireAdmin);
 
 const BACKUP_TABLES=[
+  "roster_plans",
+  "roster_import_archives",
   "companies",
   "branches",
   "user_profiles",
@@ -60,10 +62,15 @@ const RESTORE_ORDER=[
   "senior_bh_imports",
   "employee_point_days",
   "timecard_review_controls",
-  "audit_logs"
+  "audit_logs",
+  "roster_plans",
+  "roster_import_archives"
 ];
 
 const CLEAR_ORDER=[
+  "roster_import_archives",
+  "roster_import_previews",
+  "roster_plans",
   "timecard_review_controls",
   "employee_point_days",
   "employee_days_off",
@@ -151,7 +158,7 @@ router.get("/tests",async(req,res)=>{
     const required=[
       "users","user_profiles","profile_permissions","companies","branches","shifts","job_roles","job_role_branch_report_policies","employees",
       "holidays","system_settings","user_branches","user_permissions",
-      "user_recovery_codes","employee_days_off","employee_imports","employee_point_days","timecard_review_controls","senior_bh_imports","audit_logs"
+      "user_recovery_codes","employee_days_off","employee_imports","employee_point_days","timecard_review_controls","senior_bh_imports","audit_logs","roster_plans","roster_import_previews","roster_import_archives"
     ];
     const missing=required.filter(table=>!tables.has(table));
 
@@ -162,7 +169,9 @@ router.get("/tests",async(req,res)=>{
       employee_imports:["import_type","file_name","total_found","created_at"],
       employee_point_days:["employee_id","work_date","markings","work_minutes","bh_validated"],
       timecard_review_controls:["employee_id","work_date","status","note"],
-      senior_bh_imports:["report_type","period_start","period_end","records","confirmed_at"]
+      senior_bh_imports:["report_type","period_start","period_end","records","confirmed_at"],
+      roster_plans:["company_id","branch_id","version","payload"],
+      roster_import_archives:["plan_id","company_id","branch_id","source_hash","payload"]
     };
 
     const columnProblems=[];
@@ -337,6 +346,9 @@ router.post("/reset",requireMasterAdmin,async(req,res,next)=>{
 
     // Remove primeiro tabelas-filhas.
     for(const table of [
+      "roster_import_archives",
+      "roster_import_previews",
+      "roster_plans",
       "timecard_review_controls",
       "employee_point_days",
       "employee_days_off",
@@ -449,6 +461,15 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
     const tables=await existingTables(client);
 
     await client.query("BEGIN");
+
+    if(tables.has("roster_plans")&&!Array.isArray(backup.data.roster_plans)){
+      await client.query("LOCK TABLE roster_plans IN ACCESS EXCLUSIVE MODE");
+      const planning=await client.query("SELECT COUNT(*)::int total FROM roster_plans");
+      if(planning.rows[0].total>0){
+        await client.query("ROLLBACK");
+        return res.status(409).json({error:"Este backup não contém o planejamento 5x2 e apagaria as escalas atuais. A restauração foi bloqueada para preservá-las. Use um backup completo com planejamento."});
+      }
+    }
 
     for(const table of CLEAR_ORDER){
       if(tables.has(table)){

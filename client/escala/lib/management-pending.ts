@@ -1,0 +1,8 @@
+import {businessToday} from './business-date';
+import {planned,employed,issues,weeklyStatus,days,type State,type Employee} from './roster';
+import {selectedJourney} from './journeys';
+import {isApprentice,employeeArea} from './areas';
+import {officialLeadership,normalizedEmployeeId} from './official-leadership';
+import {isLeader} from './leadership';
+export type PendingItem={id:string;employee?:Employee;name:string;reason:string;action:'employee'|'journey'|'leadership'};
+export function managementPending(state:State,employees:Employee[],dates:Date[],referenceDate=businessToday()):PendingItem[]{const result:PendingItem[]=[];for(const e of employees){if(!dates.some(d=>employed(e,d)))continue;for(const reason of issues(e,dates,state))result.push({id:e.id+':'+reason,employee:e,name:e.name,reason,action:'employee'});if(planned(e,referenceDate)&&!isApprentice(e)&&!selectedJourney(e,referenceDate))result.push({id:e.id+':journey',employee:e,name:e.name,reason:'Carga semanal planejada não definida na data de referência',action:'journey'});if(!e.code||!['1º','2º','3º'].includes(e.shift)&&employeeArea(e)==='Não definida')result.push({id:e.id+':classification',employee:e,name:e.name,reason:'Conferir código, área e classificação do horário',action:'employee'});if(isLeader(e)&&!e.leadershipReviewedAt)result.push({id:e.id+':leadership',employee:e,name:e.name,reason:'Liderança sem conferência atual registrada',action:'leadership'});}for(const r of officialLeadership)if(!state.employees.some(e=>normalizedEmployeeId(e.id)===r.id))result.push({id:r.id+':missing',name:r.name,reason:`Matrícula ${r.id} da lista de liderança não localizada`,action:'leadership'});return result;}

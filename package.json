@@ -1,6 +1,6 @@
 {
   "name": "controle-termico-online",
-  "version": "1.0.31-beta.91",
+  "version": "1.0.31-beta.92",
   "private": true,
   "description": "Sistema web de controle administrativo de repouso térmico e refeição",
   "main": "src/server.js",
@@ -12,7 +12,10 @@
     "test": "node --test test/*.test.js",
     "check:sizes": "node tools/check-file-sizes.js",
     "seed:manual": "node src/db/seed.js",
-    "audit:startup": "node tools/audit-startup.js"
+    "audit:startup": "node tools/audit-startup.js",
+    "build:escala": "node tools/build-escala.mjs",
+    "postinstall": "npm run build:escala",
+    "pretest": "npm run build:escala"
   },
   "engines": {
     "node": ">=20 <27"
@@ -27,10 +30,21 @@
     "multer": "2.5.0",
     "pdf-parse": "1.1.1",
     "pdf2json": "3.1.6",
-    "pg": "8.16.3"
+    "pg": "8.16.3",
+    "esbuild": "0.25.12",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "lucide-react": "1.31.0",
+    "jspdf": "3.0.1",
+    "jspdf-autotable": "5.0.2"
   },
   "releaseChannel": "beta",
   "homologatedFrom": "1.0.4",
   "distribution": "development-clean",
-  "basedOn": "1.0.12-beta"
+  "basedOn": "1.0.12-beta",
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3"
+  }
 }

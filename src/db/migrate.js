@@ -745,12 +745,55 @@ WHERE e.id=s.employee_id
       THEN COALESCE(s.weekly_days_off,ARRAY[]::SMALLINT[])
     ELSE ARRAY[]::SMALLINT[]
   END;
+-- Planejamento 5x2 isolado: nunca altera ponto, BH ou cadastro oficial.
+CREATE TABLE IF NOT EXISTS roster_plans (
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ company_id UUID NOT NULL REFERENCES companies(id) ON DELETE RESTRICT,
+ branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE RESTRICT,
+ version INTEGER NOT NULL DEFAULT 0 CHECK(version>=0),
+ payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+ updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+ updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+ UNIQUE(company_id,branch_id)
+);
+CREATE TABLE IF NOT EXISTS roster_import_archives (
+ id UUID PRIMARY KEY,
+ plan_id UUID NOT NULL REFERENCES roster_plans(id) ON DELETE RESTRICT,
+ company_id UUID NOT NULL REFERENCES companies(id) ON DELETE RESTRICT,
+ branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE RESTRICT,
+ created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+ created_by_name VARCHAR(180) NOT NULL,
+ source_hash VARCHAR(64) NOT NULL,
+ payload JSONB NOT NULL,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS roster_import_previews (
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+ branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+ payload JSONB NOT NULL,
+ expires_at TIMESTAMPTZ NOT NULL,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_roster_previews_expiry ON roster_import_previews(expires_at);
+-- Herança inicial somente para perfis/usuários com acessos de colaboradores.
+-- Configurações explícitas anteriores de escala não são sobrescritas.
+INSERT INTO profile_permissions(profile_id,permission_key,allowed)
+SELECT profile_id,CASE permission_key WHEN 'employees.view' THEN 'roster.view' ELSE 'roster.manage' END,allowed
+FROM profile_permissions WHERE permission_key IN ('employees.view','employees.manage')
+ON CONFLICT(profile_id,permission_key) DO NOTHING;
+INSERT INTO user_permissions(user_id,permission_key,allowed)
+SELECT user_id,CASE permission_key WHEN 'employees.view' THEN 'roster.view' ELSE 'roster.manage' END,allowed
+FROM user_permissions WHERE permission_key IN ('employees.view','employees.manage')
+ON CONFLICT(user_id,permission_key) DO NOTHING;
+
 `;
 
 (async()=>{
   try{
     await pool.query(sql);
-    console.log("Migrações V1.34 concluídas.");
+    console.log("Migrações do Controle Térmico concluídas.");
   }catch(error){
     console.error("Falha nas migrações V1.34:",{
       message:error.message,

@@ -38,6 +38,7 @@
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/workflow-assistant.css?v=1">
+  <link rel="stylesheet" href="/css/roster-module.css?v=1">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.102">
   <link rel="stylesheet" href="/css/imports-center.css?v=1.0.31-beta.88">
@@ -254,6 +255,7 @@
       <button class="nav-btn admin-only" data-view="companies" title="Empresas e filiais"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V5h10v15"/><path d="M14 10h6v10"/><path d="M8 9h2M8 13h2M8 17h2M17 14h1M17 17h1"/></svg></span><span class="nav-label">Empresas</span></button>
       <button class="nav-btn admin-only" data-view="users" title="Usuários"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3"/><path d="M4.5 19c.5-3.2 2.3-5 5.5-5 1.4 0 2.5.3 3.4 1"/><path d="M17.5 13.5v6M14.5 16.5h6"/></svg></span><span class="nav-label">Usuários</span></button>
       <button class="nav-btn" data-view="employees" data-permission="employees.view" title="Colaboradores"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M3.5 19c.5-3.3 2.3-5 5.5-5s5 1.7 5.5 5M14 15c.8-.7 1.8-1 3-1 2.3 0 3.6 1.3 4 3.7"/></svg></span><span class="nav-label">Colaboradores</span></button>
+      <button class="nav-btn" data-view="roster" data-permission="roster.view" title="Escala 5x2"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v15H4zM4 10h16M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2"/></svg></span><span class="nav-label">Escala 5x2</span></button>
       <button class="nav-btn" data-view="imports" data-permission="imports.manage" title="Importações"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 16v5h16v-5"/></svg></span><span class="nav-label">Importações</span></button>
       <button class="nav-btn" data-view="reports" data-permission="reports.view" title="Relatórios"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h4M9 12h7M9 16h7"/></svg></span><span class="nav-label">Relatórios</span></button>
       <button class="nav-btn" data-view="occurrences" data-special-permission="occurrences.view" title="Controle de ocorrências"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5M8 17h3"/><circle cx="17" cy="16.5" r="2.5"/></svg></span><span class="nav-label">Ocorrências</span></button>
@@ -1198,6 +1200,11 @@
         </div>
     </section>
 
+    <section id="roster" class="view">
+      <div class="panel roster-intro"><div><h3>Escala 5x2 · Planejamento operacional</h3><p>Planeje jornadas, folgas e cobertura por empresa e filial. O cadastro oficial do Beta é consultado em leitura; alterações de planejamento não modificam marcações, BH, faltas ou intervalos oficiais Senior.</p></div><button type="button" id="roster-reload" class="secondary">Recarregar unidade e cadastro</button></div>
+      <p class="roster-note">Use os botões de PDF e CSV dentro do módulo para exportar o período e os filtros selecionados. Para trazer o sistema anterior, selecione a unidade e use Migrar backup.</p>
+      <iframe id="roster-frame" title="Planejamento de escalas 5x2" referrerpolicy="same-origin"></iframe>
+    </section>
     <section id="reports" class="view">
       <div class="panel no-print">
         <h3>Impressão de fichas</h3>
@@ -1560,6 +1567,24 @@
               <h4 data-help-permission="imports.manage">Histórico de importação</h4><p data-help-permission="imports.manage">Fica recolhido por padrão. Abra somente para consultar data, arquivo, tipo e resultado anterior.</p>
               <div class="manual-note info" data-help-permission="admin"><strong>Backup:</strong> Administradores podem gerar e baixar a cópia de segurança, executar testes e corrigir duplicidades.</div>
               <div class="manual-note danger" data-help-permission="master"><strong>Proteção Master:</strong> restaurar backup e “Zerar sistema” são ações exclusivas do Administrador Master.</div>
+            </div>
+          </details>
+
+          <details class="manual-chapter" id="manual-roster" data-help-permission="roster.view" data-manual-keywords="escala 5x2 planejamento senior jornada folga migração backup pendências cobertura liderança">
+            <summary><span class="manual-number">11</span><span><strong>Escala 5x2</strong><small>Planejamento separado das escalas oficiais Senior</small></span></summary>
+            <div class="manual-body">
+              <p>Abra <strong>Menu principal → Escala 5x2</strong>, escolha empresa e filial e clique em <strong>Carregar unidade</strong>. O módulo utiliza seu login e as filiais autorizadas. Consultar exige <strong>roster.view</strong>; salvar ou migrar exige também <strong>roster.manage</strong>. Inicialmente, essas permissões acompanham as de consulta e edição de colaboradores; o administrador pode ajustá-las em <strong>Configurações → Perfis de usuário</strong>. Entre novamente após alterar o acesso.</p>
+              <div class="manual-note info"><strong>Senior preservada:</strong> as jornadas, códigos e horários oficiais são somente leitura. O planejamento 5x2 não modifica os turnos do cadastro, o ponto, o BH, as folgas oficiais ou os relatórios existentes da Senior. PDF e CSV gerados nesta área identificam o planejamento e a unidade.</div>
+              <h4>Planejar e consultar</h4>
+              <p>Os colaboradores vêm do cadastro Beta, sem criar pessoas nem aplicar folgas ou jornadas automaticamente. Inclua no planejamento quem deve participar e defina turno planejado, folgas, exceções por data, área e jornadas. As telas permitem conferir semanas e meses, turnos, jornadas de 44/42/40 horas, liderança e cobertura por horário, inclusive noturna. Horários ausentes permanecem pendentes: não representam cobertura confirmada. Alterações futuras e o desfazer de jornada seguem as datas escolhidas.</p>
+              <p>Nome, matrícula, cargo, situação e horário oficial devem ser corrigidos em <strong>Colaboradores</strong> ou nas importações oficiais do Beta. O vínculo usa o identificador do cadastro; uma readmissão não recebe automaticamente o planejamento de outro vínculo. Matrículas duplicadas ou inválidas precisam de revisão.</p>
+              <h4>Migrar o backup da escala anterior</h4>
+              <ol><li>Na unidade correta, abra <strong>Importações</strong> e selecione o JSON de planejamento, com até <strong>3 MB</strong>.</li><li>Confira correspondências por matrícula e nome, divergências e pendências. Ler a prévia não aplica o planejamento.</li><li>Confirme a empresa e filial. Quando houver pendências, a aplicação parcial exige uma seleção explícita: somente as correspondências serão aplicadas; os demais registros permanecem preservados para revisão, sem criar colaboradores.</li><li>Depois de regularizar o cadastro no Beta, use a opção de conferir pendências para gerar outra prévia. A prévia vale por <strong>30 minutos</strong>, para o usuário e unidade que a criaram.</li></ol>
+              <p>O arquivo de origem é arquivado na confirmação, incluindo referências históricas, sem substituir os campos oficiais. São aceitos até 2.000 colaboradores e 20.000 exceções por arquivo. Cadastros de aprendizes e regras específicas somente são vinculados quando a correspondência é conferida.</p>
+              <h4>Salvar, atualizar e guardar cópia</h4>
+              <p>Se outro usuário alterar o planejamento ou o cadastro oficial após sua leitura, a gravação será bloqueada: recarregue a unidade e refaça a edição. A atualização e sua auditoria são confirmadas juntas. Consultas não inicializam uma escala de exemplo nem gravam dados.</p>
+              <p><strong>Exportar planejamento vinculado</strong> gera o JSON dos colaboradores vinculados. Para preservar também pendências e os arquivos de origem, gere o backup completo em <strong>Configurações → Backup e dados</strong>. A restauração é exclusiva do Master; um backup antigo sem planejamento é recusado quando apagaria escalas já salvas. O comando Master de zerar o sistema também remove o planejamento.</p>
+              <p>Após a atualização do aplicativo, use <strong>Ctrl+F5</strong>. Dados oficiais já importados não precisam ser reimportados; o backup da escala anterior precisa da conferência e confirmação descritas acima.</p>
             </div>
           </details>
 
@@ -2564,6 +2589,8 @@
                   <label><input type="checkbox" data-profile-permission="dashboard.view"> Painel</label>
                   <label><input type="checkbox" data-profile-permission="employees.view"> Ver colaboradores</label>
                   <label><input type="checkbox" data-profile-permission="employees.manage"> Cadastrar/editar/excluir colaboradores</label>
+                  <label><input type="checkbox" data-profile-permission="roster.view"> Consultar escalas 5x2</label>
+                  <label><input type="checkbox" data-profile-permission="roster.manage"> Editar e migrar planejamento 5x2</label>
                   <label><input type="checkbox" data-profile-permission="imports.manage"> Importar PDFs da Senior</label>
                   <label><input type="checkbox" data-profile-permission="reports.view"> Relatórios</label>
                   <label><input type="checkbox" data-profile-permission="settings.view"> Configurações básicas</label>
@@ -2899,8 +2926,8 @@
     <div id="wf-actions" class="wf-actions" aria-label="Sugestões e opções do pedido"></div>
     <form id="wf-form" class="wf-form"><label for="wf-input">Seu pedido ou resposta</label><div class="wf-entry"><input id="wf-input" maxlength="1000" autocomplete="off" placeholder="Ex.: BH do João ou cadastrar colaborador" required><button id="wf-send" type="submit">Enviar</button></div><small>Escreva “ajuda” para ver sugestões ou “cancelar” para encerrar o pedido. Nenhuma alteração é gravada sem confirmação.</small></form>
   </dialog>
-  <script src="/js/core.js?v=1.0.31-beta.89"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.114"></script>
+  <script src="/js/core.js?v=1.0.31-beta.90"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.115"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -2918,5 +2945,6 @@
   <script src="/js/occurrences-control.js?v=1.0.31-beta.104"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
+  <script src="/js/roster-module.js?v=1"></script>
 </body>
 </html>

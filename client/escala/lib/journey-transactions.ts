@@ -1,0 +1,5 @@
+import {type Employee} from './roster';
+import {type Journey} from './journeys';
+export type JourneyUndo={date:string;journey:Journey;previous:{id:string;journeys?:Journey[]}[]};
+function sameJourney(a:Journey|undefined,b:Journey){return !!a&&a.hours===b.hours&&a.option===b.option&&a.start===b.start&&a.breakAfter===b.breakAfter&&a.breakMinutes===b.breakMinutes&&a.effectiveDate===b.effectiveDate;}
+export function undoJourneyChange(employees:Employee[],undo:JourneyUndo):Employee[]{for(const old of undo.previous){const e=employees.find(e=>e.id===old.id);if(!e||!sameJourney(e.journeys?.find(j=>j.effectiveDate===undo.date),undo.journey))throw Error('A jornada mudou depois desta troca. Confira o histórico antes de desfazer.');}const previous=new Map(undo.previous.map(e=>[e.id,e]));return employees.map(e=>{const prior=previous.get(e.id);if(!prior)return e;const old=prior.journeys?.find(j=>j.effectiveDate===undo.date);return {...e,journeys:[...(e.journeys||[]).filter(j=>j.effectiveDate!==undo.date),...(old?[old]:[])].sort((a,b)=>a.effectiveDate.localeCompare(b.effectiveDate))};});}
