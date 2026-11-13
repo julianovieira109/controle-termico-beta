@@ -171,3 +171,15 @@ body{background:var(--roster-bg)}
 .leadership-review-person input{flex:0 0 auto;width:17px;height:17px;margin:3px 0 0}
 .leadership-review-person span{min-width:0}.leadership-review-person small{display:block;color:var(--roster-muted);font-size:12px;font-weight:400}
 @media(max-width:600px){.pending-actions>button{width:100%}.beta-roster .pendingWorkspace .dataTable{min-width:690px}}
+.beta-roster .modal.operational-generator{width:min(1120px,calc(100vw - 32px));max-width:100%}
+.operational-rule{padding:12px 15px;border:1px solid var(--roster-line);border-radius:10px;background:var(--roster-soft)}
+.operational-rule p{margin-bottom:0}.operational-controls{display:flex;gap:15px;flex-wrap:wrap;align-items:end;margin:16px 0}
+.operational-controls>label{display:grid;gap:7px;flex:1 1 200px}.operational-controls .checkbox{display:flex;align-items:center;gap:8px}
+.operational-controls .checkbox input{width:17px;height:17px;flex:0 0 auto}
+.operational-team{border:1px solid var(--roster-line);border-radius:10px;padding:12px;margin:12px 0}.operational-team>summary,.operational-preview summary{font-weight:700;cursor:pointer}
+.operational-generator .dataTable input{width:95px}.operational-generator .dataTable{min-width:530px}
+.operational-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:16px 0}.operational-actions span{font-size:12px;color:var(--roster-muted)}
+.operational-preview{border-top:1px solid var(--roster-line);padding-top:12px}.operational-preview>details{padding:12px;border:1px solid var(--roster-line);border-radius:10px;margin:12px 0}
+.operational-issues{max-height:260px;overflow:auto}.operational-issues p{font-size:12px}.operational-warning{font-size:13px}
+.operational-confirm{display:flex!important;gap:10px;align-items:flex-start;margin:18px 0;line-height:1.5}.operational-confirm input{width:18px;height:18px;flex:0 0 auto;margin-top:3px}
+@media(max-width:600px){.operational-controls{display:grid;grid-template-columns:minmax(0,1fr)}.operational-controls>label{min-width:0}.operational-generator .modalActions{position:static}.operational-generator .modalHeader h2{font-size:20px}}

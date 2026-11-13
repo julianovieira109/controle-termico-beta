@@ -9,3 +9,4 @@ export {displayedCalendarDays} from './lib/calendar-view';
 export {groupRoster,sectionOf} from './lib/roster-groups';
 export {referenceSchedule,specialSchedule,referenceProposal} from './lib/planning-reference';
 export {managementPending} from './lib/management-pending';
+export {fixedRestDay,operationalDefaults,generateOperational} from './lib/operational-generator';
