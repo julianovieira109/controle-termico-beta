@@ -75,3 +75,13 @@ A busca gulosa seguida de refinamento balanceia folgas por papel e liderança. U
 Prévia é somente memória do navegador. Alterar configuração invalida confirmação. Aplicar exige validação sem impedimentos e confirmação explícita; usa o PUT auditado do planejamento com versão e fingerprint oficial, de modo que uma alteração concorrente bloqueia a gravação. A API mantém as proteções dos campos oficiais. O resumo de mínimos e a geração ficam no histórico/auditoria do planejamento; cadastros Senior, ponto, BH e vínculos gerenciais não são alterados.
 
 Testes cobrem dois descansos, sábado noturno/domingo demais, líderes por grupo, cargos sem intercâmbio, preservação de grupos/futuro/contratos, limites inválidos, dados incompletos, cobertura após meia-noite e lacunas por função/horário. Navegador com banco local testa prévia sem escrita, aplicação impedida e confirmada, conflito concorrente, persistência, preservação de grupos e relatórios oficiais, celular e perfil de consulta.
+
+## Clareza do bloqueio e exportação da prévia — Beta.98
+
+A confirmação de leitura da prévia deixa de depender de `canApply`; marcá-la não remove alertas nem libera gravação com desfalques. O status ao lado do botão de aplicação diferencia ausência de prévia, ausência de elegíveis, perfil somente leitura, impedimentos e conferência pendente. Comercial/ADM fora do lote é identificado como preservação, não causa de bloqueio.
+
+Alertas repetidos por dia são agrupados por equipe/motivo, com número e amostra de datas. Atalhos levam aos impedimentos ou aos parâmetros da equipe; dados incompletos remetem ao cadastro e à conferência da referência Senior. Falta de líder aponta para identificação/cobertura, sem reduzir automaticamente mínimos nem inventar qualificações.
+
+O download CSV é permitido para prévias com propostas, inclusive bloqueadas; rotula explicitamente rascunho com impedimentos e não aplicado, inclui os motivos e não escreve em banco. Campos de texto são escapados para CSV e entradas que poderiam ser interpretadas como fórmula são prefixadas para leitura textual. Aplicar continua condicionado à validação operacional, confirmação, permissão e versão da gravação.
+
+Validação no navegador local: confirmação marcável em prévia bloqueada, aplicação ainda desabilitada, exportação de rascunho sem alteração de plano, navegação aos alertas/limites, invalidação da prévia após mudar parâmetros, aplicação válida, concorrência, contratos/grupos existentes, horários oficiais, celular e consulta sem gravação.

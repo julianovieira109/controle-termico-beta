@@ -183,3 +183,9 @@ body{background:var(--roster-bg)}
 .operational-issues{max-height:260px;overflow:auto}.operational-issues p{font-size:12px}.operational-warning{font-size:13px}
 .operational-confirm{display:flex!important;gap:10px;align-items:flex-start;margin:18px 0;line-height:1.5}.operational-confirm input{width:18px;height:18px;flex:0 0 auto;margin-top:3px}
 @media(max-width:600px){.operational-controls{display:grid;grid-template-columns:minmax(0,1fr)}.operational-controls>label{min-width:0}.operational-generator .modalActions{position:static}.operational-generator .modalHeader h2{font-size:20px}}
+.operational-save-status{margin-top:16px;padding:14px;border:1px solid var(--roster-line);border-radius:10px;background:var(--roster-soft)}
+.operational-save-status p{margin:6px 0}.operational-save-status .operational-actions{margin-bottom:0}
+.operational-blockers>summary{color:#a23820}.operational-issue-card{padding:12px;border-bottom:1px solid var(--roster-line)}
+.operational-issue-card p{margin:6px 0}.operational-issue-card small{display:block;margin-bottom:9px;color:var(--roster-muted)}
+.operational-preview,.operational-team,.operational-blockers{scroll-margin-top:12px}
+:host([data-theme="dark"]) .operational-blockers>summary{color:#ffb6a0}
