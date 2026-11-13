@@ -1,14 +1,14 @@
 const crypto=require('node:crypto');
 const rules=require('../generated/roster-rules.cjs');
 const planningFields=['shift','included','off1','off2','note','journeys','restRules','weeklyPattern','area','leader','leadershipReviewedAt'];
-const officialFields=['id','officialEmployeeId','name','code','schedule','role','active','admissionDate','dismissalDate','fixedWednesday'];
+const officialFields=['id','officialEmployeeId','name','code','schedule','role','active','admissionDate','dismissalDate','fixedWednesday','officialShift','coordinatorId','coordinatorName','coordinatorSource'];
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const registration=value=>/^\d{1,12}$/.test(String(value||''))?String(value).replace(/^0+(?=\d)/,''):null;
 const name=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,' ').trim().toUpperCase();
 const date=value=>value?new Date(value).toISOString().slice(0,10):'';
 const digest=value=>crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const pick=(object,keys)=>Object.fromEntries(keys.filter(key=>Object.hasOwn(object,key)).map(key=>[key,object[key]]));
-function officialVersion(rows){return digest(rows.map(row=>[row.id,row.registration,row.full_name,row.status,row.admission_date,row.termination_date,row.job_role_name,row.job_title,row.shift_senior_code,row.shift_description,row.updated_at]));}
+function officialVersion(rows){return digest(rows.map(row=>[row.id,row.registration,row.full_name,row.status,row.admission_date,row.termination_date,row.job_role_name,row.job_title,row.shift_id,row.shift_name,row.shift_senior_code,row.shift_description,row.coordinator_id,row.coordinator_name,row.coordinator_source,row.updated_at]));}
 function valid(state){
  if(!rules.validState(state)||state.history.length>500)throw fail('Planejamento inválido. Confira matrículas, folgas, jornadas, datas e exceções.');
  for(const employee of state.employees){
@@ -32,9 +32,10 @@ function project(rows,stored={}){
  const employees=available.employees.map(({id,row})=>{
   const before=byOfficial.get(row.id)?.employee;
   const normalizedShift=name(row.shift_name);
-  const shift=/^1 (TURNO|TUR)/.test(normalizedShift)?'1º':/^2 (TURNO|TUR)/.test(normalizedShift)?'2º':/^3 (TURNO|TUR)/.test(normalizedShift)?'3º':'Outros';
-  return {...{shift,included:false,off1:'',off2:'',note:'Planejamento de jornada e folgas ainda não definido.',area:'Não definida'},...pick(before||{},planningFields),
-   id,officialEmployeeId:row.id,name:row.full_name,code:row.shift_senior_code||'',schedule:row.shift_description||'',role:row.job_role_name||row.job_title||'',
+  const area=/\b(ADM|ADMINISTRATIVO|ADMINISTRATIVA)\b/.test(normalizedShift)?'ADM':/\bCOMERCIAL\b/.test(normalizedShift)?'Comercial':'Não definida';
+  const shift=area!=='Não definida'?'Outros':/^1 (TURNO|TUR)/.test(normalizedShift)?'1º':/^2 (TURNO|TUR)/.test(normalizedShift)?'2º':/^3 (TURNO|TUR)/.test(normalizedShift)?'3º':'Outros';
+  return {...{shift,included:false,off1:'',off2:'',note:'Planejamento de jornada e folgas ainda não definido.',area},...pick(before||{},planningFields),
+   id,officialEmployeeId:row.id,name:row.full_name,code:row.shift_senior_code||'',schedule:row.shift_description||'',role:row.job_role_name||row.job_title||'',officialShift:row.shift_name||'',coordinatorId:row.coordinator_id||'',coordinatorName:row.coordinator_name||'',coordinatorSource:row.coordinator_source||'',
    active:row.status==='ATIVO',admissionDate:date(row.admission_date),dismissalDate:date(row.termination_date),fixedWednesday:before?.fixedWednesday===true};
  });
  const overrides=employees.flatMap(employee=>(byOfficial.get(employee.officialEmployeeId)?.overrides||[]).map(o=>({...o,id:employee.id})));
@@ -50,6 +51,12 @@ function protect(next,before){
  for(const employee of next.employees){
   const previous=byId.get(employee.id);
   if(!previous||officialFields.some(key=>JSON.stringify(employee[key]??null)!==JSON.stringify(previous[key]??null)))throw fail('Nome, matrícula, vínculo, cargo e horários oficiais são somente leitura. Recarregue o cadastro Beta.',409);
+  const changedBase=JSON.stringify([employee.off1,employee.off2,employee.included,employee.weeklyPattern])!==JSON.stringify([previous.off1,previous.off2,previous.included,previous.weeklyPattern]);
+  if(changedBase&&!employee.restRules?.length&&employee.included&&rules.days.filter(day=>(employee.weeklyPattern?.[day]||(day===employee.off1||day===employee.off2?'F':'T'))==='F').length!==2)throw fail('A regra 5x2 precisa de duas folgas semanais. Edite as duas folgas ou registre a exceção somente nesta data.');
+  for(const rule of employee.restRules||[]){
+   const old=previous.restRules?.find(item=>item.effectiveDate===rule.effectiveDate);
+   if(JSON.stringify(rule)!==JSON.stringify(old)&&rule.included!==false&&rules.days.filter(day=>rules.weeklyStatus(employee,day,rule.effectiveDate)==='F').length!==2)throw fail('A regra 5x2 precisa de duas folgas semanais. Edite as duas folgas ou registre a exceção somente nesta data.');
+  }
   for(const [day,value] of Object.entries(employee.weeklyPattern||{}))if(value==='A'&&previous.weeklyPattern?.[day]!=='A')throw fail('Ausências novas devem ser registradas somente por data, sem recorrência.');
   for(const rule of employee.restRules||[])for(const [day,value] of Object.entries(rule.pattern))if(value==='A'&&rules.weeklyStatus(previous,day,rule.effectiveDate)!=='A')throw fail('Ausências novas não podem virar uma regra semanal.');
  }

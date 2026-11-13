@@ -102,4 +102,19 @@ if(!connectionString){test('PostgreSQL de planejamento: habilite ROSTER_TEST_DAT
   const result=await request('POST','/import-confirm',{previewId:second.data.previewId,unitConfirmed:true});assert.equal(result.status,200);assert.equal(result.data.state.employees.find(e=>e.id==='999').included,true);
   const saved=(await db.query('SELECT payload FROM roster_plans')).rows[0].payload;assert.equal(saved.pending.length,0);assert.equal((await db.query('SELECT COUNT(*)::int n FROM roster_import_archives')).rows[0].n,2);
  });
+ test('coordenação por matrícula prevalece sobre turno, é somente leitura e isolada por filial',async()=>{
+  const shift=(await db.query('SELECT shift_id FROM employees WHERE id=$1',[fixture.employee])).rows[0].shift_id;
+  const direct=randomUUID(),standard=randomUUID();
+  const config={version:1,coordinators:[{id:direct,name:'Coordenador direto',type:'EXTERNAL',active:true},{id:standard,name:'Coordenador do turno',type:'PJ',active:true}],employeeCoordinators:{[fixture.employee]:{id:direct}},shiftCoordinators:{[shift]:{id:standard}}};
+  await db.query("INSERT INTO system_settings(company_id,branch_id,setting_key,setting_value) VALUES($1,$2,'occurrences-management',$3)",[fixture.c,fixture.a,JSON.stringify(config)]);
+  const before=await snapshot(),current=(await request('GET','/state')).data;
+  assert.equal(current.state.employees[0].coordinatorName,'Coordenador direto');assert.equal(current.state.employees[0].coordinatorSource,'COLABORADOR');
+  const forged=structuredClone(current);forged.state.employees[0].coordinatorName='Intruso';assert.equal((await request('PUT','/state',forged)).status,409);
+  delete config.employeeCoordinators[fixture.employee];await db.query("UPDATE system_settings SET setting_value=$1 WHERE company_id=$2 AND branch_id=$3 AND setting_key='occurrences-management'",[JSON.stringify(config),fixture.c,fixture.a]);
+  assert.equal((await request('PUT','/state',current)).status,409);
+  const inherited=(await request('GET','/state')).data;assert.equal(inherited.state.employees[0].coordinatorName,'Coordenador do turno');assert.equal(inherited.state.employees[0].coordinatorSource,'TURNO');
+  const another=await request('GET','/state',null,{...fixture.user,role:'ADMIN'},{companyId:fixture.c,branchId:fixture.b});assert.equal(another.data.state.employees[0].coordinatorName,'');
+  assert.equal(await snapshot(),before);assert.equal((await db.query('SELECT COUNT(*)::int total FROM roster_plans')).rows[0].total,0);
+ });
+
 }

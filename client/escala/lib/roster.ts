@@ -3,7 +3,7 @@ import {isApprentice,type Area} from './areas';
 import {isJourney,type Journey} from './journeys';
 export const days=['Seg','Ter','Qua','Qui','Sex','Sab','Dom'];
 export type RestRule={effectiveDate:string;off1:string;off2:string;included?:boolean;pattern:Record<string,'T'|'F'|'A'>};
-export type Employee={officialEmployeeId?:string;fixedWednesday?:boolean;id:string;name:string;code:string;schedule:string;shift:string;included:boolean;off1:string;off2:string;note:string;active:boolean;admissionDate?:string;dismissalDate?:string;journeys?:Journey[];area?:Area;role?:string;leader?:boolean;restRules?:RestRule[];leadershipReviewedAt?:string;weeklyPattern?:Record<string,'T'|'F'|'A'>};
+export type Employee={officialShift?:string;coordinatorId?:string;coordinatorName?:string;coordinatorSource?:string;officialEmployeeId?:string;fixedWednesday?:boolean;id:string;name:string;code:string;schedule:string;shift:string;included:boolean;off1:string;off2:string;note:string;active:boolean;admissionDate?:string;dismissalDate?:string;journeys?:Journey[];area?:Area;role?:string;leader?:boolean;restRules?:RestRule[];leadershipReviewedAt?:string;weeklyPattern?:Record<string,'T'|'F'|'A'>};
 export type Override={id:string;date:string;status:'T'|'F'|'A';reason:string};
 export type State={appliedImports?:string[];employees:Employee[];overrides:Override[];history:{at:string;action:string}[]};
 export function normalizeRoster(s:State):State{return {...s,employees:s.employees.map(e=>isApprentice(e)?{...e,area:'Comercial',included:true,off1:'Qua',off2:days.includes(e.off2)&&e.off2!=='Qua'?e.off2:'Dom',note:e.note==='Revisar horario e folgas'?'Aprendiz: quarta-feira fixa; segunda folga editável.':e.note}:e)};}

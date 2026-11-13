@@ -3,6 +3,7 @@ const rateLimit=require('express-rate-limit');
 const pool=require('../db/pool');
 const {authenticate,applyScope,requirePermission}=require('../middleware/auth');
 const service=require('../services/roster-planning');
+const {resolveCoordinator}=require('../lib/occurrences-management');
 const router=express.Router();
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 router.use(authenticate,applyScope,requirePermission('roster.view'));
@@ -17,8 +18,18 @@ async function unit(req,db=pool,lock=false){
  if(!rows[0])throw service.fail('A filial não pertence à empresa selecionada.',404);
  return {...rows[0],companyId,branchId};
 }
-async function official(db,scope,lock=false){return (await db.query(`SELECT e.id,e.registration,e.full_name,e.status,e.admission_date,e.termination_date,e.updated_at,e.job_title,j.name job_role_name,s.name shift_name,s.senior_code shift_senior_code,s.description shift_description
- FROM employees e LEFT JOIN job_roles j ON j.id=e.job_role_id LEFT JOIN shifts s ON s.id=e.shift_id WHERE e.company_id=$1 AND e.branch_id=$2 ORDER BY e.id${lock?' FOR SHARE OF e':''}`,[scope.companyId,scope.branchId])).rows;}
+async function official(db,scope,lock=false){
+ const rows=(await db.query(`SELECT e.id,e.registration,e.full_name,e.status,e.admission_date,e.termination_date,e.updated_at,e.job_title,e.shift_id,j.name job_role_name,s.name shift_name,s.senior_code shift_senior_code,s.description shift_description
+ FROM employees e LEFT JOIN job_roles j ON j.id=e.job_role_id LEFT JOIN shifts s ON s.id=e.shift_id WHERE e.company_id=$1 AND e.branch_id=$2 ORDER BY e.id${lock?' FOR SHARE OF e':''}`,[scope.companyId,scope.branchId])).rows;
+ const settings=await db.query(`SELECT setting_value FROM system_settings WHERE company_id=$1 AND branch_id=$2 AND setting_key='occurrences-management' ORDER BY updated_at DESC,id DESC LIMIT 1${lock?' FOR SHARE':''}`,[scope.companyId,scope.branchId]);
+ const management=settings.rows[0]?.setting_value||{};
+ return rows.map(row=>{
+  const direct=resolveCoordinator(management,management.employeeCoordinators?.[row.id],rows);
+  const byShift=resolveCoordinator(management,management.shiftCoordinators?.[row.shift_id],rows);
+  const coordinator=direct||byShift;
+  return {...row,coordinator_id:coordinator?.id||'',coordinator_name:coordinator?.name||'',coordinator_source:direct?'COLABORADOR':byShift?'TURNO':''};
+ });
+}
 async function plan(db,scope,lock=false){return (await db.query(`SELECT * FROM roster_plans WHERE company_id=$1 AND branch_id=$2${lock?' FOR UPDATE':''}`,[scope.companyId,scope.branchId])).rows[0]||{version:0,payload:{}};}
 async function audit(db,req,scope,id,before,after,action,summary){
  await db.query(`INSERT INTO audit_logs(user_id,action,entity,entity_id,details,ip_address) VALUES($1,$2,'roster_plans',$3,$4,$5)`,[req.user.sub,action,id,JSON.stringify({companyId:scope.companyId,branchId:scope.branchId,summary,changes:service.changes(before,after)}),req.ip||null]);

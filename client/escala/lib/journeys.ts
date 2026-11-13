@@ -1,5 +1,5 @@
 export type Journey={hours:44|42|40;option:1|2|3;start:string;breakAfter:number;breakMinutes:number;effectiveDate:string};
-export const optionLabels={1:'Horário atual',2:'Entrada antecipada',3:'Entrada posterior'};
+export const optionLabels={1:'Mesma entrada da Senior',2:'Entrada antecipada',3:'Entrada posterior'};
 export function clockMinutes(s:string){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(s))return NaN;const [h,m]=s.split(':').map(Number);return h*60+m;}
 export function clock(n:number){const t=((n%1440)+1440)%1440;return `${Math.floor(t/60).toString().padStart(2,'0')}:${(t%60).toString().padStart(2,'0')}`;}
 export function duration(n:number){return `${Math.floor(n/60)}h${n%60?String(n%60).padStart(2,'0'):''}`;}

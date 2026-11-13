@@ -16,7 +16,7 @@ for(let index=0;index<sections.length;index++){
  const section=sections[index];if(index)doc.addPage();const body:RowInput[]=[];
  for(const schedule of sectionSchedules(section.employees,dates))body.push([{content:'Escala e horário do turno: '+schedule.replaceAll('\n',' | '),colSpan:dates.length+3,styles:{fillColor:[237,244,253],textColor:[38,68,105],halign:'left',fontSize:8,cellPadding:6}}]);
  for(const group of section.groups){
-  body.push([{content:`${group.label} | ${group.rows.length} colaborador(es)`,colSpan:dates.length+3,styles:{fillColor:[214,225,239],textColor:[33,64,98],fontStyle:'bold',fontSize:9,cellPadding:6}}]);
+  body.push([{content:`Coordenador: ${group.rows[0]?.employee.coordinatorName||'Sem coordenador vinculado'} | ${group.label} | ${group.rows.length} colaborador(es)`,colSpan:dates.length+3,styles:{fillColor:[214,225,239],textColor:[33,64,98],fontStyle:'bold',fontSize:9,cellPadding:6}}]);
   for(const r of group.rows){const e=r.employee;
    const days=dates.map(d=>{const value=status(e,d,state);const primary=['Seg','Ter','Qua','Qui','Sex','Sab','Dom'][(d.getDay()+6)%7]===primaryRestDay(e,key(d));return {content:value,styles:{fillColor:(value==='F'?(primary?[254,218,220]:[216,231,255]):value==='A'?[255,239,184]:[255,255,255]) as [number,number,number],textColor:(value==='F'?(primary?[170,29,39]:[27,78,166]):[38,57,80]) as [number,number,number],fontStyle:value==='T'?'normal' as const:'bold' as const}};});
    body.push([e.id,`${e.name}${isLeader(e)?' ['+leadershipLabel(e).toLocaleUpperCase('pt-BR')+']':''}\n${employeeArea(e)} | ${e.role||'Cargo não informado'}${!planned(e,options.referenceDate||key(dates[0]))?' | FOLGAS A DEFINIR':''}`,...days,String(r.total)]);

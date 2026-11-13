@@ -152,3 +152,13 @@ body{background:var(--roster-bg)}
 .beta-roster .monthControl>button{padding:0;flex-shrink:0;min-width:32px;min-height:36px;color:var(--roster-text)}
 .beta-roster .monthControl>button svg{width:17px;height:17px;flex-shrink:0}
 .beta-roster .pageTitle .actions button.primary{background:var(--roster-primary);border-color:var(--roster-primary);color:#fff;box-shadow:none}
+.beta-roster .coordinatorDivider td{padding:10px 15px;text-align:left;background:var(--roster-soft);border-bottom:1px solid var(--roster-line);font-size:12px}
+.beta-roster .coordinatorDivider strong{margin-right:14px}.beta-roster .coordinatorDivider span{color:var(--roster-muted)}
+.beta-roster .calendar td.person{height:auto;min-height:62px}
+.beta-roster .calendar .define-rest{font-size:11px;padding:3px 7px;min-height:25px;margin-top:5px;color:var(--roster-primary)}
+.beta-roster .calendar .day.REV:not(:disabled){background:var(--roster-soft);color:var(--roster-primary);border-style:dashed;font-size:17px;font-weight:700}
+.beta-roster .tools>select[aria-label="Filtrar por coordenador"]{max-width:245px}
+:host([data-theme="dark"]) .beta-roster .calendar :is(.define-rest,.day.REV:not(:disabled)){color:var(--roster-accent)}
+@media(max-width:800px){.beta-roster .tools>select[aria-label="Filtrar por coordenador"]{width:100%;max-width:none}}
+.planning-guide{padding:15px 18px;margin-bottom:16px;border:1px solid var(--roster-line);border-radius:12px;background:var(--roster-soft)}
+.planning-guide>summary{font-weight:700;cursor:pointer}.planning-guide p,.planning-guide li{font-size:13px;line-height:1.6}.planning-guide label{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}

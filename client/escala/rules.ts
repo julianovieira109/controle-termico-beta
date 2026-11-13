@@ -5,3 +5,6 @@ export {undoJourneyChange} from './lib/journey-transactions';
 export {hourlyCoverage} from './lib/leadership-hours';
 export {leaderCoverage,staggerLeaders,isLeader} from './lib/leadership';
 export {displayedCalendarDays} from './lib/calendar-view';
+
+export {groupRoster,sectionOf} from './lib/roster-groups';
+export {referenceSchedule,specialSchedule,referenceProposal} from './lib/planning-reference';

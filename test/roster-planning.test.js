@@ -61,3 +61,31 @@ test('jornadas 44/42/40 e passagem da meia-noite mantêm horas de relógio',()=>
  for(const hours of [44,42,40]){const journey={hours,option:1,start:'22:00',breakAfter:120,breakMinutes:60,effectiveDate:'2026-11-01'};assert.equal(rules.isJourney(journey),true);const result=rules.journeyTimes(journey);assert.equal(result.daily,hours*12);assert.ok(result.labels.at(-1).includes('(+1 dia)'));}
  const week=rules.displayedCalendarDays('2026-11','week','2026-11-13');assert.equal(week.length,7);
 });
+test('classifica Comercial pelo turno oficial e protege coordenador/turno de referência',()=>{
+ const employee=service.project([official({shift_name:'1º Turno Comercial',coordinator_id:'coordinator-a',coordinator_name:'Coordenador A',coordinator_source:'TURNO'})]).state.employees[0];
+ assert.equal(employee.area,'Comercial');assert.equal(employee.shift,'Outros');assert.equal(employee.coordinatorName,'Coordenador A');
+ const before={employees:[employee],overrides:[],history:[]};
+ for(const key of ['officialShift','coordinatorId','coordinatorName','coordinatorSource']){const forged=structuredClone(before);forged.employees[0][key]='alterado';assert.throws(()=>service.protect(forged,before),/somente leitura/);}
+ assert.notEqual(service.officialVersion([official({coordinator_id:'a'})]),service.officialVersion([official({coordinator_id:'b'})]));
+});
+test('separa equipes por turno, coordenador e grupo de folgas sem mesclar responsáveis',()=>{
+ const first=source({coordinatorId:'a',coordinatorName:'Coordenador A'}),second=source({id:'99',name:'BOB',coordinatorId:'b',coordinatorName:'Coordenador B'}),third=source({id:'98',name:'CAROL'});
+ const grouped=rules.groupRoster([first,second,third],'2026-11-13');assert.equal(grouped.length,1);assert.equal(grouped[0].groups.length,3);assert.equal(new Set(grouped[0].groups.map(g=>g.coordinatorName)).size,3);
+ assert.equal(rules.sectionOf(source({area:'ADM'})),'ADM');
+});
+test('proposta usa entrada e intervalo reais da Senior, incluindo terceiro turno às 20h',()=>{
+ const employee=source({schedule:'20:00-00:00-01:00-06:00',role:'OPERADOR'});
+ assert.deepEqual(rules.referenceSchedule(employee),{start:'20:00',breakAfter:240,breakMinutes:60,daily:540});
+ const proposal=rules.referenceProposal(employee,40,'2026-12-01');assert.equal(proposal.start,'20:00');assert.equal(rules.journeyTimes(proposal).labels[3],'05:00 (+1 dia)');assert.equal(employee.schedule,'20:00-00:00-01:00-06:00');
+ assert.equal(rules.referenceProposal(source({schedule:'06:00-12:00-13:00-14:20'}),44,'2026-12-01').breakAfter,360);
+ assert.equal(rules.referenceProposal(source({schedule:'08:00-12PRE13:30PRE18:00'}),40,'2026-12-01'),undefined);
+ assert.equal(rules.referenceProposal(source({schedule:'14:00-18:00',role:'APRENDIZ'}),40,'2026-12-01'),undefined);
+ assert.equal(rules.specialSchedule(source({schedule:'08:00-12:00-12:15-14:15'})),true);
+});
+test('regra nova de 5x2 exige duas folgas, preserva legado e permite exceção por data',()=>{
+ const before={employees:[source({officialEmployeeId:'employee-a'})],overrides:[],history:[]};
+ const three=structuredClone(before);three.employees[0].weeklyPattern={Sex:'F'};assert.throws(()=>service.protect(three,before),/duas folgas semanais/);
+ const one=structuredClone(before);one.employees[0].weeklyPattern={Seg:'T'};assert.throws(()=>service.protect(one,before),/duas folgas semanais/);
+ const legacy=structuredClone(three);assert.doesNotThrow(()=>service.protect(legacy,legacy));
+ const dated=structuredClone(before);dated.overrides=[{id:'11447',date:'2026-11-13',status:'F',reason:'Exceção desta data'}];assert.equal(service.protect(dated,before).overrides.length,1);
+});
