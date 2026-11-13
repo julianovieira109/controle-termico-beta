@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/workflow-assistant.css?v=1">
-  <link rel="stylesheet" href="/css/roster-module.css?v=1">
+  <link rel="stylesheet" href="/css/roster-module.css?v=2">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.102">
   <link rel="stylesheet" href="/css/imports-center.css?v=1.0.31-beta.88">
@@ -1201,9 +1201,7 @@
     </section>
 
     <section id="roster" class="view">
-      <div class="panel roster-intro"><div><h3>Escala 5x2 · Planejamento operacional</h3><p>Planeje jornadas, folgas e cobertura por empresa e filial. O cadastro oficial do Beta é consultado em leitura; alterações de planejamento não modificam marcações, BH, faltas ou intervalos oficiais Senior.</p></div><button type="button" id="roster-reload" class="secondary">Recarregar unidade e cadastro</button></div>
-      <p class="roster-note">Use os botões de PDF e CSV dentro do módulo para exportar o período e os filtros selecionados. Para trazer o sistema anterior, selecione a unidade e use Migrar backup.</p>
-      <iframe id="roster-frame" title="Planejamento de escalas 5x2" referrerpolicy="same-origin"></iframe>
+      <div id="roster-host" role="region" aria-label="Planejamento de escalas 5x2"></div>
     </section>
     <section id="reports" class="view">
       <div class="panel no-print">
@@ -1575,11 +1573,17 @@
             <div class="manual-body">
               <p>Abra <strong>Menu principal → Escala 5x2</strong>, escolha empresa e filial e clique em <strong>Carregar unidade</strong>. O módulo utiliza seu login e as filiais autorizadas. Consultar exige <strong>roster.view</strong>; salvar ou migrar exige também <strong>roster.manage</strong>. Inicialmente, essas permissões acompanham as de consulta e edição de colaboradores; o administrador pode ajustá-las em <strong>Configurações → Perfis de usuário</strong>. Entre novamente após alterar o acesso.</p>
               <div class="manual-note info"><strong>Senior preservada:</strong> as jornadas, códigos e horários oficiais são somente leitura. O planejamento 5x2 não modifica os turnos do cadastro, o ponto, o BH, as folgas oficiais ou os relatórios existentes da Senior. PDF e CSV gerados nesta área identificam o planejamento e a unidade.</div>
+              <h4>Navegação e aparência</h4>
+              <p>A escala abre na própria página do Beta, com as abas <strong>Escalas e folgas, Jornadas, Liderança, Cobertura, Colaboradores, Pendências, Histórico e Importar planejamento</strong>. As cores e o tema acompanham a aparência do sistema. No celular, deslize a faixa de abas para encontrar as outras opções; a tabela mantém rolagem própria para consultar os dias. No computador, a visualização semanal aproveita a largura da página.</p>
+              <p>Após escolher empresa e filial, use <strong>Carregar unidade</strong>. Para consultar novamente os cadastros da mesma unidade, use <strong>Atualizar unidade</strong>. A tela mostra carregamento, gravação, falha ou a data da última gravação; <strong>Dados carregados — planejamento não salvo</strong> indica uma unidade sem planejamento gravado, não uma desconexão.</p>
               <h4>Planejar e consultar</h4>
               <p>Os colaboradores vêm do cadastro Beta, sem criar pessoas nem aplicar folgas ou jornadas automaticamente. Inclua no planejamento quem deve participar e defina turno planejado, folgas, exceções por data, área e jornadas. As telas permitem conferir semanas e meses, turnos, jornadas de 44/42/40 horas, liderança e cobertura por horário, inclusive noturna. Horários ausentes permanecem pendentes: não representam cobertura confirmada. Alterações futuras e o desfazer de jornada seguem as datas escolhidas.</p>
               <p>Nome, matrícula, cargo, situação e horário oficial devem ser corrigidos em <strong>Colaboradores</strong> ou nas importações oficiais do Beta. O vínculo usa o identificador do cadastro; uma readmissão não recebe automaticamente o planejamento de outro vínculo. Matrículas duplicadas ou inválidas precisam de revisão.</p>
+              <p>Em <strong>Escalas e folgas</strong>, abra <strong>Horários e aplicação de jornadas</strong> para conferir horários e aplicar jornadas planejadas. <strong>Exportar CSV</strong> e o botão de PDF usam o período e os filtros selecionados. Em <strong>Colaboradores → Abrir cadastro no Beta</strong>, o sistema abre o cadastro oficial, conforme a permissão de consulta; para ver mudanças na escala, retorne e atualize a unidade.</p>
+              <h4>Conferir pendências</h4>
+              <p>A aba <strong>Pendências</strong> separa ocorrências de <strong>Cadastro e folgas, Jornadas e Liderança</strong>, com filtros e ações para resolver cada tipo. Uma pessoa pode ter mais de uma ocorrência: o total de ocorrências não é o total de colaboradores. Pendências de vínculo e importação aparecem separadas, acima das abas. Uma unidade sem planejamento mostra uma orientação para configurar jornadas/folgas ou importar o arquivo anterior; o sistema não inventa esses dados.</p>
               <h4>Migrar o backup da escala anterior</h4>
-              <ol><li>Na unidade correta, abra <strong>Importações</strong> e selecione o JSON de planejamento, com até <strong>3 MB</strong>.</li><li>Confira correspondências por matrícula e nome, divergências e pendências. Ler a prévia não aplica o planejamento.</li><li>Confirme a empresa e filial. Quando houver pendências, a aplicação parcial exige uma seleção explícita: somente as correspondências serão aplicadas; os demais registros permanecem preservados para revisão, sem criar colaboradores.</li><li>Depois de regularizar o cadastro no Beta, use a opção de conferir pendências para gerar outra prévia. A prévia vale por <strong>30 minutos</strong>, para o usuário e unidade que a criaram.</li></ol>
+              <ol><li>Na unidade correta, abra a aba <strong>Importar planejamento</strong>, clique em <strong>Conferir arquivo JSON</strong> e selecione o JSON de planejamento, com até <strong>3 MB</strong>.</li><li>Confira correspondências por matrícula e nome, divergências e pendências. Ler a prévia não aplica o planejamento.</li><li>Confirme a empresa e filial. Quando houver pendências, a aplicação parcial exige uma seleção explícita: somente as correspondências serão aplicadas; os demais registros permanecem preservados para revisão, sem criar colaboradores.</li><li>Depois de regularizar o cadastro no Beta, use a opção de conferir pendências para gerar outra prévia. A prévia vale por <strong>30 minutos</strong>, para o usuário e unidade que a criaram.</li></ol>
               <p>O arquivo de origem é arquivado na confirmação, incluindo referências históricas, sem substituir os campos oficiais. São aceitos até 2.000 colaboradores e 20.000 exceções por arquivo. Cadastros de aprendizes e regras específicas somente são vinculados quando a correspondência é conferida.</p>
               <h4>Salvar, atualizar e guardar cópia</h4>
               <p>Se outro usuário alterar o planejamento ou o cadastro oficial após sua leitura, a gravação será bloqueada: recarregue a unidade e refaça a edição. A atualização e sua auditoria são confirmadas juntas. Consultas não inicializam uma escala de exemplo nem gravam dados.</p>
@@ -2927,7 +2931,7 @@
     <form id="wf-form" class="wf-form"><label for="wf-input">Seu pedido ou resposta</label><div class="wf-entry"><input id="wf-input" maxlength="1000" autocomplete="off" placeholder="Ex.: BH do João ou cadastrar colaborador" required><button id="wf-send" type="submit">Enviar</button></div><small>Escreva “ajuda” para ver sugestões ou “cancelar” para encerrar o pedido. Nenhuma alteração é gravada sem confirmação.</small></form>
   </dialog>
   <script src="/js/core.js?v=1.0.31-beta.90"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.115"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.116"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -2945,6 +2949,6 @@
   <script src="/js/occurrences-control.js?v=1.0.31-beta.104"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
-  <script src="/js/roster-module.js?v=1"></script>
+  <script src="/js/roster-module.js?v=2"></script>
 </body>
 </html>

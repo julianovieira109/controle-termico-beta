@@ -1,2 +1,154 @@
-.beta-unit{position:relative;z-index:2;display:flex;align-items:end;gap:16px;flex-wrap:wrap;padding:18px 24px;background:#eaf4ee;border-bottom:1px solid #b9d2c3;color:#173e30}.beta-unit>div{flex:1 1 340px}.beta-unit p{margin:5px 0;font-size:12px;line-height:1.5}.beta-unit label{display:flex;flex-direction:column;gap:5px;font-size:12px;min-width:180px}.beta-unit select{max-width:320px;padding:8px}.beta-initial{padding:24px}.beta-roster .app{min-height:900px}.beta-roster .app>aside{position:sticky;top:0;height:100vh}.beta-roster .app>main{min-width:0}.beta-pending{padding:16px 24px;background:#fff4d8;color:#79510e}.beta-pending ul{max-height:220px;overflow:auto}.beta-import{padding:28px}.beta-import p{max-width:850px;line-height:1.7}.beta-preview-backdrop{position:fixed;inset:0;background:#122d4190;z-index:999;display:grid;place-items:center;padding:20px}.beta-preview{background:#fff;border-radius:16px;max-width:1050px;width:100%;max-height:92vh;overflow:auto;padding:24px;color:#1e293b}.beta-preview-table{max-height:45vh;overflow:auto}.beta-preview table{border-collapse:collapse;width:100%;font-size:12px}.beta-preview th,.beta-preview td{padding:8px;border:1px solid #cbd5e1;text-align:left}.beta-preview label{display:block;margin:16px 0}.beta-preview label input{width:auto;display:inline;margin-right:8px}.beta-preview>div:last-child{display:flex;gap:12px;justify-content:flex-end}.beta-readonly .modalActions .primary,.beta-readonly .backups>button:nth-child(2){display:none}.beta-unit button:disabled{opacity:.5;cursor:wait}input[readonly]{background:#e9eef3;color:#526477}
-@media(max-width:850px){.beta-unit{padding:14px}.beta-unit label{flex:1}.beta-roster .app{display:block}.beta-roster .app>aside{height:auto;position:static}.beta-roster .app>aside nav{display:flex;overflow:auto}.beta-roster .app>aside nav button{white-space:nowrap}.beta-roster .app>aside .workspace,.beta-roster .sidebarInfo,.beta-roster .sidebarBottom{display:none}}
+/* Native Beta surface. The shadow root isolates legacy planner selectors. */
+:root{
+ --roster-primary:var(--p,#154c79);--roster-dark:var(--d,#0e3554);
+ --roster-bg:var(--bg,#f3f6f9);--roster-text:var(--text,#1f2937);
+ --roster-muted:var(--muted,#6b7280);--roster-line:var(--line,#d9e0e7);
+ --roster-surface:#fff;--roster-soft:#f5f8fb;
+ display:block;color:var(--roster-text);font-family:Arial,sans-serif;font-size:14px;background:transparent;
+}
+:host([data-theme="dark"]){--roster-bg:#13242f;--roster-text:#eef5f8;--roster-muted:#b7c4ce;--roster-line:#35505f;--roster-surface:#172935;--roster-soft:#203746}
+body{background:var(--roster-bg)}
+.beta-roster{font-family:Arial,sans-serif;color:var(--roster-text);min-width:0}
+.beta-roster .app{display:block;min-height:0;background:transparent}
+.beta-roster .app>main{margin:0;width:100%;min-width:0;background:transparent}
+.beta-roster button,.beta-roster input,.beta-roster select,.beta-roster textarea{font-family:inherit;font-size:13px;border-radius:9px;color:var(--roster-text);background:var(--roster-surface);border-color:var(--roster-line)}
+.beta-roster button{min-height:38px;padding:9px 13px;font-weight:700}
+.beta-roster button:hover{background:var(--roster-soft)}
+.beta-roster button.primary{background:var(--roster-primary);color:#fff;border-color:var(--roster-primary);box-shadow:none}
+.beta-roster button:focus-visible,.beta-roster input:focus-visible,.beta-roster select:focus-visible,.beta-roster textarea:focus-visible{outline:3px solid var(--roster-primary);outline-offset:3px}
+.beta-roster button:disabled{cursor:not-allowed;opacity:.55}
+.beta-roster :is(h1,h2,h3,strong){color:inherit}
+.beta-roster h1{font-size:23px;margin:0 0 5px;letter-spacing:normal}
+.beta-roster h2{font-size:20px}
+.beta-roster :is(p,.hint,.leaderHint,.pageTitle p,.pending-explainer){color:var(--roster-muted);line-height:1.5}
+.beta-unit{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:16px 18px;background:var(--roster-surface);border:1px solid var(--roster-line);border-radius:14px}
+.beta-unit label{display:grid;gap:6px;flex:1 1 230px;min-width:0;font-size:13px;font-weight:700}
+.beta-unit select{width:100%;max-width:none;padding:10px;min-height:40px}
+.beta-unit>button{background:var(--roster-primary);color:#fff;border-color:var(--roster-primary);min-height:40px}
+.beta-unit>button:hover{background:var(--roster-dark)}
+.beta-unit>strong{flex-basis:100%;font-size:12px;color:var(--roster-muted)}
+.beta-safety{margin:9px 2px 15px;font-size:12px;color:var(--roster-muted)}
+.beta-initial,.beta-welcome{padding:24px;border-radius:14px;background:var(--roster-surface);border:1px solid var(--roster-line)}
+.beta-welcome h2{margin-top:0}.beta-welcome p{margin-bottom:0}
+.beta-roster .roster-tabs{display:flex;flex-wrap:wrap;gap:5px;padding:8px;background:var(--roster-surface);border:1px solid var(--roster-line);border-radius:13px;margin:0}
+.roster-tabs button{border:0;background:transparent;white-space:nowrap;flex:0 0 auto}
+.beta-roster .roster-tabs button.selected{background:var(--roster-primary);color:#fff}
+.beta-roster .roster-status{height:auto;min-height:34px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 2px;background:transparent;border:0;color:var(--roster-muted);font-size:12px}
+.beta-roster .saved{font-family:inherit;font-size:12px;border:0;border-radius:0;background:transparent;padding:0;color:#087640}
+.beta-roster .syncError{color:#b42318}
+.beta-roster .content{padding:5px 0 0;max-width:none;width:100%}
+.beta-roster .pageTitle{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin:5px 0 14px}
+.beta-roster .pageTitle .eyebrow{display:none}.beta-roster .pageTitle p{font-size:13px;margin:4px 0 0}
+.beta-roster .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start}
+.beta-roster .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
+.beta-roster .metric{min-height:100px;padding:13px 15px;border:1px solid var(--roster-line);border-radius:12px;background:var(--roster-surface);box-shadow:none;border-left:1px solid var(--roster-line);text-align:left}
+.beta-roster .metric>strong{font-size:27px;margin:8px 0 4px;color:var(--roster-dark)}
+.beta-roster .metric span,.beta-roster .metric small{font-size:12px;color:var(--roster-muted)}
+.beta-roster .metric>svg{color:var(--roster-primary)}
+.beta-roster .metric.warning{background:#fff8e8;border-color:#e5c990}.beta-roster .metric.warning>strong{color:#946010}
+.beta-roster .metric em{display:none}
+.roster-setup{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 16px;margin:0 0 16px;border:1px solid #b7d3e5;border-radius:12px;background:var(--roster-soft)}
+.roster-setup strong{font-size:14px}.roster-setup p{margin:5px 0 0;font-size:13px}.roster-setup button{flex-shrink:0}
+.beta-roster .panel{border:1px solid var(--roster-line);border-radius:14px;background:var(--roster-surface);box-shadow:none;overflow:hidden}
+.beta-roster .panelHeading{padding:15px 18px;background:var(--roster-surface);border-color:var(--roster-line)}
+.beta-roster .panelHeading strong{font-size:15px;color:var(--roster-text)}.beta-roster .sectionEyebrow{display:none}
+.beta-roster .periodBadge{background:var(--roster-soft);border-color:var(--roster-line);color:var(--roster-primary)}
+.beta-roster .currentSchedules{padding:12px 18px;background:var(--roster-soft)}
+.beta-roster :is(.toolbar,.subtoolbar,.areaTabs){padding-left:18px;padding-right:18px;background:var(--roster-surface);border-color:var(--roster-line)}
+.beta-roster .toolbar{flex-wrap:wrap;gap:12px}.beta-roster .tools{flex-wrap:wrap;gap:8px}
+.beta-roster .areaTabs button.chosen{color:var(--roster-primary);box-shadow:inset 0 -2px var(--roster-primary);background:var(--roster-soft)}
+.beta-roster .calendarScroll{max-height:min(65vh,650px);overflow:auto;overscroll-behavior-x:contain;scrollbar-gutter:stable}
+.beta-roster .calendar{font-size:12px}.beta-roster .calendar th.personHead{font-size:12px}
+.beta-roster .calendar :is(td.person,th.personHead){width:290px;min-width:290px}
+.beta-roster .calendar td.person{height:62px;padding:10px 13px}
+.beta-roster .calendar th{height:68px;color:var(--roster-muted);background:var(--roster-soft);border-color:var(--roster-line)}
+.beta-roster .calendar :is(th small,td.person small){font-size:11px}
+.beta-roster .calendar td{background:var(--roster-surface);border-color:var(--roster-line)}
+.beta-roster .calendar .sticky{background:var(--roster-surface)}
+.beta-roster .calendar .nameButton{font-size:12px;min-height:0;padding:0;border-radius:3px;line-height:1.4;color:var(--roster-text);white-space:normal;text-align:left}
+.beta-roster .calendar .miniAvatar{display:none}
+.beta-roster .calendar .day{min-height:36px;min-width:32px;padding:5px;font-size:12px;box-shadow:none}
+.beta-roster .calendar.weekView{min-width:760px;width:100%;table-layout:fixed}
+.beta-roster .calendar.weekView :is(td.person,th.personHead){width:270px;min-width:270px}
+.beta-roster .calendar.weekView td:not(:first-child){min-width:0}.beta-roster .calendar.weekView .day{width:100%;min-width:0;max-width:62px}
+.beta-roster .calendar .turnDivider td{background:var(--roster-dark);color:#fff}
+.beta-roster .calendar .offDivider td{background:var(--roster-soft);color:var(--roster-text)}
+.beta-roster .dataScroll,.beta-roster .pendingWorkspace{overflow:auto}
+.beta-roster .dataTable{font-size:13px;color:var(--roster-text)}
+.beta-roster .dataTable th{font-size:12px;background:var(--roster-soft);color:var(--roster-muted)}
+.beta-roster .dataTable td{border-color:var(--roster-line)}
+.beta-roster .tableFoot{font-size:12px;background:var(--roster-soft);color:var(--roster-muted);padding:12px 16px;gap:8px;flex-wrap:wrap}
+.pending-explainer{font-size:13px}.pending-filters{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.beta-roster .pending-filters button[aria-pressed="true"]{background:var(--roster-primary);color:#fff}
+.pending-filters span{font-size:12px;opacity:.85}
+.beta-pending{padding:14px 16px;background:#fff4d8;color:#79510e;border:1px solid #e5c990;border-radius:12px;margin-bottom:14px}
+.beta-pending summary{cursor:pointer;font-weight:700}.beta-pending ul{max-height:220px;overflow:auto}.beta-pending p{color:inherit}
+.beta-import{padding:22px}.beta-import p{max-width:850px;line-height:1.6}.beta-import h2{margin-top:0}
+.beta-roster .below{gap:12px;margin-top:16px}.beta-roster .note{background:var(--roster-soft);border-color:var(--roster-line)}
+.beta-roster .backups{display:flex;flex-wrap:wrap;gap:9px;align-items:center}.beta-roster .backups small{flex:1 1 320px;font-size:12px;color:var(--roster-muted)}
+.beta-roster footer{font-size:12px;color:var(--roster-muted);gap:8px;flex-wrap:wrap}
+.beta-roster .modalBackdrop,.beta-preview-backdrop{position:fixed;inset:0;background:#102c4273;z-index:1500;display:grid;place-items:center;padding:20px}
+.beta-roster .modal,.beta-preview{color:var(--roster-text);background:var(--roster-surface);border:1px solid var(--roster-line);border-radius:16px;max-height:90dvh;overflow:auto}
+.beta-preview{max-width:1050px;width:100%;padding:24px}
+.beta-preview-table{max-height:42vh;overflow:auto}.beta-preview table{border-collapse:collapse;width:100%;font-size:13px}
+.beta-preview th,.beta-preview td{padding:9px;border:1px solid var(--roster-line);text-align:left}
+.beta-preview label{display:flex;align-items:flex-start;gap:8px;margin:16px 0;line-height:1.5}.beta-preview label input{width:auto;display:inline;margin-top:4px}
+.beta-preview>div:last-child{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.beta-roster .modal .formGrid{min-width:0}.beta-roster .modal label{color:var(--roster-text);font-size:13px}
+.beta-roster .toast{position:fixed;z-index:1600;bottom:24px;right:24px;max-width:calc(100vw - 48px)}
+.beta-readonly .modalActions .primary,.beta-readonly .backups>button:nth-child(3){display:none}
+.beta-roster input[readonly]{background:var(--roster-soft);color:var(--roster-muted)}
+:host([data-theme="dark"]) .metric.warning,:host([data-theme="dark"]) .beta-pending{background:#3b3224;color:#f4d7a4}
+:host([data-theme="dark"]) .metric>strong{color:#dcecf5}
+@media(max-width:800px){
+ .beta-unit{padding:14px}.beta-unit label{flex-basis:180px}.beta-unit>button{flex:0 0 auto}
+ .beta-roster .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .beta-roster .roster-tabs{flex-wrap:nowrap;overflow-x:auto;padding:7px;scrollbar-width:thin}
+ .beta-roster .roster-tabs button{min-height:40px}.roster-tabs button svg{display:none}
+ .beta-roster .pageTitle{align-items:flex-start}.beta-roster .pageTitle .actions{width:100%}
+ .beta-roster .pageTitle .actions button{flex:1 1 150px}
+ .beta-roster .toolbar,.beta-roster .subtoolbar{padding:12px}
+ .beta-roster .tools{width:100%}.beta-roster .search{flex:1 1 100%;width:100%}
+ .beta-roster .calendar.weekView{min-width:670px}.beta-roster .calendar.weekView :is(td.person,th.personHead){width:200px;min-width:200px}
+ .beta-roster .modalBackdrop,.beta-preview-backdrop{padding:10px}.beta-preview{padding:16px}
+ .beta-roster .journeyPlanner,.beta-roster .leaderPlanner{padding:16px}
+ .beta-roster .roster-status{align-items:flex-start;flex-direction:column}
+}
+@media(max-width:480px){
+ .beta-unit label{flex-basis:100%}.beta-unit>button{width:100%}
+ .beta-roster h1{font-size:21px}.beta-roster .metric{min-height:93px;padding:12px}
+ .beta-roster .panelHeading{padding:12px;gap:8px;flex-wrap:wrap}
+ .beta-roster .modal .formGrid{grid-template-columns:minmax(0,1fr)}
+ .beta-roster .modal .formGrid .wide{grid-column:auto}
+ .beta-roster .periodControls,.beta-roster .periodPicker{max-width:100%;min-width:0}
+ .beta-roster .pendingWorkspace{padding:14px}.beta-import{padding:16px}
+ .beta-roster .calendar :is(td.person,th.personHead){width:200px;min-width:200px}
+ .beta-roster .below{display:block}.beta-roster .backups{margin-top:12px}
+}
+/* Keep full week legible and bulk journey controls available on demand. */
+.beta-roster .roster-tabs button{font-size:12px;padding:9px 10px}
+.roster-journey-tools{border-bottom:1px solid var(--roster-line);background:var(--roster-soft)}
+.roster-journey-tools>summary{padding:12px 18px;cursor:pointer;font-size:13px;font-weight:700;color:var(--roster-primary)}
+.beta-roster .calendar th :is(b,small),.beta-roster .calendar th.personHead{color:var(--roster-text)}
+.beta-roster .calendar th b{font-size:16px}.beta-roster .calendar th small{opacity:.85}
+.beta-roster .calendar td.person small,.beta-roster .calendar .offDivider small{color:var(--roster-muted)}
+.beta-roster .roster-journey-tools label{font-size:12px}
+.beta-roster .calendar .turnDivider button{background:transparent;color:#fff;border:0}
+.beta-roster .calendar .offDivider button{background:transparent;color:var(--roster-text);border:0}
+.beta-roster .modal{width:min(570px,calc(100vw - 32px));max-width:100%;min-width:0}
+.beta-roster .modal :is(input,select,textarea){min-width:0;max-width:100%}
+.beta-roster .modalBackdrop{grid-template-columns:minmax(0,1fr);justify-items:center}
+.beta-roster .beta-unit label{color:var(--roster-text)}
+:host([data-theme="dark"]){--roster-accent:#abd8f5}
+:host([data-theme="dark"]) .beta-roster :is(.roster-journey-tools>summary,.periodBadge,.metric>svg,.areaTabs button.chosen,.leaderBadge){color:var(--roster-accent)!important}
+:host([data-theme="dark"]) .beta-roster .saved{color:#83deb6}
+:host([data-theme="dark"]) .beta-roster .syncError{color:#ffb3ab}
+:host([data-theme="dark"]) .beta-roster :is(.hoursTabs button,.journeyOptions button,.journeyEditor,.journeyTimeline,.journeyTimeline>div:last-child,.leaderProposal,.leaderStats>div,.calendarViewSwitch){background:var(--roster-soft);border-color:var(--roster-line);color:var(--roster-text)}
+:host([data-theme="dark"]) .beta-roster :is(.hoursTabs button.chosen,.journeyOptions button.chosen,.calendarViewSwitch button[aria-pressed="true"]){background:#254963;border-color:var(--roster-accent);color:var(--roster-text);box-shadow:none}
+:host([data-theme="dark"]) .beta-roster :is(.hoursTabs span,.optionNumber,.journeyOptions small,.journeyTimeline small,.journeyEditor p,.journeyControls small,.journeyTeamHead p,.leaderStats small,.leaderActions>span,.leaderProposal>p,.pendingHeading span,.weekCaption){color:var(--roster-muted)}
+:host([data-theme="dark"]) .beta-roster :is(.journeyTimeline strong,.hoursTabs strong,.leaderStats strong,.journeyOptions strong){color:var(--roster-text)}
+:host([data-theme="dark"]) .beta-roster :is(.leaderStats .needsLeader,.leaderCoverage .leaderGap,.leaderCoverage .leaderGap:nth-child(even)){background:#3b3224;border-color:#786144;color:#f4d7a4}
+:host([data-theme="dark"]) .beta-roster .calendar .day.REV{background:#314655;color:#dce7ed;border-color:#597182}
+.beta-roster .monthControl>button{padding:0;flex-shrink:0;min-width:32px;min-height:36px;color:var(--roster-text)}
+.beta-roster .monthControl>button svg{width:17px;height:17px;flex-shrink:0}
+.beta-roster .pageTitle .actions button.primary{background:var(--roster-primary);border-color:var(--roster-primary);color:#fff;box-shadow:none}

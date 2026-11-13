@@ -1,19 +1,25 @@
 import {createRoot} from 'react-dom/client';
 import {useEffect,useState} from 'react';
 import Home from './Home';
-import {apiFetch,readResponse,setUnitContext} from './bridge';
+import {apiFetch,readResponse,setUnitContext,setRosterSurface,rosterSurface,rosterActiveElement} from './bridge';
 import './style.css';
 import './integration.css';
 type Unit={id:string;name?:string;trade_name?:string;company_id?:string};
 type Options={companies:Unit[];branches:Unit[];canEdit:boolean};
 function App(){
+ useEffect(()=>{
+  let overflow:string|null=null;
+  const observe=()=>{const open=Boolean(rosterSurface().querySelector('[role="dialog"]'));if(open&&overflow===null){overflow=document.body.style.overflow;document.body.style.overflow='hidden';}else if(!open&&overflow!==null){document.body.style.overflow=overflow;overflow=null;}};
+  const observer=new MutationObserver(observe);observer.observe(rosterSurface(),{subtree:true,childList:true});observe();
+  return()=>{observer.disconnect();if(overflow!==null)document.body.style.overflow=overflow;};
+ },[]);
  const [options,setOptions]=useState<Options|null>(null),[company,setCompany]=useState(''),[branch,setBranch]=useState(''),[loaded,setLoaded]=useState(''),[error,setError]=useState(''),[saving,setSaving]=useState(false),[preview,setPreview]=useState<any>(null),[unitConfirmed,setUnitConfirmed]=useState(false),[partial,setPartial]=useState(false),[pending,setPending]=useState<any[]>([]),[hasMigrationPending,setHasMigrationPending]=useState(false);
  useEffect(()=>{fetch('/api/escalas-5x2/options',{headers:{Authorization:`Bearer ${sessionStorage.getItem('token')||''}`},cache:'no-store'}).then(readResponse<Options>).then(setOptions).catch(e=>setError(e.message));},[]);
  useEffect(()=>{
-  if(!preview)return;const before=document.activeElement as HTMLElement|null;const panel=document.querySelector<HTMLElement>('.beta-preview');panel?.focus();
+  if(!preview)return;const before=rosterActiveElement();const panel=rosterSurface().querySelector<HTMLElement>('.beta-preview');panel?.focus();
   const keys=(event:KeyboardEvent)=>{
    if(event.key==='Escape'&&!saving)setPreview(null);
-   if(event.key==='Tab'&&panel){const nodes=Array.from(panel.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),a[href]'));const first=nodes[0],last=nodes[nodes.length-1];if(event.shiftKey&&(document.activeElement===first||document.activeElement===panel)){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
+   if(event.key==='Tab'&&panel){const nodes=Array.from(panel.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),a[href]'));const first=nodes[0],last=nodes[nodes.length-1];if(event.shiftKey&&(rosterActiveElement()===first||rosterActiveElement()===panel)){event.preventDefault();last?.focus();}else if(!event.shiftKey&&rosterActiveElement()===last){event.preventDefault();first?.focus();}}
   };
   document.addEventListener('keydown',keys);return()=>{document.removeEventListener('keydown',keys);before?.focus();};
  },[preview,saving]);
@@ -48,16 +54,18 @@ function App(){
   catch(e){setError((e as Error).message);}finally{setSaving(false);}
  }
  return <div className={`beta-roster ${options&&!options.canEdit?'beta-readonly':''}`}>
-  <section className="beta-unit"><div><strong>Escala 5x2 · Planejamento</strong><p>Escalas e horários Senior preservados. Jornadas e folgas da 5x2 são somente planejamento e não alteram os relatórios oficiais, ponto, BH ou intervalos Senior.</p></div>
+  <section className="beta-unit" aria-label="Unidade do planejamento">
    <label>Empresa<select aria-label="Empresa da escala" value={company} disabled={saving} onChange={e=>{setCompany(e.target.value);setBranch('');setLoaded('');setPreview(null);}}><option value="">Selecione a empresa</option>{options?.companies.map(row=><option key={row.id} value={row.id}>{row.trade_name||row.name}</option>)}</select></label>
    <label>Filial<select aria-label="Filial da escala" value={branch} disabled={saving||!company} onChange={e=>{setBranch(e.target.value);setLoaded('');setPreview(null);}}><option value="">Selecione a filial</option>{options?.branches.filter(row=>row.company_id===company).map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
-   <button disabled={saving||!company||!branch} onClick={load}>{saving?'Aguarde…':'Carregar unidade'}</button>
+   <button disabled={saving||!company||!branch} onClick={load}>{saving?'Aguarde…':loaded?'Atualizar unidade':'Carregar unidade'}</button>
    {options&&!options.canEdit&&<strong>Somente consulta — seu perfil não permite editar escalas.</strong>}
   </section>
+  <p className="beta-safety">Planejamento 5x2 separado das escalas, horários e relatórios oficiais da Senior.</p>
+  {!loaded&&options&&<div className="beta-welcome"><h2>Planeje a escala da sua equipe</h2><p>Selecione empresa e filial para consultar colaboradores, organizar jornadas e folgas ou importar o planejamento anterior.</p></div>}
   {error&&<div className="error" role="alert">{error} <a href="/" target="_top">Voltar ao sistema Beta</a></div>}
   {!options&&!error&&<p className="beta-initial">Carregando acessos do usuário…</p>}
   {loaded&&<>
-   {pending.length>0&&<details className="beta-pending"><summary>{pending.length} pendência(s) de vínculo ou migração</summary><p>Os dados de origem ficam preservados para conferência. Nenhuma pessoa não localizada é cadastrada automaticamente. Regularize o cadastro no Beta e confira novamente as pendências de migração.</p><ul>{pending.map((item,index)=><li key={index}>{item.name||item.sourceName||item.id}: {item.reason||item.status}</li>)}</ul>{hasMigrationPending&&options?.canEdit&&<button disabled={saving} onClick={reviewPending}>Conferir pendências novamente</button>}</details>}
+   {pending.length>0&&<details className="beta-pending"><summary>{pending.length} pendência(s) de vínculo / importação</summary><p>Os dados de origem ficam preservados para conferência. Nenhuma pessoa não localizada é cadastrada automaticamente. Regularize o cadastro no Beta e confira novamente as pendências de migração.</p><ul>{pending.map((item,index)=><li key={index}>{item.name||item.sourceName||item.id}: {item.reason||item.status}</li>)}</ul>{hasMigrationPending&&options?.canEdit&&<button disabled={saving} onClick={reviewPending}>Conferir pendências novamente</button>}</details>}
    <Home key={loaded}/>
   </>}
   {preview&&<div className="beta-preview-backdrop"><section className="beta-preview" role="dialog" aria-modal="true" aria-label="Conferir migração do backup" tabIndex={-1}>
@@ -70,4 +78,13 @@ function App(){
   </section></div>}
  </div>;
 }
-createRoot(document.getElementById('root')!).render(<App/>);
+export async function mountRoster(host:HTMLElement,cssUrl:string,signal?:AbortSignal){
+ const css=await fetch(cssUrl,{cache:'no-cache',signal});if(!css.ok)throw Error('Não foi possível carregar a aparência do planejamento.');
+ const styles=await css.text();if(signal?.aborted)throw new DOMException('Carregamento cancelado','AbortError');const shadow=host.shadowRoot||host.attachShadow({mode:'open'});
+ const style=document.createElement('style');style.textContent=styles.replaceAll(':root',':host');
+ const container=document.createElement('div');shadow.replaceChildren(style,container);setRosterSurface(shadow);
+ const root=createRoot(container);root.render(<App/>);
+ return ()=>{root.unmount();shadow.replaceChildren();setRosterSurface(document);};
+}
+const standalone=document.getElementById('root');
+if(standalone)createRoot(standalone).render(<App/>);

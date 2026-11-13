@@ -8,7 +8,7 @@ O módulo lê colaboradores, cargos e horários oficiais da unidade. Nome, matr�
 
 O vínculo utiliza o UUID oficial. Alterar a matrícula preserva o vínculo existente; uma readmissão com novo UUID não recebe automaticamente o planejamento anterior. Registros destacados continuam preservados. Cadastros com matrícula ausente, inválida ou duplicada exigem revisão.
 
-A API exige `roster.view` e, para gravações, `roster.manage`, além do escopo de empresa/filial. A migração inicial de permissões acompanha as permissões de colaboradores sem sobrescrever configurações explícitas. A interface usa o mesmo JWT; sair do sistema limpa o iframe. As permissões são verificadas novamente em cada requisição.
+A API exige `roster.view` e, para gravações, `roster.manage`, além do escopo de empresa/filial. A migração inicial de permissões acompanha as permissões de colaboradores sem sobrescrever configurações explícitas. A interface usa o mesmo JWT; sair do sistema desmonta a interface e limpa seu conteúdo. As permissões são verificadas novamente em cada requisição.
 
 ## Migração conferida
 
@@ -33,3 +33,13 @@ Mudança local, push Git e deploy são etapas diferentes. Confirme `/api/health`
 `npm test` cobre as regras existentes e a proteção do cadastro oficial. Para testes transacionais, defina `ROSTER_TEST_DATABASE_URL` apontando exclusivamente para PostgreSQL local descartável com banco terminado em `_test`; cada execução cria e remove um schema isolado. Os casos cobrem escopo, consulta sem seed, concorrência, adulteração de campos oficiais, confirmação parcial, pendências, arquivo original, auditoria e comparação dos relatórios Senior antes/depois de alterações planejadas.
 
 `tools/audit-backup-restore.js`, com banco local descartável, verifica preservação de origem/pendências e históricos oficiais em backup/restauração, recusa de backup antigo e reset. A validação de navegador cobre seleção de unidade, prévia, confirmação parcial, PDF, alteração de folgas, campos oficiais somente leitura, perfil de consulta e viewport móvel, com dados fictícios.
+
+## Padronização da interface — Beta.94
+
+A área agora monta o React na própria página, em `#roster-host`, sem iframe nem menu lateral secundário. Shadow DOM aberto isola os seletores legados; o estilo compilado converte `:root` em `:host`, herda as variáveis visuais nativas e recebe o tema pelo atributo do host. O manifesto gerado no build informa os nomes com hash dos assets. A montagem é cancelada ou desmontada em logout e mudança de acesso, evitando reapresentar dados de outra sessão. O fallback em `/escalas-5x2/index.html` continua disponível com a mesma API autenticada.
+
+As abas têm navegação por setas/Home/End e painel identificado. Os diálogos usam a área visível do navegador, preservam os campos oficiais somente leitura e liberam a rolagem ao fechar. As ferramentas de jornada da escala ficam em Horários e aplicação de jornadas. As regras de cálculo, datas, importação, confirmações e o backend não mudaram nesta padronização.
+
+Pendências operacionais agora podem ser filtradas por cadastro/folgas, jornada e liderança. O total identifica ocorrências e pessoas/referências; pendências de vínculo/importação são apresentadas à parte. Unidades novas mostram orientação de configuração, sem inicializar dados. O estado de carregamento deixa de depender da existência de uma gravação anterior.
+
+Validação de navegador local com PostgreSQL descartável: integração e migração parcial, PDF real, campos oficiais bloqueados, folgas futuras, isolamento por filial e perfil de consulta; layout semanal sem rolagem horizontal em notebook, abas por teclado, filtros, navegação ao cadastro, tema/cores herdados, celular sem transbordamento da página, diálogos visíveis e desmontagem em logout. Comparar os relatórios e o planejamento antes/depois da navegação, e conferir a versão e assets após o deploy.

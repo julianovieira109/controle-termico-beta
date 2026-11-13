@@ -11,3 +11,5 @@ if(!entry)throw Error('Entrada da escala não encontrada');
 const css=entry[1].cssBundle;
 await writeFile('public/escalas-5x2/index.html',`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Escala 5x2 · Controle Térmico Beta</title>${css?`<link rel="stylesheet" href="/${css.replace(/^public\//,'')}">`:''}</head><body><div id="root"></div><script type="module" src="/${entry[0].replace(/^public\//,'')}"></script></body></html>`);
 console.log('Escala 5x2: regras do servidor e interface compiladas.');
+
+await writeFile('public/escalas-5x2/manifest.json',JSON.stringify({entry:'/'+entry[0].replace(/^public\//,''),css:'/'+css.replace(/^public\//,'')}));

@@ -17,3 +17,9 @@ export async function readResponse<T=any>(response:Response):Promise<T>{
  if(!response.ok)throw Error(result.error||'Não foi possível concluir a operação.');return result;
 }
 export function requestBackupMigration(file:File){window.dispatchEvent(new CustomEvent('escala:migrate-file',{detail:file}));}
+
+let surface:Document|ShadowRoot=document;
+export function setRosterSurface(next:Document|ShadowRoot){surface=next;}
+export function rosterSurface(){return surface;}
+export function rosterActiveElement(){return surface.activeElement as HTMLElement|null;}
+export function openBetaEmployees(){window.dispatchEvent(new Event('escala:open-employees'));}
