@@ -84,6 +84,35 @@ router.get('/options',requirePermission('dashboard.view'),requireOccurrencesAcce
     res.json({employees,companies:companies.rows,branches:branches.rows});
   }catch(error){next(error);}
 });
+router.get('/snapshot',requirePermission('dashboard.view'),requireOccurrencesAccess,async(req,res,next)=>{
+  try{
+    const basis=req.query.basis||'closing';
+    let range;
+    try{range=periodRange(String(req.query.month||''),'month',basis);}catch(error){throw fail(error.message);}
+    const params=[range.start,range.end];let scope=filters(req,'p',params);
+    let employee=null;
+    if(req.query.employeeId){
+      const ep=[];const es=filters(req,'e',ep);ep.push(req.query.employeeId);
+      const result=await pool.query(`SELECT e.id,e.registration,e.company_id,e.branch_id,e.full_name FROM employees e WHERE TRUE ${es} AND e.id=$${ep.length}::uuid`,ep);
+      if(!result.rows.length)throw fail('Colaborador fora do escopo selecionado.',403);
+      employee=result.rows[0];params.push(employee.id);scope+=` AND p.employee_id=$${params.length}::uuid`;
+    }
+    const reportParams=[range.start,range.end];const reportScope=filters(req,'i',reportParams);
+    const [points,reports]=await Promise.all([
+      pool.query(`SELECT p.*,to_char(p.work_date,'YYYY-MM-DD') work_date,e.full_name,e.registration
+        FROM employee_point_days p JOIN employees e ON e.id=p.employee_id
+        WHERE p.work_date BETWEEN $1::date AND $2::date ${scope} ORDER BY p.work_date,e.full_name`,params),
+      pool.query(`SELECT i.*,to_char(i.period_start,'YYYY-MM-DD') period_start,to_char(i.period_end,'YYYY-MM-DD') period_end
+        FROM senior_bh_imports i WHERE i.confirmed_at IS NOT NULL AND i.period_start<=$2::date AND i.period_end>=$1::date ${reportScope}
+        ORDER BY i.confirmed_at DESC,i.id DESC`,reportParams)
+    ]);
+    const available=reports.rows.map(report=>({...report,records:employee
+      ?report.company_id===employee.company_id&&report.branch_id===employee.branch_id
+        ?report.records.filter(row=>registration(row.registration)===registration(employee.registration)):[]
+      :report.records})).filter(report=>report.records.length);
+    res.json({basis,employee,snapshot:compareSnapshot(range,points.rows,available),assistantMode:'RULES'});
+  }catch(error){next(error);}
+});
 router.get('/compare',requirePermission('dashboard.view'),requireOccurrencesAccess,async(req,res,next)=>{
   try{
     const mode=req.query.mode||'month',requestedBasis=req.query.basis||'closing';let a,b;

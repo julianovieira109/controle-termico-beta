@@ -1257,5 +1257,5 @@
 
   global.loadOccurrencesControl=(force=false)=>load(Boolean(force));
   global.invalidateOccurrencesControl=()=>invalidate();
-  global.OccurrencesControl={normalize,number,filterManagementEmployees,currentFilters,buildPrintDocument,printWindowHtml,invalidate,refresh:()=>load(true)};
+  global.OccurrencesControl={normalize,number,filterManagementEmployees,currentFilters,buildPrintDocument,printWindowHtml,invalidate,journeyDayAnalysis,refresh:()=>load(true)};
 })(window);

@@ -703,7 +703,7 @@ function navigate(view){
     sanitizeEmployeeSearch();
     loadEmployees();
   }
-  if(view==="reports")prepareReports();
+  if(view==="reports")return prepareReports();
   if(view==="occurrences" && typeof loadOccurrencesControl==="function")loadOccurrencesControl();
   if(view==="settings")prepareSettingsAccess();
   if(view==="manual")prepareManual();

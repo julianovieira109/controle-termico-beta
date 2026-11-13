@@ -32,6 +32,7 @@ app.use("/api/auth",require("./routes/auth"));
 app.use("/api/dashboard",require("./routes/dashboard"));
 app.use("/api/admin",require("./routes/admin"));
 app.use("/api/employees",require("./routes/employees"));
+app.use("/api/workflow-assistant",require("./routes/workflow-assistant"));
 app.use("/api/imports",require("./routes/imports"));
 app.use("/api/reconciliation",require("./routes/reconciliation"));
 app.use("/api/catalogs",require("./routes/catalogs"));

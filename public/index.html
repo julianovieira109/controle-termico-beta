@@ -37,6 +37,7 @@
   <link rel="stylesheet" href="/css/admin.css?v=1.0.31-beta.87">
   <link rel="stylesheet" href="/css/print.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/help-manual.css?v=1.0.31-beta.17">
+  <link rel="stylesheet" href="/css/workflow-assistant.css?v=1">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.17">
   <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.102">
   <link rel="stylesheet" href="/css/imports-center.css?v=1.0.31-beta.88">
@@ -248,6 +249,7 @@
     <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Recolher menu" title="Recolher menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
     <nav class="sidebar-nav-main" aria-label="Menu principal">
       <span class="sidebar-nav-heading">Menu principal</span>
+      <button type="button" id="workflow-assistant-open" class="sidebar-assistant-link" aria-haspopup="dialog">Assistente do sistema</button>
       <button class="nav-btn active" data-view="dashboard" data-permission="dashboard.view" aria-current="page" title="Painel"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9h13v-9"/><path d="M9.5 19v-5h5v5"/></svg></span><span class="nav-label">Painel</span></button>
       <button class="nav-btn admin-only" data-view="companies" title="Empresas e filiais"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V5h10v15"/><path d="M14 10h6v10"/><path d="M8 9h2M8 13h2M8 17h2M17 14h1M17 17h1"/></svg></span><span class="nav-label">Empresas</span></button>
       <button class="nav-btn admin-only" data-view="users" title="Usuários"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3"/><path d="M4.5 19c.5-3.2 2.3-5 5.5-5 1.4 0 2.5.3 3.4 1"/><path d="M17.5 13.5v6M14.5 16.5h6"/></svg></span><span class="nav-label">Usuários</span></button>
@@ -1390,7 +1392,7 @@
           <strong>Índice rápido</strong>
           <a href="#manual-access">1. Acesso e menu</a><a href="#manual-dashboard" data-help-permission="dashboard.view">2. Painel</a>
           <a href="#manual-companies" data-help-permission="admin">3. Empresas e filiais</a><a href="#manual-users" data-help-permission="admin">4. Usuários e perfis</a>
-          <a href="#manual-employees" data-help-permission="employees.view">5. Colaboradores</a><a href="#manual-import" data-help-permission="imports.manage">6. Importação Senior</a>
+          <a href="#manual-workflow">Assistente do sistema</a><a href="#manual-employees" data-help-permission="employees.view">5. Colaboradores</a><a href="#manual-import" data-help-permission="imports.manage">6. Importação Senior</a>
           <a href="#manual-shifts" data-help-permission="settings.view|imports.manage">7. Turnos</a><a href="#manual-reports" data-help-permission="reports.view">8. Relatórios</a>
           <a href="#manual-settings" data-help-permission="settings.view|calendar.manage">9. Configurações</a><a href="#manual-safety">10. Segurança e suporte</a>
           <small id="manual-profile-scope">O conteúdo é adaptado automaticamente às permissões do perfil.</small>
@@ -1441,6 +1443,20 @@
             </div>
           </details>
 
+          <details class="manual-chapter" id="manual-workflow" data-manual-keywords="assistente comandos sistema pedidos sugestões cadastrar colaborador demissão BH intervalos críticos competência impressão Windows sem API">
+            <summary><span class="manual-number">A</span><span><strong>Assistente do sistema</strong><small>Pedidos guiados com comandos do Controle Térmico</small></span></summary>
+            <div class="manual-body">
+              <p>Abra <strong>Menu principal → Assistente do sistema</strong>. Descreva uma tarefa ou escolha uma sugestão. Exemplos: <strong>cadastrar um colaborador</strong>, <strong>o João saiu hoje</strong>, <strong>BH da matrícula 000011447</strong>, <strong>imprimir repouso térmico de novembro de 2026</strong>, <strong>relação de intervalos</strong> e <strong>quem está mais crítico?</strong>. O assistente reconhece sinônimos, acentos e alguns erros simples nos comandos; nomes e matrículas não são corrigidos automaticamente.</p>
+              <p>Esta versão usa regras locais e fluxos guiados, sem IA externa, sem chave de API e sem perguntas gerais. Pedidos não reconhecidos mostram sugestões; pedidos com mais de uma tarefa pedem uma escolha. Informe os dados que faltarem, selecione empresa e filial e escolha explicitamente a matrícula quando houver homônimos ou mais de um vínculo. Responda <strong>ajuda</strong>, <strong>cancelar</strong> ou use <strong>Novo pedido</strong> para mudar de tarefa. As operações já confirmadas não são desfeitas.</p>
+              <h4>Cadastros e demissões</h4><p>Exigem <code>employees.view</code> e <code>employees.manage</code>. O cadastro pede empresa, filial, nome, matrícula, admissão, cargo e turno. As opções “Sem matrícula”, “Sem data”, “Sem cargo” e “Sem turno” precisam ser escolhidas explicitamente quando aplicáveis. A situação inicial é Ativo, os relatórios herdam a regra do cargo e a folga usa o padrão do turno. Confira os dados e confirme para salvar pelas validações normais do sistema. Cargos bloqueados, vínculos inválidos e matrículas duplicadas continuam sendo recusados.</p>
+              <p>Demissões pedem colaborador/matrícula e data. A data deve existir e não pode ser anterior à admissão. “Hoje” e “ontem” usam o horário de Brasília. A prévia mostra situação e data anteriores e novas; alterar para Ativo, Afastado ou Inativo remove a data de demissão, conforme indicado na conferência. Use <strong>Corrigir dados</strong> para editar a prévia. Cada conferência expira em cinco minutos; cadastro alterado por outra pessoa exige nova conferência. Gravação e auditoria da situação ocorrem na mesma transação. Após falha de conexão, confira o cadastro antes de repetir.</p>
+              <h4>Fichas e impressão</h4><p>Repouso térmico e refeição exigem <code>reports.view</code> e seguem os acessos usados na tela de Relatórios. Informe competência, empresa, filial e colaborador ou escolha explicitamente todos do escopo. O assistente chama a geração e a validação nativas; dados de ponto, feriados, cargo, turno e modo térmico mantêm as regras existentes. Se a geração for bloqueada ou não gerar o tipo pedido, o assistente informa o resultado. Após gerar, clique em <strong>Abrir central de impressão</strong>; o tipo pedido fica selecionado, e a impressão final é feita pelos controles normais do navegador.</p>
+              <h4>BH, intervalos e críticos</h4><p>Exigem os acessos já existentes de <code>dashboard.view</code> e Controle de Ocorrências: Administrador Master ou administrador autorizado para <code>occurrences.view</code>. Esses acessos não são ampliados pelo assistente. BH exige um colaborador, competência e escolha do fechamento gerencial (dia 19 do mês anterior a 18) ou mês calendário. Exibe separadamente valores validados no ponto, créditos/débitos analíticos e saldo sintético na data final, com as fontes. Sem informação não significa zero e saldos não são estimados.</p>
+              <p>A relação de intervalos usa as jornadas trabalhadas e a análise existente de realizado versus previsto; marcações e escalas não interpretáveis ficam pendentes. Para críticos, escolha <strong>Semáforo gerencial</strong> (classificação RED e motivos do sistema, ordenados pela quantidade de motivos, sem nova nota) ou <strong>Intervalos críticos</strong> (diferença absoluta maior que dez minutos, ordenados pela quantidade de dias). Os resultados informam os períodos importados; cobertura parcial não equivale a fechamento mensal. A tela pagina os resultados em cem linhas, e <strong>Imprimir relação completa</strong> inclui todos os registros da consulta.</p>
+              <h4>Outras tarefas e limites</h4><p>Importações, cargos/turnos e feriados/folgas recebem sugestões para abrir as áreas nativas, respeitando suas permissões. A escolha de arquivos e a confirmação de prévias continuam nas telas próprias. Esta versão não automatiza todas as funções administrativas, não executa código ou SQL e não funciona em segundo plano. Os dados da conversa ficam somente na memória da página e são descartados ao sair da conta; fechar a janela mantém o pedido enquanto a página continuar aberta.</p>
+              <h4>Atalho para Windows e aplicação</h4><p>No cabeçalho do assistente, clique em <strong>Atalho Windows</strong> e mova o arquivo .url de Downloads para a Área de Trabalho. Ele abre o próprio sistema com <code>?assistente=1</code> e mostra o assistente após o login. Não contém senha ou token. É necessário publicar esta versão do aplicativo e usar Ctrl+F5; não há migração de banco nem necessidade de reimportar os dados.</p>
+            </div>
+          </details>
           <details class="manual-chapter" id="manual-employees" data-help-permission="employees.view" data-manual-keywords="colaborador cadastro matrícula nome admissão cargo função situação ativo afastado demitido inativo editar excluir filtro">
             <summary><span class="manual-number">5</span><span><strong>Colaboradores</strong><small>Cadastro, pesquisa, atualização, situação e exclusão</small></span></summary>
             <div class="manual-body">
@@ -2876,8 +2892,15 @@
     document.documentElement.classList.remove("visual-loading");
   })();
   </script>
-  <script src="/js/core.js?v=1.0.31-beta.88"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.113"></script>
+  <dialog id="workflow-assistant" class="wf-dialog no-print" aria-labelledby="wf-title">
+    <header class="wf-head"><div><h2 id="wf-title">Assistente do sistema</h2><p>Comandos do Controle Térmico · sem IA externa</p></div><div><button type="button" id="wf-desktop" title="Baixar atalho para a Área de Trabalho">Atalho Windows</button> <button type="button" id="wf-reset" title="Iniciar outro pedido">Novo pedido</button> <button type="button" id="wf-close" aria-label="Fechar assistente">✕</button></div></header>
+    <div id="wf-log" class="wf-log" role="log" aria-live="polite" aria-label="Conversa com o assistente"></div>
+    <p id="wf-loading" class="wf-loading" role="status" hidden>Consultando o sistema…</p>
+    <div id="wf-actions" class="wf-actions" aria-label="Sugestões e opções do pedido"></div>
+    <form id="wf-form" class="wf-form"><label for="wf-input">Seu pedido ou resposta</label><div class="wf-entry"><input id="wf-input" maxlength="1000" autocomplete="off" placeholder="Ex.: BH do João ou cadastrar colaborador" required><button id="wf-send" type="submit">Enviar</button></div><small>Escreva “ajuda” para ver sugestões ou “cancelar” para encerrar o pedido. Nenhuma alteração é gravada sem confirmação.</small></form>
+  </dialog>
+  <script src="/js/core.js?v=1.0.31-beta.89"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.114"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -2886,12 +2909,14 @@
   <script src="/js/report-validator.js?v=1.0.31-beta.112"></script>
   <script src="/js/blank-copy-status.js?v=1.0.31-beta.17"></script>
   <script src="/js/rest-audit.js?v=1.0.31-beta.111"></script>
-  <script src="/js/calendar-reports.js?v=1.0.31-beta.112"></script>
+  <script src="/js/calendar-reports.js?v=1.0.31-beta.113"></script>
   <script src="/js/employee-history-admin.js?v=1.0.31-beta.17"></script>
   <script src="/js/settings-system.js?v=1.0.31-beta.103"></script>
   <script src="/js/bh-comparison.js?v=1.0.31-beta.99"></script>
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
-  <script src="/js/occurrences-control.js?v=1.0.31-beta.103"></script>
+  <script src="/js/occurrences-control.js?v=1.0.31-beta.104"></script>
+  <script src="/js/system-command-parser.js?v=1"></script>
+  <script src="/js/workflow-assistant.js?v=1"></script>
 </body>
 </html>

@@ -1880,6 +1880,42 @@ $("report-generate").onclick=async()=>{
 
 let reportPrintInProgress=false;
 
+// Ponte do assistente guiado para a geração e validação nativas das fichas.
+window.WorkflowReports={
+  async generate({month,companyId=null,branchId=null,employeeId=null,type}){
+    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!["thermal","meal"].includes(type))throw new Error("Competência ou tipo de ficha inválido.");
+    if(currentUser?.role!=="ADMIN"&&currentUser?.permissions?.["reports.view"]!==true)throw new Error("Seu perfil não pode gerar relatórios.");
+    await navigate("reports");
+    const availableEmployees=reportEmployees;
+    try{
+      reportEmployees=reportEmployees.filter(employee=>(!companyId||employee.company_id===companyId)&&(!branchId||employee.branch_id===branchId));
+      if(!reportEmployees.length)throw new Error("Nenhum colaborador habilitado para os filtros selecionados.");
+      if(employeeId&&!reportEmployees.some(employee=>employee.id===employeeId))throw new Error("O colaborador não está disponível para gerar fichas nesse escopo.");
+      $("report-month").value=month;
+      $("report-company").value=companyId?reportEmployees[0].company_name:"";
+      refreshReportBranchOptions();$("report-branch").value=branchId?reportEmployees[0].branch_name:"";
+      refreshReportShiftOptions();$("report-shift").value="";
+      $("report-all-employees").checked=!employeeId;refreshReportEmployeeList();$("report-employee-select").value=employeeId||"";
+      invalidateReportValidation();$("report-output").replaceChildren();
+      await $("report-generate").onclick();
+      const types=new Set(type==="thermal"?["thermal","thermal-blank"]:["meal"]);
+      const count=reportPrintSheets().filter(sheet=>types.has(sheet.dataset.reportType)).length;
+      if(!lastReportValidation?.generated||!lastReportValidation.valid||lastReportValidation.month!==month||!count){
+        throw new Error(`Não foram geradas fichas válidas do tipo solicitado. ${$("report-generation-summary").textContent||"Confira a validação e as regras de relatórios na tela."}`);
+      }
+      return {count,summary:$("report-generation-summary").textContent};
+    }finally{reportEmployees=availableEmployees;}
+  },
+  openPrint(type){
+    if(!validateReportPrint())return;
+    openPrintCenter();
+    $("print-center-type-thermal").checked=type==="thermal";
+    $("print-center-type-blank").checked=type==="thermal";
+    $("print-center-type-meal").checked=type==="meal";
+    updatePrintCenterSummary();
+  }
+};
+
 function reportPrintSheets(){
   return [...document.querySelectorAll("#report-output .report-sheet[data-report-type]")];
 }
