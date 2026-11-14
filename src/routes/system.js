@@ -16,6 +16,9 @@ const upload=multer({
 router.use(authenticate,requireAdmin);
 
 const BACKUP_TABLES=[
+  "justification_cases",
+  "justification_files",
+  "justification_file_contents",
   "roster_plans",
   "roster_import_archives",
   "companies",
@@ -64,10 +67,16 @@ const RESTORE_ORDER=[
   "timecard_review_controls",
   "audit_logs",
   "roster_plans",
-  "roster_import_archives"
+  "roster_import_archives",
+  "justification_cases",
+  "justification_files",
+  "justification_file_contents"
 ];
 
 const CLEAR_ORDER=[
+  "justification_file_contents",
+  "justification_files",
+  "justification_cases",
   "roster_import_archives",
   "roster_import_previews",
   "roster_plans",
@@ -134,7 +143,9 @@ async function collectBackup(client,req){
   for(const table of BACKUP_TABLES){
     if(!tables.has(table))continue;
     const {rows}=await client.query(`SELECT * FROM ${quoteIdentifier(table)}`);
-    data[table]=rows;
+    data[table]=table==="justification_file_contents"
+      ? rows.map(row=>({...row,bytes:Buffer.from(row.bytes).toString("base64")}))
+      : rows;
   }
 
   return attachIntegrity({
@@ -248,6 +259,9 @@ router.get("/backup",async(req,res,next)=>{
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     readingSnapshot=true;
     const backup=await collectBackup(client,req);
+    // O download JSON precisa continuar restauravel pelo upload limitado a 30 MB.
+    const backupSize=Buffer.byteLength(JSON.stringify(backup),"utf8");
+    if(backupSize>29*1024*1024)throw Object.assign(new Error("Backup com documentos acima de 29 MB. Exporte o acervo por rotina de backup de banco segura antes de qualquer restauração."),{status:413});
     await client.query("COMMIT");
     readingSnapshot=false;
     const token=crypto.randomBytes(24).toString("hex");
@@ -471,6 +485,15 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
       }
     }
 
+    if(tables.has("justification_cases")){
+      const archiveCount=(await client.query("SELECT COUNT(*)::int total FROM justification_cases")).rows[0].total;
+      const hasArchiveInBackup=Array.isArray(backup.data.justification_cases)&&Array.isArray(backup.data.justification_files)&&Array.isArray(backup.data.justification_file_contents);
+      if(archiveCount>0&&!hasArchiveInBackup){
+        await client.query("ROLLBACK");
+        return res.status(409).json({error:"Este backup não contém o acervo documental e apagaria justificativas existentes. Use backup completo, com arquivos."});
+      }
+    }
+
     for(const table of CLEAR_ORDER){
       if(tables.has(table)){
         await client.query(`DELETE FROM ${quoteIdentifier(table)}`);
@@ -491,7 +514,9 @@ router.post("/restore",requireMasterAdmin,upload.single("file"),async(req,res,ne
         const columns=Object.keys(row).filter(column=>validColumns.has(column));
         if(!columns.length)continue;
 
-        const values=columns.map(column=>jsonNames.has(column)&&row[column]!==null?JSON.stringify(row[column]):row[column]);
+        const values=columns.map(column=>table==="justification_file_contents"&&column==="bytes"
+          ?Buffer.from(String(row[column]||""),"base64")
+          :jsonNames.has(column)&&row[column]!==null?JSON.stringify(row[column]):row[column]);
         const placeholders=columns.map((_,index)=>`$${index+1}`).join(",");
         const sql=`
           INSERT INTO ${quoteIdentifier(table)}
