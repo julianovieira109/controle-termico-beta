@@ -27,5 +27,22 @@ Condições: a chave fonte é única por filial; o ID de arquivo é único por j
 ## Privacidade
 Comprovantes médicos são dados pessoais sensíveis: restringir acesso por necessidade de trabalho, registrar uploads e downloads, impedir link público, evitar dados sensíveis em logs/nomes de arquivos públicos e aplicar política de retenção. Repositório GitHub é público; nele devem existir somente código, esquema e dados fictícios.
 
-## Entrega atual
-Esta proposta inclui a migração SQL versionada e os critérios para APIs e interface. **Ela não importa os arquivos nem altera o banco ativo até que o código seja implantado.** A migração SQL deve ser executada primeiro em banco Beta com backup verificado.
+## Implementação Beta preparada na branch de desenvolvimento
+- Migração SQL idempotente integrada ao comando `npm run migrate`.
+- API `/api/justification-archive` com autenticação JWT, acesso **exclusivo ao Administrador Master**, escopo de filial explícito em consultas/cadastros, estados de conferência e auditoria de operações.
+- Upload privado de PDF, JPG, PNG ou WebP até 8 MB: validação de assinatura, SHA-256 e transação única entre metadados e BYTEA. Download autenticado com validação de hash.
+- Interface responsiva no menu **Documentos**, incluída no manual e na Ajuda.
+- Backup do sistema inclui metadados e bytes em base64, bloqueia exportações JSON superiores a 29 MB e impede restauração de backups antigos que eliminariam justificativas. Conferir rotina de backup PostgreSQL apropriada para acervos maiores.
+- Ativação **bloqueada por padrão**: o administrador deverá definir `JUSTIFICATION_ARCHIVE_BETA=true` somente **no serviço Beta** após testar backup/restauração, capacidade do banco, upload/download e controles de acesso.
+- Histórico da planilha **ainda não foi importado**. As 407 URLs são inventário para um importador futuro; 4 campos de texto não são anexos. Nunca transformar link em status `ARMAZENADO` sem confirmar bytes.
+
+## Checklist de homologação antes de ativar
+1. Concluir revisão de código, executar `npm ci`, `npm test` e `node --check` nos arquivos alterados; não declarar testes executados apenas pela existência de testes versionados.
+2. Fazer snapshot do PostgreSQL Beta, confirmar que o banco correto está selecionado e permitir a migração sem alterar registros Senior.
+3. Testar login: Master com acesso; Admin não-Master e RH com HTTP 403; sem flag retorna HTTP 503.
+4. Cadastrar justificativa fictícia, anexar PDF/JPG/PNG/WebP, testar extensão inválida, limite de 8 MB, tentativa de duplicidade, download íntegro e trilha de auditoria.
+5. Baixar backup, restaurar em banco descartável, confirmar 100% de correspondência entre anexos e hashes e impedir restauração de backup sem acervo.
+6. Conferir que não existe documento real, link individual ou informação sensível neste repositório público.
+7. Só depois realizar importação histórica em lotes idempotentes, registrar arquivos inacessíveis para providência e validar volume total.
+
+**A branch e a proposta de alteração não representam deploy realizado nem acervo em produção.**
