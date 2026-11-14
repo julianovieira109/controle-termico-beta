@@ -1,6 +1,9 @@
 name: Homologacao do Acervo Beta
 
 on:
+  push:
+    branches:
+      - feature/acervo-justificativas-db
   pull_request:
     paths:
       - 'src/routes/justification-archive.js'
