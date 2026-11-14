@@ -1,0 +1,13 @@
+#justification-archive .archive-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+#justification-archive .archive-grid label{display:flex;flex-direction:column;gap:6px;min-width:0}
+#justification-archive .archive-grid input,#justification-archive .archive-grid select,#justification-archive .archive-grid textarea{max-width:100%;width:100%;box-sizing:border-box}
+#justification-archive .archive-toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:12px 0}
+#justification-archive .archive-toolbar label{display:grid;gap:6px}
+#justification-archive .archive-table{width:100%;border-collapse:collapse}
+#justification-archive .archive-table td,#justification-archive .archive-table th{padding:10px;border-bottom:1px solid #d1d9e0;text-align:left}
+#justification-archive .archive-table td small{display:block}
+#justification-archive .archive-note{padding:12px;background:var(--card,#f4f8fb);border:1px solid #c7d4e0;border-radius:10px;margin:12px 0}
+#justification-archive .archive-error{color:#a82828;font-weight:600}
+#justification-archive #archive-details{margin-top:16px}
+#justification-archive #archive-files li{margin:8px 0}
+@media(max-width:720px){#justification-archive .archive-grid{grid-template-columns:1fr}.archive-table{font-size:12px}}

@@ -1,0 +1,81 @@
+name: Homologacao do Acervo Beta
+
+on:
+  push:
+    branches:
+      - feature/acervo-justificativas-db
+  pull_request:
+    paths:
+      - 'src/routes/justification-archive.js'
+      - 'src/routes/system.js'
+      - 'src/server.js'
+      - 'src/db/migrate.js'
+      - 'src/db/migrations/20261113_acervo_justificativas.sql'
+      - 'public/js/justification-archive.js'
+      - 'public/js/core.js'
+      - 'public/js/help-manual.js'
+      - 'public/index.html'
+      - 'test/justification-*'
+      - 'tools/smoke-justification-archive.js'
+      - '.github/workflows/acervo-beta-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Verificar sintaxe
+        run: |
+          node --check src/routes/justification-archive.js
+          node --check public/js/justification-archive.js
+          node --check src/routes/system.js
+          node --check src/db/migrate.js
+          node --check src/server.js
+      - name: Rodar testes de regressao
+        run: npm test
+
+  database:
+    name: PostgreSQL e API do Acervo
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: controle_termico_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d controle_termico_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/controle_termico_test
+      JWT_SECRET: somente-testes-efemeros-github-archive-beta
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Executar migracoes no banco descartavel
+        run: npm run migrate
+      - name: Testar API, autenticacao, upload, download e backup
+        run: node tools/smoke-justification-archive.js

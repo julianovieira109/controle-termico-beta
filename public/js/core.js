@@ -672,6 +672,10 @@ function navigate(view){
     toast("Seu perfil não possui acesso a esta área.","error");
     return;
   }
+  if(view==="justification-archive" && currentUser?.isMasterAdmin!==true){
+    toast("Somente o Administrador Master pode acessar documentos pessoais.","error");
+    return;
+  }
   if(view==="occurrences"){
     const allowed=currentUser.isMasterAdmin===true||
       (currentUser.role==="ADMIN"&&currentUser.permissions?.["occurrences.view"]===true);
@@ -687,7 +691,7 @@ function navigate(view){
   const activeNavigationButton=document.querySelector(`[data-view="${view}"]`);
   activeNavigationButton?.classList.add("active");
   activeNavigationButton?.setAttribute("aria-current","page");
-  const titles={dashboard:"Painel",companies:"Empresas e filiais",users:"Usuários",employees:"Colaboradores",roster:"Escala 5x2",reports:"Relatórios",imports:"Importações",occurrences:"Controle de Ocorrências",settings:"Configurações",help:"Assistente de Ajuda",manual:"Manual do Sistema"};
+  const titles={dashboard:"Painel",companies:"Empresas e filiais",users:"Usuários",employees:"Colaboradores",roster:"Escala 5x2",reports:"Relatórios",imports:"Importações",occurrences:"Controle de Ocorrências","justification-archive":"Gestão de Documentos",settings:"Configurações",help:"Assistente de Ajuda",manual:"Manual do Sistema"};
   $("page-title").textContent=titles[view];
   $("page-title").classList.toggle("help-title-contrast",view==="help");
   // Recarrega o Painel sempre que o usuário retornar à visão principal.
@@ -706,6 +710,7 @@ function navigate(view){
   if(view==="reports")return prepareReports();
   if(view==="roster"&&typeof window.prepareRoster==="function")window.prepareRoster();
   if(view==="occurrences" && typeof loadOccurrencesControl==="function")loadOccurrencesControl();
+  if(view==="justification-archive" && typeof window.loadJustificationArchive==="function")window.loadJustificationArchive();
   if(view==="settings")prepareSettingsAccess();
   if(view==="manual")prepareManual();
 }
