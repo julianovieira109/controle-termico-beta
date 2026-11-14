@@ -258,6 +258,14 @@ router.get("/backup",async(req,res,next)=>{
     cleanupTokens();
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     readingSnapshot=true;
+    // Com anexos confidenciais, o backup integral e exclusivo do Master.
+    if(req.user?.isMasterAdmin!==true){
+      const archiveExists=await client.query("SELECT to_regclass('public.justification_file_contents') AS table_name");
+      if(archiveExists.rows[0]?.table_name){
+        const docs=await client.query("SELECT EXISTS(SELECT 1 FROM justification_file_contents) AS has_documents");
+        if(docs.rows[0]?.has_documents)throw Object.assign(new Error("Backup contendo documentos pessoais disponível apenas ao Administrador Master."),{status:403});
+      }
+    }
     const backup=await collectBackup(client,req);
     // O download JSON precisa continuar restauravel pelo upload limitado a 30 MB.
     const backupSize=Buffer.byteLength(JSON.stringify(backup),"utf8");
