@@ -1674,15 +1674,15 @@
         <p class="hint" id="archive-import-history-status"></p>
       </section>
       <section class="panel"><h3>Cadastrar justificativa</h3>
-        <p class="hint">Selecione primeiro a empresa e a filial acima. Pesquise por nome ou matrícula e escolha o colaborador do cadastro oficial do Beta para preencher os dados automaticamente.</p>
+        <p class="hint">Selecione primeiro a empresa e a filial acima. Digite o nome ou a matrícula. Se apenas um colaborador corresponder à pesquisa, os dados serão preenchidos automaticamente; se houver nomes semelhantes, escolha a pessoa correta na lista.</p>
         <form id="archive-new-case">
           <input type="hidden" id="archive-employee-id">
           <div class="archive-employee-picker">
             <label for="archive-employee-search">Buscar colaborador cadastrado</label>
-            <input type="search" id="archive-employee-search" placeholder="Digite pelo menos 2 letras ou números" autocomplete="off" aria-controls="archive-employee-results" aria-autocomplete="list">
+            <input type="search" id="archive-employee-search" placeholder="Digite o nome ou a matrícula para preencher automaticamente" autocomplete="off" aria-controls="archive-employee-results" aria-autocomplete="list">
             <div id="archive-employee-results" class="archive-employee-results" role="listbox" aria-label="Colaboradores encontrados" hidden></div>
             <div class="archive-selected-line">
-              <p id="archive-employee-feedback" class="hint" role="status" aria-live="polite">Pesquise pelo nome ou matrícula. Caso não encontre, preencha os campos manualmente.</p>
+              <p id="archive-employee-feedback" class="hint" role="status" aria-live="polite">Comece a digitar: o cadastro preencherá os demais campos quando identificar um único colaborador.</p>
               <button type="button" class="secondary" id="archive-employee-clear" hidden>Trocar colaborador</button>
             </div>
           </div>
@@ -3042,7 +3042,7 @@
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
   <script src="/js/occurrences-control.js?v=1.0.31-beta.104"></script>
-  <script src="/js/justification-archive.js?v=3"></script>
+  <script src="/js/justification-archive.js?v=4"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
   <script src="/js/roster-module.js?v=2"></script>

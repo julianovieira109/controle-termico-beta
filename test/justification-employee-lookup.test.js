@@ -29,7 +29,7 @@ test("interface permite buscar, selecionar, preencher e trocar colaborador",()=>
  assert.match(page,/id="archive-employee-search"/);
  assert.match(page,/id="archive-employee-results"/);
  assert.match(page,/id="archive-employee-id"/);
- assert.match(frontend,/function chooseEmployee\(employee\)/);
+ assert.match(frontend,/function chooseEmployee\(employee,/);
  assert.match(frontend,/async function searchEmployees\(\)/);
  assert.match(frontend,/employeeId:byId\("archive-employee-id"\)/);
  assert.match(frontend,/clearEmployeeSelection\(\)/);
