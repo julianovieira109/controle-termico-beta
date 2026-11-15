@@ -101,7 +101,11 @@ async function main(){
   assert.equal(byRegistration.data.employees[0].id,employee);
   const shortQuery=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=Q",{token:master});
   assert.equal(shortQuery.status,200);
-  assert.equal(shortQuery.data.employees.length,0);
+  assert.equal(shortQuery.data.employees.length,2,"Pesquisa de um caractere deve mostrar os colaboradores encontrados.");
+  const unfiltered=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch,{token:master});
+  assert.equal(unfiltered.status,200);
+  assert.equal(unfiltered.data.employees.length,2,"A lista deve aparecer mesmo antes da digitação.");
+  assert.equal(unfiltered.data.employees[0].registration,"QA98765","Colaboradores ativos aparecem primeiro.");
   const crossedSearch=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+otherBranch+"&q=98765",{token:master});
   assert.equal(crossedSearch.status,200);
   assert.equal(crossedSearch.data.employees.length,0);

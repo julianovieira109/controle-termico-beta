@@ -11,7 +11,7 @@ test("busca de colaborador somente na empresa e filial selecionadas, sem CPF",()
  assert.match(route,/router\.use\(authenticate,requireMasterAdmin\)/);
  assert.match(route,/await assertUnit\(companyId,branchId\)/);
  assert.match(route,/e\.company_id=\$1 AND e\.branch_id=\$2/);
- assert.match(route,/LIMIT 20/);
+ assert.match(route,/LIMIT 500/);
  assert.match(route,/LEFT JOIN job_roles/);
  assert.match(route,/LEFT JOIN departments/);
  assert.doesNotMatch(route,/SELECT e\.\*,.*\/employees/);
@@ -34,4 +34,15 @@ test("interface permite buscar, selecionar, preencher e trocar colaborador",()=>
  assert.match(frontend,/employeeId:byId\("archive-employee-id"\)/);
  assert.match(frontend,/clearEmployeeSelection\(\)/);
  assert.match(frontend,/setEmployeeFieldsReadonly\(true,/);
+});
+
+test("lista da filial aparece antes de digitar, pode ser filtrada e preserva selecao",()=>{
+ assert.match(page,/id="archive-employee-select"/);
+ assert.match(frontend,/async function searchEmployees\(\)/);
+ assert.match(frontend,/employeeDirectoryScope!==scope/);
+ assert.match(frontend,/select\.replaceChildren\(\)/);
+ assert.match(frontend,/if\(!selectedEmployee\)await searchEmployees\(\)/);
+ assert.match(frontend,/archive-employee-select"\)\?\.addEventListener\("change"/);
+ assert.match(frontend,/loadCases\(\);searchEmployees\(\)/);
+ assert.match(frontend,/normalizeEmployeeLookup\(e\.full_name\)\.includes\(key\)/);
 });

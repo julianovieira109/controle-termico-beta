@@ -62,7 +62,7 @@ router.get("/employees",async(req,res,next)=>{
     const {companyId,branchId}=req.query;
     await assertUnit(companyId,branchId);
     const q=clean(req.query.q,100);
-    if(q.length<2)return res.json({employees:[]});
+    // Sem pesquisa, devolve os colaboradores da filial para escolha direta.
     const pattern="%"+q.replace(/[\\%_]/g,"\\$&")+"%";
     const {rows}=await pool.query(`
       SELECT e.id,e.full_name,e.registration,e.status,
@@ -77,7 +77,7 @@ router.get("/employees",async(req,res,next)=>{
         CASE WHEN UPPER(TRIM(e.status))='ATIVO' THEN 0 ELSE 1 END,
         CASE WHEN LOWER(TRIM(COALESCE(e.registration,'')))=LOWER(TRIM($4)) THEN 0 ELSE 1 END,
         e.full_name,e.registration
-      LIMIT 20
+      LIMIT 500
     `,[companyId,branchId,pattern,q]);
     res.json({employees:rows});
   }catch(error){next(error);}
