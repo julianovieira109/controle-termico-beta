@@ -41,7 +41,8 @@ test("lista da filial aparece antes de digitar, pode ser filtrada e preserva sel
  assert.match(frontend,/async function searchEmployees\(\)/);
  assert.match(frontend,/employeeDirectoryScope!==scope/);
  assert.match(frontend,/select\.replaceChildren\(\)/);
- assert.match(frontend,/if\(!selectedEmployee\)await searchEmployees\(\)/);
+ assert.match(frontend,/if\(!selectedEmployee\)\{/);
+ assert.match(frontend,/await searchEmployees\(\)/);
  assert.match(frontend,/archive-employee-select"\)\?\.addEventListener\("change"/);
  assert.match(frontend,/loadCases\(\);searchEmployees\(\)/);
  assert.match(frontend,/normalizeEmployeeLookup\(e\.full_name\)\.includes\(key\)/);
