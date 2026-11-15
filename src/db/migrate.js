@@ -1,5 +1,7 @@
 require("dotenv").config();
 const pool=require("./pool");
+const fs=require("node:fs");
+const path=require("node:path");
 
 const sql=`
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -793,6 +795,8 @@ ON CONFLICT(user_id,permission_key) DO NOTHING;
 (async()=>{
   try{
     await pool.query(sql);
+    const archiveSql=fs.readFileSync(path.join(__dirname,"migrations","20261113_acervo_justificativas.sql"),"utf8");
+    await pool.query(archiveSql);
     console.log("Migrações do Controle Térmico concluídas.");
   }catch(error){
     console.error("Falha nas migrações V1.34:",{
