@@ -86,7 +86,7 @@ router.post("/confirm",express.json({limit:"8kb"}),async(req,res,next)=>{
       });
       const inserted=await client.query(
         "INSERT INTO justification_cases(company_id,branch_id,employee_name,job_title,department,absence_date,reason,details,manager_email,submitted_by_email,source_key,source_snapshot,source_system,review_status,created_by) "+
-        "SELECT input.company_id,input.branch_id,input.employee_name,input.job_title,input.department,input.absence_date::date,input.reason,input.details,input.manager_email,input.submitted_by_email,input.source_key,input.source_snapshot::jsonb,'GOOGLE_SHEETS',CASE WHEN input.employee_name='Não informado na origem' THEN 'EM_CONFERENCIA' ELSE 'PENDENTE' END,$"+(params.length+1)+"::uuid "+
+        "SELECT input.company_id::uuid,input.branch_id::uuid,input.employee_name,input.job_title,input.department,input.absence_date::date,input.reason,input.details,input.manager_email,input.submitted_by_email,input.source_key,input.source_snapshot::jsonb,'GOOGLE_SHEETS',CASE WHEN input.employee_name='Não informado na origem' THEN 'EM_CONFERENCIA' ELSE 'PENDENTE' END,$"+(params.length+1)+"::uuid "+
         "FROM (VALUES "+values.join(",")+") AS input(company_id,branch_id,employee_name,job_title,department,absence_date,reason,details,manager_email,submitted_by_email,source_key,source_snapshot) "+
         "ON CONFLICT DO NOTHING RETURNING id,source_key",
         [...params,userId]
