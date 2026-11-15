@@ -41,7 +41,7 @@
   <link rel="stylesheet" href="/css/roster-module.css?v=2">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.121">
   <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.102">
-  <link rel="stylesheet" href="/css/justification-archive.css?v=2">
+  <link rel="stylesheet" href="/css/justification-archive.css?v=3">
   <link rel="stylesheet" href="/css/imports-center.css?v=1.0.31-beta.88">
   <link rel="stylesheet" href="/css/bh-comparison.css?v=1.0.31-beta.98">
   <link rel="stylesheet" href="/css/theme-accessibility.css?v=1.0.31-beta.108">
@@ -1674,11 +1674,23 @@
         <p class="hint" id="archive-import-history-status"></p>
       </section>
       <section class="panel"><h3>Cadastrar justificativa</h3>
-        <form id="archive-new-case"><div class="archive-grid">
+        <p class="hint">Selecione primeiro a empresa e a filial acima. Pesquise por nome ou matrícula e escolha o colaborador do cadastro oficial do Beta para preencher os dados automaticamente.</p>
+        <form id="archive-new-case">
+          <input type="hidden" id="archive-employee-id">
+          <div class="archive-employee-picker">
+            <label for="archive-employee-search">Buscar colaborador cadastrado</label>
+            <input type="search" id="archive-employee-search" placeholder="Digite pelo menos 2 letras ou números" autocomplete="off" aria-controls="archive-employee-results" aria-autocomplete="list">
+            <div id="archive-employee-results" class="archive-employee-results" role="listbox" aria-label="Colaboradores encontrados" hidden></div>
+            <div class="archive-selected-line">
+              <p id="archive-employee-feedback" class="hint" role="status" aria-live="polite">Pesquise pelo nome ou matrícula. Caso não encontre, preencha os campos manualmente.</p>
+              <button type="button" class="secondary" id="archive-employee-clear" hidden>Trocar colaborador</button>
+            </div>
+          </div>
+          <div class="archive-grid">
           <label>Colaborador<input id="archive-name" maxlength="200" required></label>
           <label>Matrícula (opcional)<input id="archive-registration" maxlength="40"></label>
           <label>Função<input id="archive-job-title" maxlength="180"></label>
-          <label>Setor<input id="archive-department" maxlength="160"></label>
+          <label>Setor (preencha se não constar no cadastro)<input id="archive-department" maxlength="160"></label>
           <label>Data da ausência<input type="date" id="archive-date"></label>
           <label>Motivo<input id="archive-reason" maxlength="250" required></label>
           <label>Gestor (e-mail)<input type="email" id="archive-manager" maxlength="254"></label>
@@ -3030,7 +3042,7 @@
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
   <script src="/js/occurrences-control.js?v=1.0.31-beta.104"></script>
-  <script src="/js/justification-archive.js?v=2"></script>
+  <script src="/js/justification-archive.js?v=3"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
   <script src="/js/roster-module.js?v=2"></script>

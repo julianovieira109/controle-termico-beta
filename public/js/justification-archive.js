@@ -3,6 +3,7 @@
 const byId=id=>document.getElementById(id);
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let currentCase="",currentCompany="",currentBranch="",loaded=false,importPreview=null;
+let employeeSearchTimer=null,employeeSearchSequence=0,selectedEmployee=null;
 async function archiveApi(path,options={}){
  const headers={...(options.body instanceof FormData?{}:{"Content-Type":"application/json"}),...(token?{Authorization:"Bearer "+token}:{})};
  const response=await fetch("/api/justification-archive"+path,{...options,headers:{...headers,...options.headers},cache:"no-store"});
@@ -60,10 +61,102 @@ async function openCase(id){
   const ul=byId("archive-files");ul.innerHTML=result.files.length?result.files.map(f=>'<li>'+esc(f.original_name)+' — '+esc(f.storage_state)+(f.storage_state==="ARMAZENADO"?' <button class="secondary archive-download" type="button" data-id="'+esc(f.id)+'" data-name="'+esc(f.original_name)+'">Baixar</button>':"")+'</li>').join(""):'<li>Sem arquivos anexados.</li>';
  }catch(error){showError(error);}
 }
+function setEmployeeFieldsReadonly(isSelected,employee=null){
+ for(const [id,hasValue] of [
+   ["archive-name",true],
+   ["archive-registration",!!employee?.registration],
+   ["archive-job-title",!!employee?.job_title],
+   ["archive-department",!!employee?.department]
+ ]){
+   const field=byId(id);if(field)field.readOnly=isSelected&&hasValue;
+ }
+}
+function clearEmployeeSelection(clearSearch=true){
+ selectedEmployee=null;
+ employeeSearchSequence++;
+ clearTimeout(employeeSearchTimer);
+ byId("archive-employee-id").value="";
+ if(clearSearch)byId("archive-employee-search").value="";
+ byId("archive-employee-results").hidden=true;
+ byId("archive-employee-results").innerHTML="";
+ byId("archive-employee-clear").hidden=true;
+ for(const id of ["archive-name","archive-registration","archive-job-title","archive-department"])byId(id).value="";
+ setEmployeeFieldsReadonly(false);
+ byId("archive-employee-feedback").textContent="Pesquise pelo nome ou matrícula. Caso não encontre, preencha os campos manualmente.";
+}
+function chooseEmployee(employee){
+ selectedEmployee=employee;
+ byId("archive-employee-id").value=employee.id;
+ byId("archive-employee-search").value=employee.full_name+(employee.registration?" — "+employee.registration:"");
+ byId("archive-name").value=employee.full_name||"";
+ byId("archive-registration").value=employee.registration||"";
+ byId("archive-job-title").value=employee.job_title||"";
+ byId("archive-department").value=employee.department||"";
+ setEmployeeFieldsReadonly(true,employee);
+ byId("archive-employee-results").hidden=true;
+ byId("archive-employee-results").innerHTML="";
+ byId("archive-employee-clear").hidden=false;
+ const missing=[];
+ if(!employee.registration)missing.push("matrícula");
+ if(!employee.job_title)missing.push("função");
+ if(!employee.department)missing.push("setor");
+ byId("archive-employee-feedback").textContent=
+   "Selecionado: "+employee.full_name+" ("+employee.status+")."+
+   (missing.length?" Não consta no cadastro: "+missing.join(", ")+". Preencha manualmente apenas os campos ausentes.":" Dados preenchidos a partir do cadastro.");
+}
+async function searchEmployees(){
+ const searchInput=byId("archive-employee-search"),results=byId("archive-employee-results");
+ const companyId=byId("archive-company").value,branchId=byId("archive-branch").value;
+ const q=searchInput.value.trim(),sequence=++employeeSearchSequence;
+ results.hidden=true;results.innerHTML="";
+ if(q.length<2){
+   byId("archive-employee-feedback").textContent="Digite pelo menos 2 caracteres do nome ou matrícula.";
+   return;
+ }
+ if(!companyId||!branchId){
+   byId("archive-employee-feedback").textContent="Selecione empresa e filial antes de pesquisar.";
+   return;
+ }
+ byId("archive-employee-feedback").textContent="Buscando colaboradores da filial...";
+ try{
+   const data=await archiveApi("/employees?"+new URLSearchParams({companyId,branchId,q}));
+   if(sequence!==employeeSearchSequence||companyId!==byId("archive-company").value||branchId!==byId("archive-branch").value)return;
+   const people=data.employees||[];
+   if(!people.length){
+     byId("archive-employee-feedback").textContent="Nenhum colaborador encontrado nesta filial. Confira o cadastro ou preencha manualmente.";
+     return;
+   }
+   const fragment=document.createDocumentFragment();
+   for(const e of people){
+     const button=document.createElement("button");
+     button.type="button";
+     button.className="archive-employee-choice";
+     button.setAttribute("role","option");
+     button.textContent=e.full_name+(e.registration?" · Matrícula "+e.registration:"")+
+       (e.job_title?" · "+e.job_title:"")+(e.status?" · "+e.status:"");
+     button.addEventListener("click",()=>chooseEmployee(e));
+     fragment.appendChild(button);
+   }
+   results.appendChild(fragment);results.hidden=false;
+   byId("archive-employee-feedback").textContent=people.length+" resultado(s) nesta filial. Clique no colaborador correto para preencher a justificativa.";
+ }catch(error){
+   if(sequence!==employeeSearchSequence)return;
+   byId("archive-employee-feedback").textContent="Não foi possível consultar o cadastro.";
+   showError(error);
+ }
+}
+function handleEmployeeSearchChange(){
+ const wasSelected=!!selectedEmployee;
+ if(wasSelected){
+   clearEmployeeSelection(false);
+ }
+ clearTimeout(employeeSearchTimer);
+ employeeSearchTimer=setTimeout(searchEmployees,250);
+}
 async function saveCase(event){
  event.preventDefault();if(!currentCompany||!currentBranch){showError(new Error("Selecione empresa e filial."));return;}
- const fields={companyId:currentCompany,branchId:currentBranch,employeeName:byId("archive-name").value,registration:byId("archive-registration").value,jobTitle:byId("archive-job-title").value,department:byId("archive-department").value,absenceDate:byId("archive-date").value,reason:byId("archive-reason").value,details:byId("archive-details-field").value,managerEmail:byId("archive-manager").value};
- try{const created=await archiveApi("/cases",{method:"POST",body:JSON.stringify(fields)});byId("archive-new-case").reset();await loadCases();await openCase(created.id);}catch(error){showError(error);}
+ const fields={companyId:currentCompany,branchId:currentBranch,employeeId:byId("archive-employee-id").value||null,employeeName:byId("archive-name").value,registration:byId("archive-registration").value,jobTitle:byId("archive-job-title").value,department:byId("archive-department").value,absenceDate:byId("archive-date").value,reason:byId("archive-reason").value,details:byId("archive-details-field").value,managerEmail:byId("archive-manager").value};
+ try{const created=await archiveApi("/cases",{method:"POST",body:JSON.stringify(fields)});byId("archive-new-case").reset();clearEmployeeSelection();await loadCases();await openCase(created.id);}catch(error){showError(error);}
 }
 async function uploadFile(event){
  event.preventDefault();if(!currentCase){showError(new Error("Escolha uma justificativa."));return;}
@@ -141,10 +234,23 @@ async function confirmImport(){
  finally{btn.disabled=!importPreview||!byId("archive-import-ack").checked;}
 }
 function bind(){
- byId("archive-company")?.addEventListener("change",()=>{resetImportPreview();refreshBranch();loadCases();});
- byId("archive-branch")?.addEventListener("change",()=>{resetImportPreview();loadCases();});
+ byId("archive-company")?.addEventListener("change",()=>{clearEmployeeSelection();resetImportPreview();refreshBranch();loadCases();});
+ byId("archive-branch")?.addEventListener("change",()=>{clearEmployeeSelection();resetImportPreview();loadCases();});
  byId("archive-search")?.addEventListener("input",()=>{clearTimeout(bind.searchTimer);bind.searchTimer=setTimeout(loadCases,250);});
  byId("archive-refresh")?.addEventListener("click",loadCases);
+ byId("archive-employee-search")?.addEventListener("input",handleEmployeeSearchChange);
+ byId("archive-employee-search")?.addEventListener("focus",event=>{if(selectedEmployee)event.target.select();});
+ byId("archive-employee-search")?.addEventListener("keydown",event=>{
+   if(event.key==="Escape"){byId("archive-employee-results").hidden=true;return;}
+   if(event.key==="Enter"&&!byId("archive-employee-results").hidden){
+     const choice=byId("archive-employee-results").querySelector(".archive-employee-choice");
+     if(choice){event.preventDefault();choice.click();}
+   }
+ });
+ byId("archive-employee-clear")?.addEventListener("click",()=>{
+   clearEmployeeSelection();
+   byId("archive-employee-search").focus();
+ });
  byId("archive-new-case")?.addEventListener("submit",saveCase);
  byId("archive-file-form")?.addEventListener("submit",uploadFile);
  byId("archive-import-preview-form")?.addEventListener("submit",previewImport);
