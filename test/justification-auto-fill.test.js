@@ -52,7 +52,7 @@ test("20 resultados possíveis indicam paginação e impedem preenchimento autom
 });
 test("a tela possui busca e mantém diferenciação entre seleção e preenchimento automático",()=>{
  assert.match(source,/findAutomaticEmployee\(people,q\)/);
- assert.match(source,/chooseEmployee\(autoEmployee,\{keepSearchText:true,automatic:true\}\)/);
+ assert.match(source,/chooseEmployee\(automatic,\{keepSearchText:true,automatic:true\}\)/);
  assert.match(source,/if\(sequence!==employeeSearchSequence/);
  assert.match(source,/const wasSelected=!!selectedEmployee/);
 });
