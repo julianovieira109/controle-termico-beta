@@ -84,10 +84,25 @@ function clearEmployeeSelection(clearSearch=true){
  setEmployeeFieldsReadonly(false);
  byId("archive-employee-feedback").textContent="Pesquise pelo nome ou matrícula. Caso não encontre, preencha os campos manualmente.";
 }
-function chooseEmployee(employee){
+// Preenche automaticamente somente quando a busca identifica uma única pessoa.
+function normalizeEmployeeLookup(value){
+ return String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+   .trim().replace(/\s+/g," ").toLowerCase();
+}
+function findAutomaticEmployee(people,query){
+ const key=normalizeEmployeeLookup(query);
+ if(!key||people.length>=20)return null; // 20 resultados podem indicar lista truncada.
+ const exact=people.filter(e=>normalizeEmployeeLookup(e.full_name)===key||
+   normalizeEmployeeLookup(e.registration)===key);
+ if(exact.length===1)return exact[0];
+ if(exact.length>1)return null; // Nomes/matrículas repetidos exigem escolha manual.
+ if(key.length>=4&&people.length===1)return people[0];
+ return null;
+}
+function chooseEmployee(employee,{keepSearchText=false,automatic=false}={}){
  selectedEmployee=employee;
  byId("archive-employee-id").value=employee.id;
- byId("archive-employee-search").value=employee.full_name+(employee.registration?" — "+employee.registration:"");
+ if(!keepSearchText)byId("archive-employee-search").value=employee.full_name+(employee.registration?" — "+employee.registration:"");
  byId("archive-name").value=employee.full_name||"";
  byId("archive-registration").value=employee.registration||"";
  byId("archive-job-title").value=employee.job_title||"";
@@ -101,7 +116,7 @@ function chooseEmployee(employee){
  if(!employee.job_title)missing.push("função");
  if(!employee.department)missing.push("setor");
  byId("archive-employee-feedback").textContent=
-   "Selecionado: "+employee.full_name+" ("+employee.status+")."+
+   (automatic?"Preenchimento automático: ":"Selecionado: ")+employee.full_name+" ("+employee.status+")."+
    (missing.length?" Não consta no cadastro: "+missing.join(", ")+". Preencha manualmente apenas os campos ausentes.":" Dados preenchidos a partir do cadastro.");
 }
 async function searchEmployees(){
@@ -124,6 +139,11 @@ async function searchEmployees(){
    const people=data.employees||[];
    if(!people.length){
      byId("archive-employee-feedback").textContent="Nenhum colaborador encontrado nesta filial. Confira o cadastro ou preencha manualmente.";
+     return;
+   }
+   const autoEmployee=findAutomaticEmployee(people,q);
+   if(autoEmployee){
+     chooseEmployee(autoEmployee,{keepSearchText:true,automatic:true});
      return;
    }
    const fragment=document.createDocumentFragment();
