@@ -31,3 +31,8 @@
 #justification-archive .archive-selected-line{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-top:10px;flex-wrap:wrap}
 #justification-archive .archive-selected-line p{margin:0;flex:1;min-width:180px}
 #justification-archive input[readonly]{background:#f0f4f7;color:#46566a;cursor:default}
+
+#justification-archive .archive-select-label{display:block;margin:12px 0 6px;font-weight:650}
+#justification-archive #archive-employee-select{display:block;width:100%;max-width:100%;padding:11px 12px;border:1px solid #aebdcb;border-radius:9px;background:var(--card,#fff);color:var(--text,#173047);min-height:45px;cursor:pointer}
+#justification-archive #archive-employee-select:disabled{cursor:not-allowed;opacity:.65}
+#justification-archive #archive-employee-select:focus-visible{outline:2px solid #2475b5;outline-offset:1px}
