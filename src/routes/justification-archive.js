@@ -127,8 +127,8 @@ router.post("/cases",express.json({limit:"64kb"}),async(req,res,next)=>{
       if(!employee.rows.length)throw fail("Colaborador não pertence à empresa e filial selecionadas.",404);
       const e=employee.rows[0];
       employeeName=e.full_name;
-      registration=nullable(e.registration,40);
-      jobTitle=nullable(e.job_title,180);
+      registration=nullable(e.registration,40)||registration;
+      jobTitle=nullable(e.job_title,180)||jobTitle;
       // Quando o setor não consta no cadastro, permite informar somente este campo manualmente.
       department=nullable(e.department,160)||department;
     }
