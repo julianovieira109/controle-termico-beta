@@ -4,6 +4,7 @@ const byId=id=>document.getElementById(id);
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let currentCase="",currentCompany="",currentBranch="",loaded=false,importPreview=null;
 let employeeSearchTimer=null,employeeSearchSequence=0,selectedEmployee=null;
+let employeeDirectory=[],employeeDirectoryScope="";
 async function archiveApi(path,options={}){
  const headers={...(options.body instanceof FormData?{}:{"Content-Type":"application/json"}),...(token?{Authorization:"Bearer "+token}:{})};
  const response=await fetch("/api/justification-archive"+path,{...options,headers:{...headers,...options.headers},cache:"no-store"});
@@ -23,9 +24,10 @@ async function initialize(){
      co.innerHTML='<option value="">Selecione a empresa</option>'+companies.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.trade_name)+'</option>').join("");
      br.dataset.branches=JSON.stringify(branches);
      loaded=true;
+     refreshBranch();
    }
-   refreshBranch();
    await loadCases();
+   if(!selectedEmployee)await searchEmployees();
  }catch(error){showError(error);}
 }
 function refreshBranch(){
@@ -76,6 +78,7 @@ function clearEmployeeSelection(clearSearch=true){
  employeeSearchSequence++;
  clearTimeout(employeeSearchTimer);
  byId("archive-employee-id").value="";
+ const select=byId("archive-employee-select");if(select)select.value="";
  if(clearSearch)byId("archive-employee-search").value="";
  byId("archive-employee-results").hidden=true;
  byId("archive-employee-results").innerHTML="";
@@ -102,6 +105,7 @@ function findAutomaticEmployee(people,query){
 function chooseEmployee(employee,{keepSearchText=false,automatic=false}={}){
  selectedEmployee=employee;
  byId("archive-employee-id").value=employee.id;
+ const select=byId("archive-employee-select");if(select)select.value=employee.id;
  if(!keepSearchText)byId("archive-employee-search").value=employee.full_name+(employee.registration?" — "+employee.registration:"");
  byId("archive-name").value=employee.full_name||"";
  byId("archive-registration").value=employee.registration||"";
@@ -120,48 +124,64 @@ function chooseEmployee(employee,{keepSearchText=false,automatic=false}={}){
    (missing.length?" Não consta no cadastro: "+missing.join(", ")+". Preencha manualmente apenas os campos ausentes.":" Dados preenchidos a partir do cadastro.");
 }
 async function searchEmployees(){
- const searchInput=byId("archive-employee-search"),results=byId("archive-employee-results");
+ const searchInput=byId("archive-employee-search"),select=byId("archive-employee-select");
+ const results=byId("archive-employee-results");
  const companyId=byId("archive-company").value,branchId=byId("archive-branch").value;
- const q=searchInput.value.trim(),sequence=++employeeSearchSequence;
+ const scope=companyId+":"+branchId,q=searchInput.value.trim(),sequence=++employeeSearchSequence;
  results.hidden=true;results.innerHTML="";
- if(q.length<2){
-   byId("archive-employee-feedback").textContent="Digite pelo menos 2 caracteres do nome ou matrícula.";
-   return;
- }
  if(!companyId||!branchId){
-   byId("archive-employee-feedback").textContent="Selecione empresa e filial antes de pesquisar.";
+   select.innerHTML='<option value="">Selecione primeiro empresa e filial</option>';
+   select.disabled=true;
+   byId("archive-employee-feedback").textContent="Selecione empresa e filial para ver os nomes cadastrados.";
    return;
  }
- byId("archive-employee-feedback").textContent="Buscando colaboradores da filial...";
+ select.disabled=true;
+ byId("archive-employee-feedback").textContent="Carregando os colaboradores da filial...";
  try{
-   const data=await archiveApi("/employees?"+new URLSearchParams({companyId,branchId,q}));
-   if(sequence!==employeeSearchSequence||companyId!==byId("archive-company").value||branchId!==byId("archive-branch").value)return;
-   const people=data.employees||[];
+   if(employeeDirectoryScope!==scope){
+     const data=await archiveApi("/employees?"+new URLSearchParams({companyId,branchId}));
+     if(sequence!==employeeSearchSequence||companyId!==byId("archive-company").value||
+        branchId!==byId("archive-branch").value)return;
+     employeeDirectory=data.employees||[];
+     employeeDirectoryScope=scope;
+   }
+   const key=normalizeEmployeeLookup(q);
+   const people=employeeDirectory.filter(e=>!key||
+     normalizeEmployeeLookup(e.full_name).includes(key)||
+     normalizeEmployeeLookup(e.registration).includes(key));
+   const previous=selectedEmployee?.id||"";
+   select.replaceChildren();
+   const placeholder=document.createElement("option");
+   placeholder.value="";
+   placeholder.textContent=people.length?"Selecione o colaborador ("+people.length+" disponíveis)":"Nenhum colaborador encontrado";
+   select.appendChild(placeholder);
+   for(const e of people){
+     const option=document.createElement("option");
+     option.value=e.id;
+     option.textContent=e.full_name+(e.registration?" | Matrícula: "+e.registration:"")+
+       (e.status&&e.status!=="ATIVO"?" | "+e.status:"");
+     select.appendChild(option);
+   }
+   select.disabled=!people.length;
+   if(previous&&people.some(e=>e.id===previous))select.value=previous;
+   else select.value="";
    if(!people.length){
-     byId("archive-employee-feedback").textContent="Nenhum colaborador encontrado nesta filial. Confira o cadastro ou preencha manualmente.";
+     byId("archive-employee-feedback").textContent="Nenhum colaborador encontrado nesta filial. Confira o cadastro ou preencha os campos manualmente.";
      return;
    }
-   const autoEmployee=findAutomaticEmployee(people,q);
+   const autoEmployee=q.length>=2?findAutomaticEmployee(people,q):null;
    if(autoEmployee){
      chooseEmployee(autoEmployee,{keepSearchText:true,automatic:true});
      return;
    }
-   const fragment=document.createDocumentFragment();
-   for(const e of people){
-     const button=document.createElement("button");
-     button.type="button";
-     button.className="archive-employee-choice";
-     button.setAttribute("role","option");
-     button.textContent=e.full_name+(e.registration?" · Matrícula "+e.registration:"")+
-       (e.job_title?" · "+e.job_title:"")+(e.status?" · "+e.status:"");
-     button.addEventListener("click",()=>chooseEmployee(e));
-     fragment.appendChild(button);
-   }
-   results.appendChild(fragment);results.hidden=false;
-   byId("archive-employee-feedback").textContent=people.length+" resultado(s) nesta filial. Clique no colaborador correto para preencher a justificativa.";
+   const active=people.filter(e=>e.status==="ATIVO").length;
+   byId("archive-employee-feedback").textContent=people.length+" colaboradores disponíveis ("+active+
+      " ativos). Escolha o nome na lista acima"+(q?" ou continue digitando.":". Você também pode pesquisar pelo nome ou matrícula.");
  }catch(error){
    if(sequence!==employeeSearchSequence)return;
-   byId("archive-employee-feedback").textContent="Não foi possível consultar o cadastro.";
+   select.innerHTML='<option value="">Não foi possível carregar os colaboradores</option>';
+   select.disabled=true;
+   byId("archive-employee-feedback").textContent="Não foi possível consultar o cadastro. Confira a filial selecionada.";
    showError(error);
  }
 }
@@ -254,10 +274,14 @@ async function confirmImport(){
  finally{btn.disabled=!importPreview||!byId("archive-import-ack").checked;}
 }
 function bind(){
- byId("archive-company")?.addEventListener("change",()=>{clearEmployeeSelection();resetImportPreview();refreshBranch();loadCases();});
- byId("archive-branch")?.addEventListener("change",()=>{clearEmployeeSelection();resetImportPreview();loadCases();});
+ byId("archive-company")?.addEventListener("change",()=>{clearEmployeeSelection();employeeDirectoryScope="";resetImportPreview();refreshBranch();loadCases();searchEmployees();});
+ byId("archive-branch")?.addEventListener("change",()=>{clearEmployeeSelection();employeeDirectoryScope="";resetImportPreview();loadCases();searchEmployees();});
  byId("archive-search")?.addEventListener("input",()=>{clearTimeout(bind.searchTimer);bind.searchTimer=setTimeout(loadCases,250);});
  byId("archive-refresh")?.addEventListener("click",loadCases);
+ byId("archive-employee-select")?.addEventListener("change",event=>{
+   const employee=employeeDirectory.find(e=>e.id===event.target.value);
+   if(employee)chooseEmployee(employee);
+ });
  byId("archive-employee-search")?.addEventListener("input",handleEmployeeSearchChange);
  byId("archive-employee-search")?.addEventListener("focus",event=>{if(selectedEmployee)event.target.select();});
  byId("archive-employee-search")?.addEventListener("keydown",event=>{
@@ -269,6 +293,7 @@ function bind(){
  });
  byId("archive-employee-clear")?.addEventListener("click",()=>{
    clearEmployeeSelection();
+   searchEmployees();
    byId("archive-employee-search").focus();
  });
  byId("archive-new-case")?.addEventListener("submit",saveCase);
