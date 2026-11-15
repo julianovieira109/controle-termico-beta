@@ -89,7 +89,7 @@ async function main(){
   // Restauração ocorre APENAS no PostgreSQL descartável criado pelo GitHub Actions.
   // Exercita a recuperação integral dos bytes, sem atingir Render ou usuários reais.
   const formRestore=new FormData();
-  formRestore.append("file",new Blob([JSON.stringify(backup.data)],{type:"application/json"}),"invalido.json");
+  formRestore.append("file",new Blob([JSON.stringify(backup.data.data)],{type:"application/json"}),"invalido.json");
   formRestore.append("confirmation","RESTAURAR BACKUP");
   formRestore.append("restoreToken",backup.headers.get("x-reset-token")||"");
   const invalidRestore=await request("/api/system/restore",{token:master,method:"POST",form:formRestore});
