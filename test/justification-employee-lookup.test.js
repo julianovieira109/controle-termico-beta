@@ -11,7 +11,7 @@ test("busca de colaborador somente na empresa e filial selecionadas, sem CPF",()
  assert.match(route,/router\.use\(authenticate,requireMasterAdmin\)/);
  assert.match(route,/await assertUnit\(companyId,branchId\)/);
  assert.match(route,/e\.company_id=\$1 AND e\.branch_id=\$2/);
- assert.match(route,/LIMIT 20/);
+ assert.match(route,/LIMIT 500/);
  assert.match(route,/LEFT JOIN job_roles/);
  assert.match(route,/LEFT JOIN departments/);
  assert.doesNotMatch(route,/SELECT e\.\*,.*\/employees/);
