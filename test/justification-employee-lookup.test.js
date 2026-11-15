@@ -20,8 +20,8 @@ test("salva vinculo por id validado e campos canonicos do cadastro",()=>{
  assert.match(route,/const employeeId=nullable\(b\.employeeId,80\)/);
  assert.match(route,/WHERE e\.id=\$1 AND e\.company_id=\$2 AND e\.branch_id=\$3/);
  assert.match(route,/employeeName=e\.full_name/);
- assert.match(route,/registration=nullable\(e\.registration,40\)/);
- assert.match(route,/jobTitle=nullable\(e\.job_title,180\)/);
+ assert.match(route,/registration=nullable\(e\.registration,40\)\|\|registration/);
+ assert.match(route,/jobTitle=nullable\(e\.job_title,180\)\|\|jobTitle/);
  assert.match(route,/department=nullable\(e\.department,160\)\|\|department/);
  assert.match(route,/INSERT INTO justification_cases\(company_id,branch_id,employee_id/);
 });
