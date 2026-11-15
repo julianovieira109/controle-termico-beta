@@ -61,12 +61,15 @@ async function openCase(id){
   const ul=byId("archive-files");ul.innerHTML=result.files.length?result.files.map(f=>'<li>'+esc(f.original_name)+' — '+esc(f.storage_state)+(f.storage_state==="ARMAZENADO"?' <button class="secondary archive-download" type="button" data-id="'+esc(f.id)+'" data-name="'+esc(f.original_name)+'">Baixar</button>':"")+'</li>').join(""):'<li>Sem arquivos anexados.</li>';
  }catch(error){showError(error);}
 }
-function setEmployeeFieldsReadonly(isSelected,hasDepartment){
- for(const id of ["archive-name","archive-registration","archive-job-title"]){
-   const field=byId(id);if(field)field.readOnly=isSelected;
+function setEmployeeFieldsReadonly(isSelected,employee=null){
+ for(const [id,hasValue] of [
+   ["archive-name",true],
+   ["archive-registration",!!employee?.registration],
+   ["archive-job-title",!!employee?.job_title],
+   ["archive-department",!!employee?.department]
+ ]){
+   const field=byId(id);if(field)field.readOnly=isSelected&&hasValue;
  }
- const department=byId("archive-department");
- if(department)department.readOnly=isSelected&&hasDepartment;
 }
 function clearEmployeeSelection(clearSearch=true){
  selectedEmployee=null;
@@ -78,7 +81,7 @@ function clearEmployeeSelection(clearSearch=true){
  byId("archive-employee-results").innerHTML="";
  byId("archive-employee-clear").hidden=true;
  for(const id of ["archive-name","archive-registration","archive-job-title","archive-department"])byId(id).value="";
- setEmployeeFieldsReadonly(false,false);
+ setEmployeeFieldsReadonly(false);
  byId("archive-employee-feedback").textContent="Pesquise pelo nome ou matrícula. Caso não encontre, preencha os campos manualmente.";
 }
 function chooseEmployee(employee){
@@ -89,7 +92,7 @@ function chooseEmployee(employee){
  byId("archive-registration").value=employee.registration||"";
  byId("archive-job-title").value=employee.job_title||"";
  byId("archive-department").value=employee.department||"";
- setEmployeeFieldsReadonly(true,!!employee.department);
+ setEmployeeFieldsReadonly(true,employee);
  byId("archive-employee-results").hidden=true;
  byId("archive-employee-results").innerHTML="";
  byId("archive-employee-clear").hidden=false;
@@ -99,7 +102,7 @@ function chooseEmployee(employee){
  if(!employee.department)missing.push("setor");
  byId("archive-employee-feedback").textContent=
    "Selecionado: "+employee.full_name+" ("+employee.status+")."+
-   (missing.length?" Não consta no cadastro: "+missing.join(", ")+". Preencha o setor manualmente quando necessário.":" Dados preenchidos a partir do cadastro.");
+   (missing.length?" Não consta no cadastro: "+missing.join(", ")+". Preencha manualmente apenas os campos ausentes.":" Dados preenchidos a partir do cadastro.");
 }
 async function searchEmployees(){
  const searchInput=byId("archive-employee-search"),results=byId("archive-employee-results");
@@ -236,6 +239,7 @@ function bind(){
  byId("archive-search")?.addEventListener("input",()=>{clearTimeout(bind.searchTimer);bind.searchTimer=setTimeout(loadCases,250);});
  byId("archive-refresh")?.addEventListener("click",loadCases);
  byId("archive-employee-search")?.addEventListener("input",handleEmployeeSearchChange);
+ byId("archive-employee-search")?.addEventListener("focus",event=>{if(selectedEmployee)event.target.select();});
  byId("archive-employee-search")?.addEventListener("keydown",event=>{
    if(event.key==="Escape"){byId("archive-employee-results").hidden=true;return;}
    if(event.key==="Enter"&&!byId("archive-employee-results").hidden){
