@@ -46,3 +46,12 @@ Comprovantes médicos são dados pessoais sensíveis: restringir acesso por nece
 7. Só depois realizar importação histórica em lotes idempotentes, registrar arquivos inacessíveis para providência e validar volume total.
 
 **A branch e a proposta de alteração não representam deploy realizado nem acervo em produção.**
+
+## Ambiente Render Beta confirmado (15/11/2026)
+- Workspace: `Controle Termico's workspace`.
+- Serviço web: `controle-termico-beta` (`https://controle-termico-beta.onrender.com`), auto-deploy da branch `main`.
+- Banco: `controle-termico-beta-db` (`controle_termico_beta_1bay`), PostgreSQL 18, capacidade de disco 1 GB, utilização de aproximadamente 19 MB na conferência; sem tabelas do acervo ainda.
+- Branch de homologação: `feature/acervo-justificativas-db`, ainda **não** mesclada em `main`.
+- Teste isolado GitHub Actions: instalação, 554/555 testes de regressão aprovados (1 ignorado) e smoke PostgreSQL de migração, autenticação, upload, hash, download, bloqueio de duplicidade, backup e restauração aprovado.
+- **Bloqueio antes da publicação:** o conector Render tem consulta somente leitura ao banco e não oferece exportação de backup; não foi possível verificar backup recuperável dos dados atuais. É necessário entrar no Beta como Administrador Master, ir a **Configurações → Backup e dados → Gerar e baixar backup**, guardar o JSON protegido e validar o arquivo antes do merge.
+- Não executar `trigger_deploy` ao mesclar a PR: a publicação automática já está habilitada. Manter `JUSTIFICATION_ARCHIVE_BETA` desativada até a homologação em ambiente Render.
