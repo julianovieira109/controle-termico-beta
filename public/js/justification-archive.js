@@ -27,7 +27,7 @@ async function initialize(){
      refreshBranch();
    }
    await loadCases();
-   if(!selectedEmployee)await searchEmployees();
+   if(!selectedEmployee){if(!byId("archive-department").value)byId("archive-department").value=defaultDepartmentForBranch();await searchEmployees();}
  }catch(error){showError(error);}
 }
 function refreshBranch(){
@@ -63,6 +63,11 @@ async function openCase(id){
   const ul=byId("archive-files");ul.innerHTML=result.files.length?result.files.map(f=>'<li>'+esc(f.original_name)+' — '+esc(f.storage_state)+(f.storage_state==="ARMAZENADO"?' <button class="secondary archive-download" type="button" data-id="'+esc(f.id)+'" data-name="'+esc(f.original_name)+'">Baixar</button>':"")+'</li>').join(""):'<li>Sem arquivos anexados.</li>';
  }catch(error){showError(error);}
 }
+// Padrão solicitado para a operação da TRANZILOG; setores cadastrados prevalecem.
+function defaultDepartmentForBranch(){
+ const name=byId("archive-branch")?.selectedOptions?.[0]?.textContent||"";
+ return /TRANS?ZILOG/i.test(name)?"Armazem":"";
+}
 function setEmployeeFieldsReadonly(isSelected,employee=null){
  for(const [id,hasValue] of [
    ["archive-name",true],
@@ -84,6 +89,7 @@ function clearEmployeeSelection(clearSearch=true){
  byId("archive-employee-results").innerHTML="";
  byId("archive-employee-clear").hidden=true;
  for(const id of ["archive-name","archive-registration","archive-job-title","archive-department"])byId(id).value="";
+ byId("archive-department").value=defaultDepartmentForBranch();
  setEmployeeFieldsReadonly(false);
  byId("archive-employee-feedback").textContent="Pesquise pelo nome ou matrícula. Caso não encontre, preencha os campos manualmente.";
 }
@@ -110,7 +116,7 @@ function chooseEmployee(employee,{keepSearchText=false,automatic=false}={}){
  byId("archive-name").value=employee.full_name||"";
  byId("archive-registration").value=employee.registration||"";
  byId("archive-job-title").value=employee.job_title||"";
- byId("archive-department").value=employee.department||"";
+ byId("archive-department").value=employee.department||defaultDepartmentForBranch();
  setEmployeeFieldsReadonly(true,employee);
  byId("archive-employee-results").hidden=true;
  byId("archive-employee-results").innerHTML="";
@@ -274,7 +280,7 @@ async function confirmImport(){
  finally{btn.disabled=!importPreview||!byId("archive-import-ack").checked;}
 }
 function bind(){
- byId("archive-company")?.addEventListener("change",()=>{clearEmployeeSelection();employeeDirectoryScope="";resetImportPreview();refreshBranch();loadCases();searchEmployees();});
+ byId("archive-company")?.addEventListener("change",()=>{refreshBranch();clearEmployeeSelection();employeeDirectoryScope="";resetImportPreview();loadCases();searchEmployees();});
  byId("archive-branch")?.addEventListener("change",()=>{clearEmployeeSelection();employeeDirectoryScope="";resetImportPreview();loadCases();searchEmployees();});
  byId("archive-search")?.addEventListener("input",()=>{clearTimeout(bind.searchTimer);bind.searchTimer=setTimeout(loadCases,250);});
  byId("archive-refresh")?.addEventListener("click",loadCases);
