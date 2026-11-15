@@ -66,7 +66,7 @@ async function openCase(id){
 // Padrão solicitado para a operação da TRANZILOG; setores cadastrados prevalecem.
 function defaultDepartmentForBranch(){
  const name=byId("archive-branch")?.selectedOptions?.[0]?.textContent||"";
- return /TRAN[ZS]ILOG/i.test(name)?"Armazem":"";
+ return /TRANS?ZILOG/i.test(name)?"Armazem":"";
 }
 function setEmployeeFieldsReadonly(isSelected,employee=null){
  for(const [id,hasValue] of [
