@@ -122,7 +122,8 @@ async function main(){
   assert.equal(unfiltered.data.employees[0].registration,"QA98765","Colaboradores ativos aparecem primeiro.");
   const crossedSearch=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+otherBranch+"&q=98765",{token:manager});
   assert.equal(crossedSearch.status,200);
-  assert.equal(crossedSearch.data.employees.length,0);
+  assert.equal(crossedSearch.data.employees.length,1,"Filtro malicioso não pode alterar o escopo do usuário.");
+  assert.ok(crossedSearch.data.employees.every(e=>e.branch_id===branch),"Só colaboradores da filial autorizada.");
   const selectedCreated=await request("/api/justification-archive/cases",{method:"POST",token:manager,payload:{
     companyId:com,branchId:branch,employeeId:employee,
     employeeName:"Nome adulterado",registration:"MATRICULA-ERRADA",jobTitle:"Cargo falso",
