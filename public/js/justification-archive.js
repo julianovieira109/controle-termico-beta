@@ -219,9 +219,9 @@ function resetImportPreview(){
 function importMessage(message){if(byId("archive-import-message"))byId("archive-import-message").textContent=message;}
 async function previewImport(event){
  event.preventDefault();resetImportPreview();clearError();
- const companyId=byId("archive-company").value,branchId=byId("archive-branch").value;
+ const importEnabled=archiveScope?.importEnabled===true;
  const file=byId("archive-import-file")?.files?.[0];
- if(!companyId||!branchId){showError(new Error("Escolha empresa e filial antes de conferir o histórico."));return;}
+ if(!importEnabled){showError(new Error("Importação exige um perfil autorizado e uma única filial vinculada."));return;}
  if(!file){showError(new Error("Selecione o CSV do histórico."));return;}
  if(file.size>5*1024*1024){showError(new Error("O CSV deve ter até 5 MB."));return;}
  const btn=byId("archive-import-check");btn.disabled=true;
@@ -229,10 +229,8 @@ async function previewImport(event){
  try{
    const form=new FormData();
    form.append("file",file);
-   form.append("companyId",companyId);
-   form.append("branchId",branchId);
    const p=await archiveApi("/imports/preview",{method:"POST",body:form});
-   importPreview={token:p.previewToken,companyId,branchId};
+   importPreview={token:p.previewToken};
    const sum=p.summary;
    byId("archive-import-summary").innerHTML=[
      ["Respostas encontradas",sum.sourceRows],
@@ -248,20 +246,18 @@ async function previewImport(event){
      ?p.issues.slice(0,15).map(issue=>"Linha "+issue.row+": "+issue.reason).join(" | ")+(p.issues.length>15?" (exibindo até 15 inconsistências)":"")
      :"Nenhum registro inválido identificado.";
    byId("archive-import-preview").hidden=false;
-   importMessage("Prévia pronta. Confira os números e a filial antes de confirmar.");
+   importMessage("Prévia pronta. Confira os números e a filial vinculada ao perfil antes de confirmar.");
  }catch(error){importMessage("");showError(error);}
  finally{btn.disabled=false;}
 }
 async function confirmImport(){
  if(!importPreview||!byId("archive-import-ack").checked)return;
- if(byId("archive-company").value!==importPreview.companyId||byId("archive-branch").value!==importPreview.branchId){
-   resetImportPreview();showError(new Error("A empresa ou filial mudou. Leia o CSV novamente."));return;
- }
+ if(!archiveScope?.importEnabled){resetImportPreview();showError(new Error("A importação não está autorizada para o perfil."));return;}
  const btn=byId("archive-import-confirm");btn.disabled=true;clearError();
  importMessage("Gravando histórico na filial selecionada...");
  try{
    const result=await archiveApi("/imports/confirm",{method:"POST",body:JSON.stringify({
-     previewToken:importPreview.token,companyId:importPreview.companyId,branchId:importPreview.branchId,confirmation:"IMPORTAR HISTORICO"
+     previewToken:importPreview.token,confirmation:"IMPORTAR HISTORICO"
    })});
    resetImportPreview();
    byId("archive-import-file").value="";
