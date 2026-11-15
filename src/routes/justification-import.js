@@ -44,6 +44,11 @@ router.post("/preview",csvUpload,async(req,res,next)=>{
     const csv=req.file.buffer.toString("utf8");
     if(csv.includes("\uFFFD"))throw fail("O CSV não está codificado em UTF-8. Exporte diretamente do Google Sheets.");
     const parsed=parseLegacyCsv(csv);
+    const elsewhere=await pool.query(
+      "SELECT DISTINCT branch_id FROM justification_cases WHERE company_id=$1 AND source_system='GOOGLE_SHEETS' AND source_key LIKE $2 AND branch_id<>$3",
+      [companyId,ORIGIN+"%",branchId]
+    );
+    if(elsewhere.rows.length)throw fail("Este histórico já começou a ser importado em outra filial da empresa. Verifique o destino antes de continuar.",409);
     const {rows}=await pool.query(
       "SELECT source_key FROM justification_cases WHERE company_id=$1 AND branch_id=$2 AND source_system='GOOGLE_SHEETS' AND source_key LIKE $3",
       [companyId,branchId,ORIGIN+"%"]
@@ -74,7 +79,12 @@ router.post("/confirm",express.json({limit:"8kb"}),async(req,res,next)=>{
     client=await pool.connect();await client.query("BEGIN");
     await assertUnit(client,companyId,branchId);
     // Evita importações concorrentes para a mesma filial.
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))",[companyId,branchId]);
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))",[companyId,ORIGIN]);
+    const otherBranch=await client.query(
+      "SELECT 1 FROM justification_cases WHERE company_id=$1 AND source_system='GOOGLE_SHEETS' AND source_key LIKE $2 AND branch_id<>$3 LIMIT 1",
+      [companyId,ORIGIN+"%",branchId]
+    );
+    if(otherBranch.rows.length)throw fail("Histórico associado a outra filial. Importação cancelada sem alterações.",409);
     let created=0,duplicates=0,linked=0;
     for(let i=0;i<entry.data.cases.length;i+=100){
       const chunk=entry.data.cases.slice(i,i+100);
