@@ -95,8 +95,7 @@ async function main(){
   const invalidRestore=await request("/api/system/restore",{token:master,method:"POST",form:formRestore});
   assert.equal(invalidRestore.status,400,"Backup sem envelope/assinatura deve ser rejeitado.");
   // Reconstrói um backup assinado válido para testar a restauração.
-  const {attachIntegrity}=require("../src/services/backup-integrity");
-  const signed=attachIntegrity({format:"controle-termico-backup",version:"teste",generatedAt:new Date().toISOString(),data:backup.data});
+  const signed=backup.data;
   const restore=new FormData();
   restore.append("file",new Blob([JSON.stringify(signed)],{type:"application/json"}),"backup-valido.json");
   restore.append("confirmation","RESTAURAR BACKUP");
