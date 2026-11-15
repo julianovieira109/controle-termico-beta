@@ -144,6 +144,41 @@ async function main(){
     employeeName:"Nome adulterado",reason:"Tentativa de vínculo incorreto"
   }});
   assert.equal(otherBranchAttempt.status,404,"Não pode vincular colaborador de outra filial.");
+  // Perfil de consulta vinculado exclusivamente à outra filial.
+  const viewProfile=(await pool.query(
+    "INSERT INTO user_profiles(name,base_role) VALUES('Consulta outra filial QA','RH') RETURNING id"
+  )).rows[0].id;
+  await pool.query("INSERT INTO profile_permissions(profile_id,permission_key,allowed) VALUES($1,'documents.view',TRUE)",[viewProfile]);
+  const viewUser=(await pool.query(
+    "INSERT INTO users(name,email,password_hash,role,profile_id,company_id,branch_id) VALUES('Consulta QA','qa-consulta@exemplo.invalid','hash-teste','RH',$1,$2,$3) RETURNING id",
+    [viewProfile,com,otherBranch]
+  )).rows[0].id;
+  await pool.query("INSERT INTO user_branches(user_id,branch_id) VALUES($1,$2)",[viewUser,otherBranch]);
+  const reader=jwt.sign({sub:viewUser,role:"RH"},secret,{expiresIn:"5m"});
+  const viewScope=await request("/api/justification-archive/scope",{token:reader});
+  assert.equal(viewScope.status,200);
+  assert.equal(viewScope.data.units.length,1);
+  assert.equal(viewScope.data.canManage,false);
+  assert.equal(viewScope.data.units[0].branch_id,otherBranch);
+  const masterCreated=await request("/api/justification-archive/cases",{
+    token:master,method:"POST",payload:{employeeId:externalEmployee,
+       employeeName:"Nome falso",reason:"Teste outra filial"}
+  });
+  assert.equal(masterCreated.status,201);
+  const readerList=await request("/api/justification-archive/cases",{token:reader});
+  assert.equal(readerList.status,200);
+  assert.equal(readerList.data.total,1,"Consulta somente da filial atribuída.");
+  const readerWrongCase=await request("/api/justification-archive/cases/"+caseId,{token:reader});
+  assert.equal(readerWrongCase.status,404,"Não revelar caso de outra filial.");
+  const readerWrongFile=await request("/api/justification-archive/files/"+fileId+"/download",{token:reader});
+  assert.equal(readerWrongFile.status,404,"Não revelar anexo de outra filial.");
+  const readerPatch=await request("/api/justification-archive/cases/"+masterCreated.data.id+"/status",{
+    token:reader,method:"PATCH",payload:{status:"CONFERIDO"}
+  });
+  assert.equal(readerPatch.status,403,"Perfil de consulta não pode editar.");
+  const managerWrongCase=await request("/api/justification-archive/cases/"+masterCreated.data.id,{token:manager});
+  assert.equal(managerWrongCase.status,404,"Perfil gestor não pode abrir documentos de outra filial.");
+
   const content=(await pool.query("SELECT f.sha256,c.bytes FROM justification_files f JOIN justification_file_contents c ON c.file_id=f.id WHERE f.id=$1",[fileId])).rows[0];
   assert.equal(content.sha256,crypto.createHash("sha256").update(pdf).digest("hex"));
   assert.deepEqual(content.bytes,pdf);
