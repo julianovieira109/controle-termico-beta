@@ -263,7 +263,9 @@ router.get("/backup",async(req,res,next)=>{
       const archiveExists=await client.query("SELECT to_regclass('public.justification_file_contents') AS table_name");
       if(archiveExists.rows[0]?.table_name){
         const docs=await client.query("SELECT EXISTS(SELECT 1 FROM justification_file_contents) AS has_documents");
-        if(docs.rows[0]?.has_documents)throw Object.assign(new Error("Backup contendo documentos pessoais disponível apenas ao Administrador Master."),{status:403});
+        const cases=await client.query("SELECT EXISTS(SELECT 1 FROM justification_cases) AS has_justifications");
+        if(docs.rows[0]?.has_documents||cases.rows[0]?.has_justifications)
+          throw Object.assign(new Error("Backup contendo justificativas e documentos pessoais disponível apenas ao Administrador Master."),{status:403});
       }
     }
     const backup=await collectBackup(client,req);
