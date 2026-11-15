@@ -111,6 +111,14 @@ async function main(){
   assert.equal(importStatus.data.pending,1);
   assert.equal(importStatus.data.stored,0);
   assert.equal(importStatus.data.no_name,1);
+  const wrongBranch=(await pool.query("INSERT INTO branches(company_id,name) VALUES($1,'Outra filial QA') RETURNING id",[com])).rows[0].id;
+  const crossForm=new FormData();
+  crossForm.append("companyId",com);
+  crossForm.append("branchId",wrongBranch);
+  crossForm.append("file",new Blob([legacyCsv],{type:"text/csv"}),"historico-ficticio.csv");
+  const crossPreview=await request("/api/justification-archive/imports/preview",{token:master,method:"POST",form:crossForm});
+  assert.equal(crossPreview.status,409,"Não pode copiar o mesmo histórico para outra filial.");
+
   const previewAgain=await request("/api/justification-archive/imports/preview",{token:master,method:"POST",form:importForm()});
   assert.equal(previewAgain.status,200);
   assert.equal(previewAgain.data.summary.alreadyImported,2);
