@@ -35,6 +35,7 @@ app.use("/api/employees",require("./routes/employees"));
 app.use("/api/workflow-assistant",require("./routes/workflow-assistant"));
 app.use("/api/escalas-5x2",require("./routes/roster-planning"));
 app.use("/api/justification-archive",require("./routes/justification-archive"));
+app.use("/api/justification-archive/imports",require("./routes/justification-import"));
 app.use("/api/imports",require("./routes/imports"));
 app.use("/api/reconciliation",require("./routes/reconciliation"));
 app.use("/api/catalogs",require("./routes/catalogs"));
