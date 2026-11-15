@@ -43,6 +43,9 @@ async function loadCases(){
  const params=new URLSearchParams({companyId:currentCompany,branchId:currentBranch,q:byId("archive-search").value,limit:"50"});
  const results=await archiveApi("/cases?"+params);
  byId("archive-total").textContent=results.total+" justificativa(s)";
+ archiveApi("/imports/status?"+new URLSearchParams({companyId:currentCompany,branchId:currentBranch}))
+  .then(v=>{const el=byId("archive-import-history-status");if(el&&currentCompany===byId("archive-company").value&&currentBranch===byId("archive-branch").value)el.textContent="Histórico Google Sheets nesta filial: "+v.cases.toLocaleString("pt-BR")+" justificativas; "+v.pending.toLocaleString("pt-BR")+" links pendentes; "+v.stored.toLocaleString("pt-BR")+" arquivos já armazenados. Registros sem nome: "+v.no_name.toLocaleString("pt-BR")+".";})
+  .catch(()=>{const el=byId("archive-import-history-status");if(el)el.textContent="Não foi possível consultar o resumo do histórico.";});
  body.innerHTML=results.records.length?results.records.map(r=>'<tr><td>'+esc(r.employee_name)+(r.employee_registration?'<small> · '+esc(r.employee_registration)+'</small>':"")+'</td><td>'+esc(r.absence_date?String(r.absence_date).slice(0,10).split("-").reverse().join("/"):"—")+'</td><td>'+esc(r.reason)+'</td><td>'+esc(statusLabel(r.review_status))+'</td><td><button class="secondary archive-open" type="button" data-id="'+esc(r.id)+'">Consultar ('+r.stored_count+'/'+r.file_count+')</button></td></tr>').join(""):'<tr><td colspan="5">Nenhuma justificativa cadastrada.</td></tr>';
  }catch(error){body.innerHTML='<tr><td colspan="5">Não foi possível carregar os registros.</td></tr>';showError(error);}
 }
