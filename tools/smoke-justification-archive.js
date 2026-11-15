@@ -76,6 +76,55 @@ async function main(){
   const impossible=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch+"&q=__inexistente__",{token:master});
   assert.equal(impossible.status,200);
   assert.equal(impossible.data.total,0,"Curingas de pesquisa não devem furar o filtro.");
+  // Busca por nome/matrícula somente na filial selecionada, sem CPF.
+  const employee=(await pool.query(
+    "INSERT INTO employees(company_id,branch_id,full_name,registration,job_title,status) VALUES($1,$2,'Funcionário Fictício QA','QA98765','Conferente QA','ATIVO') RETURNING id",[com,branch]
+  )).rows[0].id;
+  const otherBranch=(await pool.query("INSERT INTO branches(company_id,name) VALUES($1,'Outra Filial QA Busca') RETURNING id",[com])).rows[0].id;
+  await pool.query(
+    "INSERT INTO employees(company_id,branch_id,full_name,registration,job_title,status) VALUES($1,$2,'Funcionário Externo QA','QA98766','Cargo Externo','ATIVO')",[com,otherBranch]
+  );
+  await pool.query(
+    "INSERT INTO employees(company_id,branch_id,full_name,registration,job_title,status) VALUES($1,$2,'Funcionário Anterior QA','QA98760','Cargo Anterior','DEMITIDO')",[com,branch]
+  );
+  const unauthorizedSearch=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=QA",{token:regular});
+  assert.equal(unauthorizedSearch.status,403,"Busca de documentos não pode ser pública.");
+  const searchedEmployee=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=QA",{token:master});
+  assert.equal(searchedEmployee.status,200,JSON.stringify(searchedEmployee.data));
+  assert.equal(searchedEmployee.data.employees.length,2,"Não pode incluir colaborador de outra filial.");
+  assert.ok(searchedEmployee.data.employees.every(e=>!Object.hasOwn(e,"cpf")),"Consulta não deve revelar CPF.");
+  assert.equal(searchedEmployee.data.employees[0].registration,"QA98765","Ativos devem vir antes de desligados.");
+  assert.equal(searchedEmployee.data.employees[0].job_title,"Conferente QA");
+  const byRegistration=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=98765",{token:master});
+  assert.equal(byRegistration.status,200);
+  assert.equal(byRegistration.data.employees.length,1);
+  assert.equal(byRegistration.data.employees[0].id,employee);
+  const shortQuery=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=Q",{token:master});
+  assert.equal(shortQuery.status,200);
+  assert.equal(shortQuery.data.employees.length,0);
+  const crossedSearch=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+otherBranch+"&q=98765",{token:master});
+  assert.equal(crossedSearch.status,200);
+  assert.equal(crossedSearch.data.employees.length,0);
+  const selectedCreated=await request("/api/justification-archive/cases",{method:"POST",token:master,payload:{
+    companyId:com,branchId:branch,employeeId:employee,
+    employeeName:"Nome adulterado",registration:"MATRICULA-ERRADA",jobTitle:"Cargo falso",
+    department:"Setor informado manualmente",reason:"Ocorrência de teste vinculada",absenceDate:"2026-11-14"
+  }});
+  assert.equal(selectedCreated.status,201,JSON.stringify(selectedCreated.data));
+  const canonical=(await pool.query(
+    "SELECT employee_id,employee_name,employee_registration,job_title,department FROM justification_cases WHERE id=$1",
+    [selectedCreated.data.id]
+  )).rows[0];
+  assert.equal(canonical.employee_id,employee);
+  assert.equal(canonical.employee_name,"Funcionário Fictício QA");
+  assert.equal(canonical.employee_registration,"QA98765");
+  assert.equal(canonical.job_title,"Conferente QA");
+  assert.equal(canonical.department,"Setor informado manualmente");
+  const otherBranchAttempt=await request("/api/justification-archive/cases",{method:"POST",token:master,payload:{
+    companyId:com,branchId:otherBranch,employeeId:employee,
+    employeeName:"Nome adulterado",reason:"Tentativa de vínculo incorreto"
+  }});
+  assert.equal(otherBranchAttempt.status,404,"Não pode vincular colaborador de outra filial.");
   const content=(await pool.query("SELECT f.sha256,c.bytes FROM justification_files f JOIN justification_file_contents c ON c.file_id=f.id WHERE f.id=$1",[fileId])).rows[0];
   assert.equal(content.sha256,crypto.createHash("sha256").update(pdf).digest("hex"));
   assert.deepEqual(content.bytes,pdf);
