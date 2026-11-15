@@ -63,7 +63,7 @@ router.get("/employees",async(req,res,next)=>{
     await assertUnit(companyId,branchId);
     const q=clean(req.query.q,100);
     if(q.length<2)return res.json({employees:[]});
-    const pattern="%"+q.replace(/[\\%_]/g,"\\router.get("/cases",async(req,res,next)=>{")+"%";
+    const pattern="%"+q.replace(/[\\%_]/g,"\\$&")+"%";
     const {rows}=await pool.query(`
       SELECT e.id,e.full_name,e.registration,e.status,
              COALESCE(NULLIF(TRIM(j.name),''),NULLIF(TRIM(e.job_title),'')) AS job_title,
