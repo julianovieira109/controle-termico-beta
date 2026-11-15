@@ -70,6 +70,12 @@ async function main(){
   assert.equal(bad.status,415,"Arquivos falsamente identificados devem ser recusados.");
   const cases=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch,{token:master});
   assert.equal(cases.status,200);assert.equal(cases.data.total,1);assert.equal(cases.data.records[0].stored_count,1);
+  const searched=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch+"&q=Fict%C3%ADcia",{token:master});
+  assert.equal(searched.status,200,"Pesquisa por nome deve funcionar.");
+  assert.equal(searched.data.total,1);
+  const impossible=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch+"&q=__inexistente__",{token:master});
+  assert.equal(impossible.status,200);
+  assert.equal(impossible.data.total,0,"Curingas de pesquisa não devem furar o filtro.");
   const content=(await pool.query("SELECT f.sha256,c.bytes FROM justification_files f JOIN justification_file_contents c ON c.file_id=f.id WHERE f.id=$1",[fileId])).rows[0];
   assert.equal(content.sha256,crypto.createHash("sha256").update(pdf).digest("hex"));
   assert.deepEqual(content.bytes,pdf);
@@ -80,7 +86,27 @@ async function main(){
   assert.deepEqual(Buffer.from(item.bytes,"base64"),pdf);
   const blockedBackup=await request("/api/system/backup",{token:regular});
   assert.equal(blockedBackup.status,403,"Backup de documento médico não pode ser liberado a Admin comum.");
-  console.log("SMOKE_ACERVO_OK: esquema, cadastro, upload, download, permissão, deduplicação, hash e backup.");
+  // Restauração ocorre APENAS no PostgreSQL descartável criado pelo GitHub Actions.
+  // Exercita a recuperação integral dos bytes, sem atingir Render ou usuários reais.
+  const formRestore=new FormData();
+  formRestore.append("file",new Blob([JSON.stringify(backup.data)],{type:"application/json"}),"invalido.json");
+  formRestore.append("confirmation","RESTAURAR BACKUP");
+  formRestore.append("restoreToken",backup.headers.get("x-reset-token")||"");
+  const invalidRestore=await request("/api/system/restore",{token:master,method:"POST",form:formRestore});
+  assert.equal(invalidRestore.status,400,"Backup sem envelope/assinatura deve ser rejeitado.");
+  // Reconstrói um backup assinado válido para testar a restauração.
+  const {attachIntegrity}=require("../src/services/backup-integrity");
+  const signed=attachIntegrity({format:"controle-termico-backup",version:"teste",generatedAt:new Date().toISOString(),data:backup.data});
+  const restore=new FormData();
+  restore.append("file",new Blob([JSON.stringify(signed)],{type:"application/json"}),"backup-valido.json");
+  restore.append("confirmation","RESTAURAR BACKUP");
+  restore.append("restoreToken",backup.headers.get("x-reset-token")||"");
+  const restored=await request("/api/system/restore",{token:master,method:"POST",form:restore});
+  assert.equal(restored.status,200,"Restauração em banco descartável deve funcionar: "+JSON.stringify(restored.data));
+  const recovered=(await pool.query("SELECT bytes FROM justification_file_contents WHERE file_id=$1",[fileId])).rows[0];
+  assert.ok(recovered,"Restauração removeu o arquivo.");
+  assert.deepEqual(recovered.bytes,pdf,"Restauração alterou os bytes do documento.");
+  console.log("SMOKE_ACERVO_OK: esquema, cadastro, busca, upload, download, permissão, hash e backup/restauração.");
 }
 main().catch(error=>{console.error("SMOKE_ACERVO_FALHOU:",error);process.exitCode=1;}).finally(async()=>{
   if(server){server.kill("SIGTERM");await Promise.race([new Promise(resolve=>server.once("exit",resolve)),sleep(1200)]);}
