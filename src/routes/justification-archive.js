@@ -56,7 +56,7 @@ router.get("/employees",requireScope(),async(req,res,next)=>{
     "SELECT e.id,e.company_id,e.branch_id,e.full_name,e.registration,e.status,"+
     "COALESCE(NULLIF(TRIM(j.name),''),NULLIF(TRIM(e.job_title),'')) job_title,"+
     "NULLIF(TRIM(d.name),'') department,b.name branch_name,COALESCE(c.trade_name,c.legal_name) company_name "+
-    "FROM employees e JOIN branches b ON b.id=e.branch_id JOIN companies c ON c.id=e.company_id "+
+    "FROM employees e JOIN branches b ON b.id=e.branch_id AND b.company_id=e.company_id JOIN companies c ON c.id=e.company_id "+
     "LEFT JOIN job_roles j ON j.id=e.job_role_id AND j.company_id=e.company_id "+
     "LEFT JOIN departments d ON d.id=e.department_id AND d.company_id=e.company_id "+
     "WHERE "+parts.join(" AND ")+" ORDER BY CASE WHEN UPPER(TRIM(e.status))='ATIVO' THEN 0 ELSE 1 END,e.full_name,e.registration LIMIT 500",args
@@ -67,7 +67,7 @@ router.get("/employees",requireScope(),async(req,res,next)=>{
 router.get("/cases",requireScope(),async(req,res,next)=>{
  try{
   const scope=req.archiveScope,limit=Math.min(100,Math.max(1,parseInt(req.query.limit,10)||50)),offset=Math.min(100000,Math.max(0,parseInt(req.query.offset,10)||0));
-  const args=[scope.branchIds],where=["c.branch_id=ANY($1::uuid[])"];
+  const args=[scope.branchIds],where=["c.branch_id=ANY($1::uuid[])","EXISTS(SELECT 1 FROM branches bcheck WHERE bcheck.id=c.branch_id AND bcheck.company_id=c.company_id)"];
   const q=clean(req.query.q,100);
   if(q){args.push("%"+q.replace(/[\\%_]/g,"\\$&")+"%");where.push("(c.employee_name ILIKE $"+args.length+" ESCAPE '\\' OR c.employee_registration ILIKE $"+args.length+" ESCAPE '\\')");}
   if(req.query.status){if(!statuses.has(req.query.status))throw fail("Situação inválida.",400);args.push(req.query.status);where.push("c.review_status=$"+args.length);}
@@ -77,7 +77,7 @@ router.get("/cases",requireScope(),async(req,res,next)=>{
     "SELECT c.id,c.company_id,c.branch_id,c.employee_name,c.employee_registration,c.department,c.absence_date,c.reason,c.review_status,c.submitted_at,c.created_at,c.source_system,"+
     "b.name branch_name,COALESCE(co.trade_name,co.legal_name) company_name,"+
     "COUNT(f.id)::int file_count,COUNT(f.id) FILTER (WHERE f.storage_state='ARMAZENADO')::int stored_count "+
-    "FROM justification_cases c JOIN branches b ON b.id=c.branch_id JOIN companies co ON co.id=c.company_id "+
+    "FROM justification_cases c JOIN branches b ON b.id=c.branch_id AND b.company_id=c.company_id JOIN companies co ON co.id=c.company_id "+
     "LEFT JOIN justification_files f ON f.case_id=c.id WHERE "+clause+
     " GROUP BY c.id,b.name,co.trade_name,co.legal_name ORDER BY c.absence_date DESC NULLS LAST,c.created_at DESC LIMIT $"+(args.length+1)+" OFFSET $"+(args.length+2),
     [...args,limit,offset]);
