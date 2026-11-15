@@ -35,3 +35,14 @@ test("interface permite buscar, selecionar, preencher e trocar colaborador",()=>
  assert.match(frontend,/clearEmployeeSelection\(\)/);
  assert.match(frontend,/setEmployeeFieldsReadonly\(true,/);
 });
+
+test("lista da filial aparece antes de digitar, pode ser filtrada e preserva selecao",()=>{
+ assert.match(page,/id="archive-employee-select"/);
+ assert.match(frontend,/async function searchEmployees\(\)/);
+ assert.match(frontend,/employeeDirectoryScope!==scope/);
+ assert.match(frontend,/select\.replaceChildren\(\)/);
+ assert.match(frontend,/if\(!selectedEmployee\)await searchEmployees\(\)/);
+ assert.match(frontend,/archive-employee-select"\)\?\.addEventListener\("change"/);
+ assert.match(frontend,/loadCases\(\);searchEmployees\(\)/);
+ assert.match(frontend,/normalizeEmployeeLookup\(e\.full_name\)\.includes\(key\)/);
+});
