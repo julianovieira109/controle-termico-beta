@@ -79,6 +79,48 @@ async function main(){
   const content=(await pool.query("SELECT f.sha256,c.bytes FROM justification_files f JOIN justification_file_contents c ON c.file_id=f.id WHERE f.id=$1",[fileId])).rows[0];
   assert.equal(content.sha256,crypto.createHash("sha256").update(pdf).digest("hex"));
   assert.deepEqual(content.bytes,pdf);
+  // Importação CSV fictícia, sem acessar a planilha real ou anexos privados.
+  const csvRows=[
+    ["Carimbo de data/hora","Juliano","Fu","Setor/Departamento","Data de Ausência","Declaro que o colaborador, esteve ausente na data acima mencionada, pelo motivo abaixo:","Outros Motivos - Detalhe o motivo/justificativa","Endereço de e-mail","Anexar atestado, advertência, suspensão e Outros","Email do Gestor Responsável","Endereço de e-mail"],
+    ["13/11/2026 10:15:00","Pessoa Fictícia CSV","Cargo teste","Setor QA","12/11/2026","Atestado","","","https://drive.google.com/open?id=1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","","teste@example.invalid"],
+    ["13/11/2026 11:15:00","","Outro cargo","Setor QA","13/11/2026","Falta","Sem nome na origem","","Texto informativo sem URL","",""],
+    ["13/11/2026 12:00:00","Pessoa com Data Inválida","","Setor QA","31/02/2026","Outros","","","","",""]
+  ];
+  const legacyCsv=csvRows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(",")).join("\r\n");
+  const importForm=()=>{const f=new FormData();f.append("companyId",com);f.append("branchId",branch);f.append("file",new Blob([legacyCsv],{type:"text/csv"}),"historico-ficticio.csv");return f;};
+  const deniedPreview=await request("/api/justification-archive/imports/preview",{token:regular,method:"POST",form:importForm()});
+  assert.equal(deniedPreview.status,403,"Somente Master pode importar.");
+  const preview=await request("/api/justification-archive/imports/preview",{token:master,method:"POST",form:importForm()});
+  assert.equal(preview.status,200,"Prévia do CSV deve funcionar: "+JSON.stringify(preview.data));
+  assert.equal(preview.data.summary.ready,2);
+  assert.equal(preview.data.summary.missingNames,1);
+  assert.equal(preview.data.summary.linkCount,1);
+  assert.equal(preview.data.summary.invalid,1);
+  assert.equal(preview.data.summary.newCases,2);
+  const invalidConfirm=await request("/api/justification-archive/imports/confirm",{token:master,method:"POST",payload:{previewToken:preview.data.previewToken,companyId:com,branchId:branch,confirmation:"NÃO"}});
+  assert.equal(invalidConfirm.status,400);
+  const validConfirm=await request("/api/justification-archive/imports/confirm",{token:master,method:"POST",payload:{previewToken:preview.data.previewToken,companyId:com,branchId:branch,confirmation:"IMPORTAR HISTORICO"}});
+  assert.equal(validConfirm.status,201,"Importação deve ser concluída: "+JSON.stringify(validConfirm.data));
+  assert.equal(validConfirm.data.created,2);
+  assert.equal(validConfirm.data.linksPending,1);
+  assert.equal(validConfirm.data.skipped,1);
+  const importStatus=await request("/api/justification-archive/imports/status?companyId="+com+"&branchId="+branch,{token:master});
+  assert.equal(importStatus.status,200);
+  assert.equal(importStatus.data.cases,2);
+  assert.equal(importStatus.data.attachments,1);
+  assert.equal(importStatus.data.pending,1);
+  assert.equal(importStatus.data.stored,0);
+  assert.equal(importStatus.data.no_name,1);
+  const previewAgain=await request("/api/justification-archive/imports/preview",{token:master,method:"POST",form:importForm()});
+  assert.equal(previewAgain.status,200);
+  assert.equal(previewAgain.data.summary.alreadyImported,2);
+  assert.equal(previewAgain.data.summary.newCases,0);
+  const repeated=await request("/api/justification-archive/imports/confirm",{token:master,method:"POST",payload:{previewToken:previewAgain.data.previewToken,companyId:com,branchId:branch,confirmation:"IMPORTAR HISTORICO"}});
+  assert.equal(repeated.status,201);
+  assert.equal(repeated.data.created,0,"Reimportação não pode duplicar casos.");
+  assert.equal(repeated.data.linksPending,0,"Reimportação não pode duplicar anexos.");
+  const noBinary=(await pool.query("SELECT COUNT(*)::int total FROM justification_files WHERE source_drive_id IS NOT NULL AND storage_state='ARMAZENADO'")).rows[0].total;
+  assert.equal(noBinary,0,"Link não comprova que os bytes foram armazenados.");
   const backup=await request("/api/system/backup",{token:master});
   assert.equal(backup.status,200,"Backup deve funcionar para Master.");
   const item=backup.data.data.justification_file_contents.find(x=>x.file_id===fileId);
@@ -105,7 +147,9 @@ async function main(){
   const recovered=(await pool.query("SELECT bytes FROM justification_file_contents WHERE file_id=$1",[fileId])).rows[0];
   assert.ok(recovered,"Restauração removeu o arquivo.");
   assert.deepEqual(recovered.bytes,pdf,"Restauração alterou os bytes do documento.");
-  console.log("SMOKE_ACERVO_OK: esquema, cadastro, busca, upload, download, permissão, hash e backup/restauração.");
+  const restoredLegacy=(await pool.query("SELECT COUNT(*)::int total FROM justification_cases WHERE source_system='GOOGLE_SHEETS'")).rows[0].total;
+  assert.equal(restoredLegacy,2,"Backup/restauração deve incluir o histórico importado.");
+  console.log("SMOKE_ACERVO_OK: esquema, CSV, reimportação, cadastro, links pendentes, upload e backup/restauração.");
 }
 main().catch(error=>{console.error("SMOKE_ACERVO_FALHOU:",error);process.exitCode=1;}).finally(async()=>{
   if(server){server.kill("SIGTERM");await Promise.race([new Promise(resolve=>server.once("exit",resolve)),sleep(1200)]);}
