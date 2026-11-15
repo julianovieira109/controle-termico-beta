@@ -4,201 +4,175 @@ const multer=require("multer");
 const crypto=require("node:crypto");
 const pool=require("../db/pool");
 const audit=require("../db/audit");
-const {authenticate,requireMasterAdmin}=require("../middleware/auth");
+const {authenticate}=require("../middleware/auth");
+const {requireScope,readCase,allowedUnit,requireSingleUnit,fail}=require("../middleware/archive-scope");
 const router=express.Router();
-const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const statuses=new Set(["PENDENTE","EM_CONFERENCIA","CONFERIDO","DIVERGENTE","DESCONSIDERADO"]);
-const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const clean=(value,max=200)=>String(value??"").trim().slice(0,max);
 const nullable=(value,max)=>clean(value,max)||null;
 const validDate=value=>!value||(/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value+"T12:00:00Z")));
-const isUUID=value=>uuid.test(String(value||""));
-const fileUpload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:1},fileFilter:(_req,file,cb)=>{
-  if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(file.mimetype)){
-    cb(fail("Somente PDF, JPG, PNG ou WebP.",415));return;
-  }
-  cb(null,true);
+const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ensureUUID=id=>{if(!uuid.test(String(id||"")))throw fail("Identificador inválido.",400);return id;};
+const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:1},fileFilter:(_req,file,cb)=>{
+ if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(file.mimetype))return cb(fail("Somente PDF, JPG, PNG e WebP.",415));
+ cb(null,true);
 }}).single("file");
-
-function detectMime(data){
-  if(data.length>=5&&data.subarray(0,5).toString("latin1")==="%PDF-")return "application/pdf";
-  if(data.length>=3&&data[0]===0xff&&data[1]===0xd8&&data[2]===0xff)return "image/jpeg";
-  if(data.length>=8&&data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return "image/png";
-  if(data.length>=12&&data.subarray(0,4).toString("ascii")==="RIFF"&&data.subarray(8,12).toString("ascii")==="WEBP")return "image/webp";
-  return null;
-}
-async function assertUnit(companyId,branchId,db=pool){
-  if(!isUUID(companyId)||!isUUID(branchId))throw fail("Selecione empresa e filial válidas.");
-  const {rows}=await db.query("SELECT b.id FROM branches b WHERE b.id=$1 AND b.company_id=$2 AND b.active=TRUE",[branchId,companyId]);
-  if(!rows.length)throw fail("Filial não encontrada para a empresa.",404);
-}
-function ensureUUID(input){if(!isUUID(input))throw fail("Identificador inválido.");return input;}
-function handleUpload(req,res,next){
-  fileUpload(req,res,error=>{
-    if(error?.code==="LIMIT_FILE_SIZE")return res.status(413).json({error:"Arquivo maior que 8 MB."});
-    if(error)return next(error);
-    next();
-  });
-}
-router.use(authenticate,requireMasterAdmin);
-router.use((req,res,next)=>{
-  res.set("Cache-Control","private, no-store");
-  if(process.env.JUSTIFICATION_ARCHIVE_BETA!=="true")
-    return res.status(503).json({error:"Acervo documental em homologação. O Administrador precisa habilitar JUSTIFICATION_ARCHIVE_BETA após validar backup/restauração."});
+function uploadSingle(req,res,next){
+ upload(req,res,e=>{
+  if(e?.code==="LIMIT_FILE_SIZE")return res.status(413).json({error:"Arquivo maior que 8 MB."});
+  if(e)return next(e);
   next();
+ });
+}
+function mimeOf(bytes){
+ if(bytes.length>=5&&bytes.subarray(0,5).toString("latin1")==="%PDF-")return "application/pdf";
+ if(bytes.length>=3&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return "image/jpeg";
+ if(bytes.length>=8&&bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return "image/png";
+ if(bytes.length>=12&&bytes.subarray(0,4).toString("ascii")==="RIFF"&&bytes.subarray(8,12).toString("ascii")==="WEBP")return "image/webp";
+ return null;
+}
+router.use(authenticate);
+
+router.get("/scope",requireScope(),async(req,res)=>{
+ const scope=req.archiveScope;
+ res.json({profileName:scope.profileName,isMaster:scope.isMaster,canManage:scope.canManage,
+           units:scope.units,importEnabled:scope.canManage&&!!scope.singleUnit,
+           importMessage:scope.singleUnit?"":"Para importar histórico CSV ou cadastrar sem colaborador, o perfil precisa ter uma única filial vinculada."});
 });
-router.get("/units",async(_req,res,next)=>{
-  try{
-    const [companies,branches]=await Promise.all([
-      pool.query("SELECT id,trade_name FROM companies WHERE active=TRUE ORDER BY trade_name"),
-      pool.query("SELECT id,company_id,name FROM branches WHERE active=TRUE ORDER BY name")
-    ]);
-    res.json({companies:companies.rows,branches:branches.rows});
-  }catch(error){next(error);}
+// Compatibilidade para outros componentes, mas nunca devolve unidades não autorizadas.
+router.get("/units",requireScope(),async(req,res)=>{
+ const units=req.archiveScope.units;
+ res.json({
+  companies:[...new Map(units.map(u=>[u.company_id,{id:u.company_id,trade_name:u.company_name}])).values()],
+  branches:units.map(u=>({id:u.branch_id,company_id:u.company_id,name:u.branch_name}))
+ });
 });
-// Consulta apenas o cadastro interno da filial. Sem CPF e sem inferir campos ausentes.
-router.get("/employees",async(req,res,next)=>{
-  try{
-    const {companyId,branchId}=req.query;
-    await assertUnit(companyId,branchId);
-    const q=clean(req.query.q,100);
-    // Sem pesquisa, devolve os colaboradores da filial para escolha direta.
-    const pattern="%"+q.replace(/[\\%_]/g,"\\$&")+"%";
-    const {rows}=await pool.query(`
-      SELECT e.id,e.full_name,e.registration,e.status,
-             COALESCE(NULLIF(TRIM(j.name),''),NULLIF(TRIM(e.job_title),'')) AS job_title,
-             NULLIF(TRIM(d.name),'') AS department
-      FROM employees e
-      LEFT JOIN job_roles j ON j.id=e.job_role_id AND j.company_id=e.company_id
-      LEFT JOIN departments d ON d.id=e.department_id AND d.company_id=e.company_id
-      WHERE e.company_id=$1 AND e.branch_id=$2
-        AND (e.full_name ILIKE $3 ESCAPE '\\' OR e.registration ILIKE $3 ESCAPE '\\')
-      ORDER BY
-        CASE WHEN UPPER(TRIM(e.status))='ATIVO' THEN 0 ELSE 1 END,
-        CASE WHEN LOWER(TRIM(COALESCE(e.registration,'')))=LOWER(TRIM($4)) THEN 0 ELSE 1 END,
-        e.full_name,e.registration
-      LIMIT 500
-    `,[companyId,branchId,pattern,q]);
-    res.json({employees:rows});
-  }catch(error){next(error);}
+router.get("/employees",requireScope(),async(req,res,next)=>{
+ try{
+  const q=clean(req.query.q,100),args=[req.archiveScope.branchIds];
+  const parts=["e.branch_id=ANY($1::uuid[])"];
+  if(q){args.push("%"+q.replace(/[\\%_]/g,"\\$&")+"%");parts.push("(e.full_name ILIKE $2 ESCAPE '\\' OR e.registration ILIKE $2 ESCAPE '\\')");}
+  const {rows}=await pool.query(
+    "SELECT e.id,e.company_id,e.branch_id,e.full_name,e.registration,e.status,"+
+    "COALESCE(NULLIF(TRIM(j.name),''),NULLIF(TRIM(e.job_title),'')) job_title,"+
+    "NULLIF(TRIM(d.name),'') department,b.name branch_name,COALESCE(c.trade_name,c.legal_name) company_name "+
+    "FROM employees e JOIN branches b ON b.id=e.branch_id AND b.company_id=e.company_id JOIN companies c ON c.id=e.company_id "+
+    "LEFT JOIN job_roles j ON j.id=e.job_role_id AND j.company_id=e.company_id "+
+    "LEFT JOIN departments d ON d.id=e.department_id AND d.company_id=e.company_id "+
+    "WHERE "+parts.join(" AND ")+" ORDER BY CASE WHEN UPPER(TRIM(e.status))='ATIVO' THEN 0 ELSE 1 END,e.full_name,e.registration LIMIT 500",args
+  );
+  res.json({employees:rows,limit:500});
+ }catch(e){next(e);}
 });
-router.get("/cases",async(req,res,next)=>{
-  try{
-    const {companyId,branchId}=req.query;
-    await assertUnit(companyId,branchId);
-    const limit=Math.min(100,Math.max(1,Number.parseInt(req.query.limit,10)||50));
-    const offset=Math.min(100000,Math.max(0,Number.parseInt(req.query.offset,10)||0));
-    const params=[companyId,branchId];
-    const where=["c.company_id=$1","c.branch_id=$2"];
-    const search=clean(req.query.q,100);
-    if(search){params.push("%"+search.replace(/[\\%_]/g,"\\$&")+"%");where.push("(c.employee_name ILIKE $"+params.length+" ESCAPE '\\' OR c.employee_registration ILIKE $"+params.length+" ESCAPE '\\')");}
-    if(req.query.status){if(!statuses.has(req.query.status))throw fail("Status inválido.");params.push(req.query.status);where.push("c.review_status=$"+params.length);}
-    const clause=where.join(" AND ");
-    const count=await pool.query("SELECT COUNT(*)::int total FROM justification_cases c WHERE "+clause,params);
-    const records=await pool.query(
-      "SELECT c.id,c.employee_name,c.employee_registration,c.department,c.absence_date,c.reason,c.review_status,c.submitted_at,c.created_at,c.source_system,COUNT(f.id)::int file_count,COUNT(f.id) FILTER (WHERE f.storage_state='ARMAZENADO')::int stored_count FROM justification_cases c LEFT JOIN justification_files f ON f.case_id=c.id WHERE "+clause+
-      " GROUP BY c.id ORDER BY c.absence_date DESC NULLS LAST,c.created_at DESC LIMIT $"+(params.length+1)+" OFFSET $"+(params.length+2),
-      [...params,limit,offset]
-    );
-    res.json({total:count.rows[0].total,records:records.rows});
-  }catch(error){next(error);}
+router.get("/cases",requireScope(),async(req,res,next)=>{
+ try{
+  const scope=req.archiveScope,limit=Math.min(100,Math.max(1,parseInt(req.query.limit,10)||50)),offset=Math.min(100000,Math.max(0,parseInt(req.query.offset,10)||0));
+  const args=[scope.branchIds],where=["c.branch_id=ANY($1::uuid[])","EXISTS(SELECT 1 FROM branches bcheck WHERE bcheck.id=c.branch_id AND bcheck.company_id=c.company_id)"];
+  const q=clean(req.query.q,100);
+  if(q){args.push("%"+q.replace(/[\\%_]/g,"\\$&")+"%");where.push("(c.employee_name ILIKE $"+args.length+" ESCAPE '\\' OR c.employee_registration ILIKE $"+args.length+" ESCAPE '\\')");}
+  if(req.query.status){if(!statuses.has(req.query.status))throw fail("Situação inválida.",400);args.push(req.query.status);where.push("c.review_status=$"+args.length);}
+  const clause=where.join(" AND ");
+  const count=await pool.query("SELECT COUNT(*)::int total FROM justification_cases c WHERE "+clause,args);
+  const records=await pool.query(
+    "SELECT c.id,c.company_id,c.branch_id,c.employee_name,c.employee_registration,c.department,c.absence_date,c.reason,c.review_status,c.submitted_at,c.created_at,c.source_system,"+
+    "b.name branch_name,COALESCE(co.trade_name,co.legal_name) company_name,"+
+    "COUNT(f.id)::int file_count,COUNT(f.id) FILTER (WHERE f.storage_state='ARMAZENADO')::int stored_count "+
+    "FROM justification_cases c JOIN branches b ON b.id=c.branch_id AND b.company_id=c.company_id JOIN companies co ON co.id=c.company_id "+
+    "LEFT JOIN justification_files f ON f.case_id=c.id WHERE "+clause+
+    " GROUP BY c.id,b.name,co.trade_name,co.legal_name ORDER BY c.absence_date DESC NULLS LAST,c.created_at DESC LIMIT $"+(args.length+1)+" OFFSET $"+(args.length+2),
+    [...args,limit,offset]);
+  res.json({total:count.rows[0].total,records:records.rows});
+ }catch(e){next(e);}
 });
-router.post("/cases",express.json({limit:"64kb"}),async(req,res,next)=>{
-  try{
-    const b=req.body||{};
-    await assertUnit(b.companyId,b.branchId);
-    const reason=clean(b.reason,250),absenceDate=nullable(b.absenceDate,10);
-    if(!reason)throw fail("Informe o motivo.");
-    if(!validDate(absenceDate))throw fail("Data de ausência inválida.");
-    const employeeId=nullable(b.employeeId,80);
-    let employeeName=clean(b.employeeName,200),registration=nullable(b.registration,40);
-    let jobTitle=nullable(b.jobTitle,180),department=nullable(b.department,160);
-    if(employeeId){
-      ensureUUID(employeeId);
-      const employee=await pool.query(`
-        SELECT e.full_name,e.registration,
-          COALESCE(NULLIF(TRIM(j.name),''),NULLIF(TRIM(e.job_title),'')) AS job_title,
-          NULLIF(TRIM(d.name),'') AS department
-        FROM employees e
-        LEFT JOIN job_roles j ON j.id=e.job_role_id AND j.company_id=e.company_id
-        LEFT JOIN departments d ON d.id=e.department_id AND d.company_id=e.company_id
-        WHERE e.id=$1 AND e.company_id=$2 AND e.branch_id=$3
-      `,[employeeId,b.companyId,b.branchId]);
-      if(!employee.rows.length)throw fail("Colaborador não pertence à empresa e filial selecionadas.",404);
-      const e=employee.rows[0];
-      employeeName=e.full_name;
-      registration=nullable(e.registration,40)||registration;
-      jobTitle=nullable(e.job_title,180)||jobTitle;
-      // Quando o setor não consta no cadastro, permite informar somente este campo manualmente.
-      department=nullable(e.department,160)||department;
-    }
-    if(!employeeName)throw fail("Selecione ou informe o colaborador.");
-    const details=clean(b.details,3000);
-    const r=await pool.query(
-      "INSERT INTO justification_cases(company_id,branch_id,employee_id,employee_name,employee_registration,job_title,department,absence_date,reason,details,manager_email,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id,created_at",
-      [b.companyId,b.branchId,employeeId,employeeName,registration,jobTitle,department,absenceDate,reason,details||null,nullable(b.managerEmail,254),req.user.sub]
-    );
-    await audit(req,"CREATE","justification_cases",r.rows[0].id,{companyId:b.companyId,branchId:b.branchId});
-    res.status(201).json(r.rows[0]);
-  }catch(error){next(error);}
+router.post("/cases",requireScope("manage"),express.json({limit:"64kb"}),async(req,res,next)=>{
+ try{
+  const scope=req.archiveScope,b=req.body||{},reason=clean(b.reason,250),date=nullable(b.absenceDate,10);
+  if(!reason)throw fail("Informe o motivo.",400);
+  if(!validDate(date))throw fail("Data de ausência inválida.",400);
+  const employeeId=nullable(b.employeeId,80);
+  let companyId,branchId,employeeName=clean(b.employeeName,200),registration=nullable(b.registration,40),jobTitle=nullable(b.jobTitle,180),department=nullable(b.department,160);
+  if(employeeId){
+   ensureUUID(employeeId);
+   const {rows}=await pool.query(
+    "SELECT e.company_id,e.branch_id,e.full_name,e.registration,"+
+    "COALESCE(NULLIF(TRIM(j.name),''),NULLIF(TRIM(e.job_title),'')) job_title,NULLIF(TRIM(d.name),'') department "+
+    "FROM employees e LEFT JOIN job_roles j ON j.id=e.job_role_id AND j.company_id=e.company_id "+
+    "LEFT JOIN departments d ON d.id=e.department_id AND d.company_id=e.company_id WHERE e.id=$1",[employeeId]);
+   const e=rows[0];
+   if(!e||!allowedUnit(scope,e.company_id,e.branch_id))throw fail("Colaborador fora das filiais autorizadas.",404);
+   companyId=e.company_id;branchId=e.branch_id;employeeName=e.full_name;
+   registration=nullable(e.registration,40)||registration;
+   jobTitle=nullable(e.job_title,180)||jobTitle;
+   department=nullable(e.department,160)||department;
+  }else{
+   const unit=requireSingleUnit(scope);
+   companyId=unit.company_id;branchId=unit.branch_id;
+  }
+  if(!employeeName)throw fail("Informe ou escolha um colaborador.",400);
+  const row=await pool.query(
+   "INSERT INTO justification_cases(company_id,branch_id,employee_id,employee_name,employee_registration,job_title,department,absence_date,reason,details,manager_email,created_by) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id,created_at",
+   [companyId,branchId,employeeId,employeeName,registration,jobTitle,department,date,reason,nullable(b.details,3000),nullable(b.managerEmail,254),scope.userId]);
+  await audit(req,"CREATE","justification_cases",row.rows[0].id,{companyId,branchId});
+  res.status(201).json(row.rows[0]);
+ }catch(e){next(e);}
 });
-router.get("/cases/:id",async(req,res,next)=>{
-  try{
-    const id=ensureUUID(req.params.id);
-    const [one,files]=await Promise.all([
-      pool.query("SELECT id,company_id,branch_id,employee_name,employee_registration,job_title,department,absence_date,reason,details,manager_email,submitted_by_email,submitted_at,source_system,review_status,created_at FROM justification_cases WHERE id=$1",[id]),
-      pool.query("SELECT id,original_name,mime_type,size_bytes,storage_state,created_at,stored_at FROM justification_files WHERE case_id=$1 ORDER BY created_at DESC",[id])
-    ]);
-    if(!one.rows[0])throw fail("Justificativa não encontrada.",404);
-    res.json({record:one.rows[0],files:files.rows});
-  }catch(error){next(error);}
+router.get("/cases/:id",requireScope(),async(req,res,next)=>{
+ try{
+  const record=await readCase(req.archiveScope,req.params.id);
+  const {rows:files}=await pool.query(
+   "SELECT id,original_name,mime_type,size_bytes,storage_state,created_at,stored_at FROM justification_files WHERE case_id=$1 ORDER BY created_at DESC",[record.id]);
+  res.json({record,files});
+ }catch(e){next(e);}
 });
-router.patch("/cases/:id/status",express.json({limit:"4kb"}),async(req,res,next)=>{
-  try{
-    const id=ensureUUID(req.params.id),status=clean(req.body?.status,24);
-    if(!statuses.has(status))throw fail("Status inválido.");
-    const r=await pool.query("UPDATE justification_cases SET review_status=$2,updated_at=NOW() WHERE id=$1 RETURNING id,review_status",[id,status]);
-    if(!r.rows[0])throw fail("Justificativa não encontrada.",404);
-    await audit(req,"REVIEW","justification_cases",id,{status});
-    res.json(r.rows[0]);
-  }catch(error){next(error);}
+router.patch("/cases/:id/status",requireScope("manage"),express.json({limit:"4kb"}),async(req,res,next)=>{
+ try{
+  const c=await readCase(req.archiveScope,req.params.id),status=clean(req.body?.status,24);
+  if(!statuses.has(status))throw fail("Situação inválida.",400);
+  const row=await pool.query("UPDATE justification_cases SET review_status=$2,updated_at=NOW() WHERE id=$1 RETURNING id,review_status",[c.id,status]);
+  await audit(req,"REVIEW","justification_cases",c.id,{status});
+  res.json(row.rows[0]);
+ }catch(e){next(e);}
 });
-router.post("/cases/:id/files",handleUpload,async(req,res,next)=>{
-  let client;
-  try{
-    const caseId=ensureUUID(req.params.id);
-    if(!req.file||!req.file.buffer?.length)throw fail("Selecione um documento.",400);
-    const mime=detectMime(req.file.buffer);
-    if(!mime||mime!==req.file.mimetype)throw fail("Conteúdo não corresponde ao tipo de arquivo informado.",415);
-    const fileName=clean(req.file.originalname.replace(/[\\/\u0000-\u001f]/g,"_"),255)||"documento";
-    const hash=crypto.createHash("sha256").update(req.file.buffer).digest("hex");
-    client=await pool.connect();await client.query("BEGIN");
-    const exists=await client.query("SELECT id FROM justification_cases WHERE id=$1 FOR SHARE",[caseId]);
-    if(!exists.rows.length)throw fail("Justificativa não encontrada.",404);
-    const row=await client.query(
-      "INSERT INTO justification_files(case_id,original_name,mime_type,size_bytes,sha256,storage_state,stored_at,uploaded_by) VALUES($1,$2,$3,$4,$5,'ARMAZENADO',NOW(),$6) ON CONFLICT DO NOTHING RETURNING id",
-      [caseId,fileName,mime,req.file.buffer.length,hash,req.user.sub]
-    );
-    if(!row.rows[0])throw fail("Este documento já foi vinculado à justificativa.",409);
-    await client.query("INSERT INTO justification_file_contents(file_id,bytes) VALUES($1,$2)",[row.rows[0].id,req.file.buffer]);
-    await client.query("COMMIT");
-    await audit(req,"UPLOAD","justification_files",row.rows[0].id,{caseId,size:req.file.buffer.length,mime});
-    res.status(201).json({id:row.rows[0].id,originalName:fileName,sizeBytes:req.file.buffer.length,storageState:"ARMAZENADO"});
-  }catch(error){if(client)await client.query("ROLLBACK").catch(()=>{});next(error);}
-  finally{client?.release();}
+router.post("/cases/:id/files",requireScope("manage"),uploadSingle,async(req,res,next)=>{
+ let client;
+ try{
+  if(!req.file?.buffer?.length)throw fail("Selecione um documento.",400);
+  const mime=mimeOf(req.file.buffer);
+  if(!mime||mime!==req.file.mimetype)throw fail("Conteúdo não corresponde ao tipo de arquivo informado.",415);
+  const name=clean(req.file.originalname.replace(/[\\/\u0000-\u001f]/g,"_"),255)||"documento";
+  const hash=crypto.createHash("sha256").update(req.file.buffer).digest("hex");
+  client=await pool.connect();await client.query("BEGIN");
+  const c=await readCase(req.archiveScope,req.params.id,client);
+  const row=await client.query(
+   "INSERT INTO justification_files(case_id,original_name,mime_type,size_bytes,sha256,storage_state,stored_at,uploaded_by) "+
+   "VALUES($1,$2,$3,$4,$5,'ARMAZENADO',NOW(),$6) ON CONFLICT DO NOTHING RETURNING id",
+   [c.id,name,mime,req.file.buffer.length,hash,req.archiveScope.userId]);
+  if(!row.rows.length)throw fail("Documento já vinculado a esta justificativa.",409);
+  await client.query("INSERT INTO justification_file_contents(file_id,bytes) VALUES($1,$2)",[row.rows[0].id,req.file.buffer]);
+  await client.query("COMMIT");
+  await audit(req,"UPLOAD","justification_files",row.rows[0].id,{caseId:c.id,bytes:req.file.buffer.length});
+  res.status(201).json({id:row.rows[0].id,originalName:name,sizeBytes:req.file.buffer.length,storageState:"ARMAZENADO"});
+ }catch(e){if(client)await client.query("ROLLBACK").catch(()=>{});next(e);}
+ finally{client?.release();}
 });
-router.get("/files/:id/download",async(req,res,next)=>{
-  try{
-    const id=ensureUUID(req.params.id);
-    const r=await pool.query("SELECT f.id,f.original_name,f.mime_type,f.size_bytes,f.sha256,c.bytes FROM justification_files f JOIN justification_file_contents c ON c.file_id=f.id WHERE f.id=$1 AND f.storage_state='ARMAZENADO'",[id]);
-    const f=r.rows[0];if(!f)throw fail("Arquivo não encontrado ou não armazenado.",404);
-    if(!f.bytes||crypto.createHash("sha256").update(f.bytes).digest("hex")!==f.sha256)throw fail("Falha de integridade no arquivo.",409);
-    const ascii=f.original_name.replace(/[^\x20-\x7e]/g,"_").replace(/[\"\\]/g,"_");
-    res.set("Content-Type",f.mime_type||"application/octet-stream");
-    res.set("Content-Disposition",'attachment; filename="'+ascii+'"; filename*=UTF-8'+"''"+encodeURIComponent(f.original_name));
-    res.set("Content-Length",String(f.bytes.length));
-    await audit(req,"DOWNLOAD","justification_files",id,{bytes:f.bytes.length});
-    res.end(f.bytes);
-  }catch(error){next(error);}
+router.get("/files/:id/download",requireScope(),async(req,res,next)=>{
+ try{
+  const id=ensureUUID(req.params.id);
+  const {rows}=await pool.query(
+   "SELECT f.id,f.case_id,f.original_name,f.mime_type,f.sha256 FROM justification_files f WHERE f.id=$1 AND f.storage_state='ARMAZENADO'",[id]);
+  const f=rows[0];
+  if(!f)throw fail("Documento não encontrado.",404);
+  await readCase(req.archiveScope,f.case_id);
+  const file=await pool.query("SELECT bytes FROM justification_file_contents WHERE file_id=$1",[f.id]);
+  const bytes=file.rows[0]?.bytes;
+  if(!bytes||crypto.createHash("sha256").update(bytes).digest("hex")!==f.sha256)throw fail("Falha de integridade.",409);
+  const ascii=f.original_name.replace(/[^\x20-\x7e]/g,"_").replace(/["\\]/g,"_");
+  res.set("Content-Type",f.mime_type||"application/octet-stream");
+  res.set("Content-Disposition",'attachment; filename="'+ascii+'"; filename*=UTF-8'+ "''"+encodeURIComponent(f.original_name));
+  res.set("Content-Length",String(bytes.length));
+  await audit(req,"DOWNLOAD","justification_files",f.id,{bytes:bytes.length});
+  res.end(bytes);
+ }catch(e){next(e);}
 });
 module.exports=router;

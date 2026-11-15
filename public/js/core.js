@@ -507,7 +507,13 @@ async function refreshAuthenticatedSessionContext(){
     const isAdmin=currentUser.role==="ADMIN";
     const isMasterAdmin=isAdmin&&currentUser.isMasterAdmin===true;
     const hasOccurrencesAccess=isMasterAdmin||(isAdmin&&currentUser.permissions?.["occurrences.view"]===true);
-    document.querySelectorAll('[data-special-permission="occurrences.view"]').forEach(el=>{
+  const hasDocumentAccess=isMasterAdmin||currentUser.permissions?.["documents.view"]===true||currentUser.permissions?.["documents.manage"]===true;
+    const hasDocumentAccess=isMasterAdmin||currentUser.permissions?.["documents.view"]===true||currentUser.permissions?.["documents.manage"]===true;
+    document.querySelectorAll('[data-special-permission="documents.view"]').forEach(el=>{el.style.display=hasDocumentAccess?"":"none";});
+    document.querySelectorAll('[data-special-permission="documents.view"]').forEach(el=>{
+    el.style.display=hasDocumentAccess?"":"none";
+  });
+  document.querySelectorAll('[data-special-permission="occurrences.view"]').forEach(el=>{
       el.style.display=hasOccurrencesAccess?"":"none";
     });
     if(accessChanged){
@@ -672,7 +678,7 @@ function navigate(view){
     toast("Seu perfil não possui acesso a esta área.","error");
     return;
   }
-  if(view==="justification-archive" && currentUser?.isMasterAdmin!==true){
+  if(view==="justification-archive" && !(currentUser?.isMasterAdmin===true||currentUser?.permissions?.["documents.view"]===true||currentUser?.permissions?.["documents.manage"]===true)){
     toast("Somente o Administrador Master pode acessar documentos pessoais.","error");
     return;
   }

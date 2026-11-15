@@ -4,7 +4,8 @@ const multer=require("multer");
 const crypto=require("node:crypto");
 const pool=require("../db/pool");
 const audit=require("../db/audit");
-const {authenticate,requireMasterAdmin}=require("../middleware/auth");
+const {authenticate}=require("../middleware/auth");
+const {requireScope,requireSingleUnit}=require("../middleware/archive-scope");
 const {parseLegacyCsv,ORIGIN}=require("../lib/justification-csv");
 
 const router=express.Router();
@@ -30,15 +31,16 @@ function csvUpload(req,res,next){
     next();
   });
 }
-router.use(authenticate,requireMasterAdmin);
+router.use(authenticate,requireScope());
 router.use((req,res,next)=>{
   res.set("Cache-Control","private, no-store");
   if(process.env.JUSTIFICATION_ARCHIVE_BETA!=="true")return res.status(503).json({error:"O acervo está desativado no ambiente."});
   next();
 });
-router.post("/preview",csvUpload,async(req,res,next)=>{
+router.post("/preview",requireScope("manage"),csvUpload,async(req,res,next)=>{
   try{
-    const companyId=String(req.body?.companyId||""),branchId=String(req.body?.branchId||"");
+    const unit=requireSingleUnit(req.archiveScope);
+    const companyId=String(unit.company_id),branchId=String(unit.branch_id);
     await assertUnit(pool,companyId,branchId);
     if(!req.file?.buffer?.length)throw fail("Selecione o CSV de respostas.");
     const csv=req.file.buffer.toString("utf8");
@@ -67,15 +69,17 @@ router.post("/preview",csvUpload,async(req,res,next)=>{
     });
   }catch(error){next(error);}
 });
-router.post("/confirm",express.json({limit:"8kb"}),async(req,res,next)=>{
+router.post("/confirm",requireScope("manage"),express.json({limit:"8kb"}),async(req,res,next)=>{
   let client;let finished=false;
   try{
-    const {previewToken,companyId,branchId,confirmation}=req.body||{};
+    const {previewToken,confirmation}=req.body||{};
+    const unit=requireSingleUnit(req.archiveScope);
+    const companyId=String(unit.company_id),branchId=String(unit.branch_id);
     if(confirmation!=="IMPORTAR HISTORICO")throw fail("Confirme a importação antes de continuar.");
     const userId=req.user.sub,entry=previews.get(userId);
     if(!entry||entry.expiresAt<=Date.now()||entry.token!==previewToken)
       throw fail("Prévia expirada ou inválida. Leia o CSV novamente.",409);
-    if(companyId!==entry.companyId||branchId!==entry.branchId)throw fail("A empresa ou filial foi alterada. Leia o CSV novamente.",409);
+    if(companyId!==entry.companyId||branchId!==entry.branchId)throw fail("As filiais autorizadas mudaram. Leia o CSV novamente.",409);
     client=await pool.connect();await client.query("BEGIN");
     await assertUnit(client,companyId,branchId);
     // Evita importações concorrentes para a mesma filial.
@@ -141,13 +145,12 @@ router.post("/confirm",express.json({limit:"8kb"}),async(req,res,next)=>{
 });
 router.get("/status",async(req,res,next)=>{
   try{
-    const {companyId,branchId}=req.query;
-    await assertUnit(pool,companyId,branchId);
+    const branchIds=req.archiveScope.branchIds;
     const {rows}=await pool.query(
       "SELECT COUNT(DISTINCT c.id)::int AS cases,COUNT(f.id)::int AS attachments,COUNT(f.id) FILTER(WHERE f.storage_state='ARMAZENADO')::int AS stored,COUNT(f.id) FILTER(WHERE f.storage_state='PENDENTE')::int AS pending,COUNT(DISTINCT c.id) FILTER(WHERE c.employee_name='Não informado na origem')::int AS no_name "+
       "FROM justification_cases c LEFT JOIN justification_files f ON f.case_id=c.id "+
-      "WHERE c.company_id=$1 AND c.branch_id=$2 AND c.source_system='GOOGLE_SHEETS' AND c.source_key LIKE $3",
-      [companyId,branchId,ORIGIN+"%"]
+      "WHERE c.branch_id=ANY($1::uuid[]) AND c.source_system='GOOGLE_SHEETS' AND c.source_key LIKE $2",
+      [branchIds,ORIGIN+"%"]
     );
     res.json(rows[0]||{cases:0,attachments:0,stored:0,pending:0,no_name:0});
   }catch(error){next(error);}

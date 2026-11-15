@@ -29,7 +29,7 @@ Comprovantes médicos são dados pessoais sensíveis: restringir acesso por nece
 
 ## Implementação Beta preparada na branch de desenvolvimento
 - Migração SQL idempotente integrada ao comando `npm run migrate`.
-- API `/api/justification-archive` com autenticação JWT, acesso **exclusivo ao Administrador Master**, escopo de filial explícito em consultas/cadastros, estados de conferência e auditoria de operações.
+- API `/api/justification-archive` com autenticação JWT, permissões de leitura e gerenciamento definidas pelo Administrador Master, escopo de filial obtido do cadastro do usuário em todas as consultas e cadastros, estados de conferência e auditoria de operações.
 - Upload privado de PDF, JPG, PNG ou WebP até 8 MB: validação de assinatura, SHA-256 e transação única entre metadados e BYTEA. Download autenticado com validação de hash.
 - Interface responsiva no menu **Documentos**, incluída no manual e na Ajuda.
 - Backup do sistema inclui metadados e bytes em base64, bloqueia exportações JSON superiores a 29 MB e impede restauração de backups antigos que eliminariam justificativas. Conferir rotina de backup PostgreSQL apropriada para acervos maiores.
