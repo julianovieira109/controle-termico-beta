@@ -34,9 +34,16 @@ async function main(){
   assert.equal(tables.length,3,"Migração não criou todas as tabelas.");
   const com=(await pool.query("INSERT INTO companies(legal_name,trade_name) VALUES('Ficticia Testes S.A.','Teste Acervo') RETURNING id")).rows[0].id;
   const branch=(await pool.query("INSERT INTO branches(company_id,name) VALUES($1,'Filial de Teste') RETURNING id",[com])).rows[0].id;
-  const user=(await pool.query("INSERT INTO users(name,email,password_hash,role,company_id,branch_id) VALUES('Usuário QA','qa-acervo@exemplo.invalid','hash-teste','ADMIN',$1,$2) RETURNING id",[com,branch])).rows[0].id;
-  const master=jwt.sign({sub:user,role:"ADMIN",isMasterAdmin:true,companyId:com,branchIds:[branch]},secret,{expiresIn:"5m"});
-  const regular=jwt.sign({sub:user,role:"ADMIN",isMasterAdmin:false,companyId:com,branchIds:[branch]},secret,{expiresIn:"5m"});
+  const mp=(await pool.query("INSERT INTO user_profiles(name,base_role,master_admin) VALUES('Master QA Acervo','ADMIN',TRUE) RETURNING id")).rows[0].id;
+  const rp=(await pool.query("INSERT INTO user_profiles(name,base_role) VALUES('Gestor QA Acervo','RH') RETURNING id")).rows[0].id;
+  await pool.query("INSERT INTO profile_permissions(profile_id,permission_key,allowed) VALUES($1,'documents.view',TRUE),($1,'documents.manage',TRUE)",[rp]);
+  const user=(await pool.query("INSERT INTO users(name,email,password_hash,role,profile_id) VALUES('Usuário QA Master','qa-master-acervo@exemplo.invalid','hash-teste','ADMIN',$1) RETURNING id",[mp])).rows[0].id;
+  const managerUser=(await pool.query("INSERT INTO users(name,email,password_hash,role,profile_id,company_id,branch_id) VALUES('Gestor QA','qa-gestor-acervo@exemplo.invalid','hash-teste','RH',$1,$2,$3) RETURNING id",[rp,com,branch])).rows[0].id;
+  await pool.query("INSERT INTO user_branches(user_id,branch_id) VALUES($1,$2)",[managerUser,branch]);
+  const regularUser=(await pool.query("INSERT INTO users(name,email,password_hash,role) VALUES('Usuário QA sem acesso','qa-sem-acesso@exemplo.invalid','hash-teste','ADMIN') RETURNING id")).rows[0].id;
+  const master=jwt.sign({sub:user,role:"ADMIN",isMasterAdmin:true},secret,{expiresIn:"5m"});
+  const manager=jwt.sign({sub:managerUser,role:"RH",companyId:com,branchIds:[branch]},secret,{expiresIn:"5m"});
+  const regular=jwt.sign({sub:regularUser,role:"ADMIN",isMasterAdmin:false},secret,{expiresIn:"5m"});
   server=spawn(process.execPath,["src/server.js"],{cwd:process.cwd(),env:{...process.env,PORT,JUSTIFICATION_ARCHIVE_BETA:"true",NODE_ENV:"test"},stdio:["ignore","pipe","pipe"]});
   let stderr="";server.stderr.on("data",chunk=>stderr+=String(chunk).slice(0,1000));
   await readiness();
@@ -45,35 +52,42 @@ async function main(){
   const units=await request("/api/justification-archive/units",{token:master});
   assert.equal(units.status,200,JSON.stringify(units.data));
   assert.ok(units.data.branches.some(b=>b.id===branch));
-  const badDate=await request("/api/justification-archive/cases",{method:"POST",token:master,payload:{companyId:com,branchId:branch,employeeName:"Pessoa Fictícia",reason:"Teste",absenceDate:"data-invalida"}});
+  const badDate=await request("/api/justification-archive/cases",{method:"POST",token:manager,payload:{companyId:com,branchId:branch,employeeName:"Pessoa Fictícia",reason:"Teste",absenceDate:"data-invalida"}});
   assert.equal(badDate.status,400);
-  const created=await request("/api/justification-archive/cases",{method:"POST",token:master,payload:{companyId:com,branchId:branch,employeeName:"Pessoa Fictícia",registration:"QA-0001",department:"QA",reason:"Atestado de teste",absenceDate:"2026-11-13",details:"Teste automatizado sem dados pessoais reais"}});
+  const created=await request("/api/justification-archive/cases",{method:"POST",token:manager,payload:{companyId:com,branchId:branch,employeeName:"Pessoa Fictícia",registration:"QA-0001",department:"QA",reason:"Atestado de teste",absenceDate:"2026-11-13",details:"Teste automatizado sem dados pessoais reais"}});
   assert.equal(created.status,201,JSON.stringify(created.data));
   const caseId=created.data.id;
   const pdf=Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
   const form=new FormData();form.append("file",new Blob([pdf],{type:"application/pdf"}),"teste-ficticio.pdf");
-  const uploaded=await request("/api/justification-archive/cases/"+caseId+"/files",{method:"POST",token:master,form});
+  const uploaded=await request("/api/justification-archive/cases/"+caseId+"/files",{method:"POST",token:manager,form});
   assert.equal(uploaded.status,201,JSON.stringify(uploaded.data));
   const fileId=uploaded.data.id;
   assert.equal(uploaded.data.storageState,"ARMAZENADO");
-  const downloaded=await request("/api/justification-archive/files/"+fileId+"/download",{token:master});
+  const downloaded=await request("/api/justification-archive/files/"+fileId+"/download",{token:manager});
   assert.equal(downloaded.status,200,"Download deve funcionar com login Master.");
   assert.deepEqual(downloaded.data,pdf,"Bytes armazenados não correspondem aos originais.");
   assert.match(downloaded.headers.get("cache-control")||"",/no-store/);
   const deniedDownload=await request("/api/justification-archive/files/"+fileId+"/download",{token:regular});
   assert.equal(deniedDownload.status,403);
   const formDuplicated=new FormData();formDuplicated.append("file",new Blob([pdf],{type:"application/pdf"}),"teste-ficticio.pdf");
-  const duplicate=await request("/api/justification-archive/cases/"+caseId+"/files",{method:"POST",token:master,form:formDuplicated});
+  const duplicate=await request("/api/justification-archive/cases/"+caseId+"/files",{method:"POST",token:manager,form:formDuplicated});
   assert.equal(duplicate.status,409,"Mesmo arquivo não pode ser salvo duas vezes na mesma justificativa.");
   const badForm=new FormData();badForm.append("file",new Blob([pdf],{type:"image/png"}),"arquivo-falso.png");
-  const bad=await request("/api/justification-archive/cases/"+caseId+"/files",{method:"POST",token:master,form:badForm});
+  const bad=await request("/api/justification-archive/cases/"+caseId+"/files",{method:"POST",token:manager,form:badForm});
   assert.equal(bad.status,415,"Arquivos falsamente identificados devem ser recusados.");
-  const cases=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch,{token:master});
+  const access=await request("/api/justification-archive/scope",{token:manager});
+  assert.equal(access.status,200);
+  assert.equal(access.data.units.length,1);
+  assert.equal(access.data.importEnabled,true);
+  const masterScope=await request("/api/justification-archive/scope",{token:master});
+  assert.equal(masterScope.status,200);
+  assert.equal(masterScope.data.isMaster,true);
+  const cases=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch,{token:manager});
   assert.equal(cases.status,200);assert.equal(cases.data.total,1);assert.equal(cases.data.records[0].stored_count,1);
-  const searched=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch+"&q=Fict%C3%ADcia",{token:master});
+  const searched=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch+"&q=Fict%C3%ADcia",{token:manager});
   assert.equal(searched.status,200,"Pesquisa por nome deve funcionar.");
   assert.equal(searched.data.total,1);
-  const impossible=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch+"&q=__inexistente__",{token:master});
+  const impossible=await request("/api/justification-archive/cases?companyId="+com+"&branchId="+branch+"&q=__inexistente__",{token:manager});
   assert.equal(impossible.status,200);
   assert.equal(impossible.data.total,0,"Curingas de pesquisa não devem furar o filtro.");
   // Busca por nome/matrícula somente na filial selecionada, sem CPF.
@@ -81,35 +95,35 @@ async function main(){
     "INSERT INTO employees(company_id,branch_id,full_name,registration,job_title,status) VALUES($1,$2,'Funcionário Fictício QA','QA98765','Conferente QA','ATIVO') RETURNING id",[com,branch]
   )).rows[0].id;
   const otherBranch=(await pool.query("INSERT INTO branches(company_id,name) VALUES($1,'Outra Filial QA Busca') RETURNING id",[com])).rows[0].id;
-  await pool.query(
-    "INSERT INTO employees(company_id,branch_id,full_name,registration,job_title,status) VALUES($1,$2,'Funcionário Externo QA','QA98766','Cargo Externo','ATIVO')",[com,otherBranch]
-  );
+  const externalEmployee=(await pool.query(
+    "INSERT INTO employees(company_id,branch_id,full_name,registration,job_title,status) VALUES($1,$2,'Funcionário Externo QA','QA98766','Cargo Externo','ATIVO') RETURNING id",[com,otherBranch]
+  )).rows[0].id;
   await pool.query(
     "INSERT INTO employees(company_id,branch_id,full_name,registration,job_title,status) VALUES($1,$2,'Funcionário Anterior QA','QA98760','Cargo Anterior','DEMITIDO')",[com,branch]
   );
   const unauthorizedSearch=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=QA",{token:regular});
   assert.equal(unauthorizedSearch.status,403,"Busca de documentos não pode ser pública.");
-  const searchedEmployee=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=QA",{token:master});
+  const searchedEmployee=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=QA",{token:manager});
   assert.equal(searchedEmployee.status,200,JSON.stringify(searchedEmployee.data));
   assert.equal(searchedEmployee.data.employees.length,2,"Não pode incluir colaborador de outra filial.");
   assert.ok(searchedEmployee.data.employees.every(e=>!Object.hasOwn(e,"cpf")),"Consulta não deve revelar CPF.");
   assert.equal(searchedEmployee.data.employees[0].registration,"QA98765","Ativos devem vir antes de desligados.");
   assert.equal(searchedEmployee.data.employees[0].job_title,"Conferente QA");
-  const byRegistration=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=98765",{token:master});
+  const byRegistration=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=98765",{token:manager});
   assert.equal(byRegistration.status,200);
   assert.equal(byRegistration.data.employees.length,1);
   assert.equal(byRegistration.data.employees[0].id,employee);
-  const shortQuery=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=Q",{token:master});
+  const shortQuery=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch+"&q=Q",{token:manager});
   assert.equal(shortQuery.status,200);
   assert.equal(shortQuery.data.employees.length,2,"Pesquisa de um caractere deve mostrar os colaboradores encontrados.");
-  const unfiltered=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch,{token:master});
+  const unfiltered=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+branch,{token:manager});
   assert.equal(unfiltered.status,200);
   assert.equal(unfiltered.data.employees.length,2,"A lista deve aparecer mesmo antes da digitação.");
   assert.equal(unfiltered.data.employees[0].registration,"QA98765","Colaboradores ativos aparecem primeiro.");
-  const crossedSearch=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+otherBranch+"&q=98765",{token:master});
+  const crossedSearch=await request("/api/justification-archive/employees?companyId="+com+"&branchId="+otherBranch+"&q=98765",{token:manager});
   assert.equal(crossedSearch.status,200);
   assert.equal(crossedSearch.data.employees.length,0);
-  const selectedCreated=await request("/api/justification-archive/cases",{method:"POST",token:master,payload:{
+  const selectedCreated=await request("/api/justification-archive/cases",{method:"POST",token:manager,payload:{
     companyId:com,branchId:branch,employeeId:employee,
     employeeName:"Nome adulterado",registration:"MATRICULA-ERRADA",jobTitle:"Cargo falso",
     department:"Setor informado manualmente",reason:"Ocorrência de teste vinculada",absenceDate:"2026-11-14"
@@ -124,8 +138,8 @@ async function main(){
   assert.equal(canonical.employee_registration,"QA98765");
   assert.equal(canonical.job_title,"Conferente QA");
   assert.equal(canonical.department,"Setor informado manualmente");
-  const otherBranchAttempt=await request("/api/justification-archive/cases",{method:"POST",token:master,payload:{
-    companyId:com,branchId:otherBranch,employeeId:employee,
+  const otherBranchAttempt=await request("/api/justification-archive/cases",{method:"POST",token:manager,payload:{
+    companyId:com,branchId:otherBranch,employeeId:externalEmployee,
     employeeName:"Nome adulterado",reason:"Tentativa de vínculo incorreto"
   }});
   assert.equal(otherBranchAttempt.status,404,"Não pode vincular colaborador de outra filial.");
@@ -143,21 +157,21 @@ async function main(){
   const importForm=()=>{const f=new FormData();f.append("companyId",com);f.append("branchId",branch);f.append("file",new Blob([legacyCsv],{type:"text/csv"}),"historico-ficticio.csv");return f;};
   const deniedPreview=await request("/api/justification-archive/imports/preview",{token:regular,method:"POST",form:importForm()});
   assert.equal(deniedPreview.status,403,"Somente Master pode importar.");
-  const preview=await request("/api/justification-archive/imports/preview",{token:master,method:"POST",form:importForm()});
+  const preview=await request("/api/justification-archive/imports/preview",{token:manager,method:"POST",form:importForm()});
   assert.equal(preview.status,200,"Prévia do CSV deve funcionar: "+JSON.stringify(preview.data));
   assert.equal(preview.data.summary.ready,2);
   assert.equal(preview.data.summary.missingNames,1);
   assert.equal(preview.data.summary.linkCount,1);
   assert.equal(preview.data.summary.invalid,1);
   assert.equal(preview.data.summary.newCases,2);
-  const invalidConfirm=await request("/api/justification-archive/imports/confirm",{token:master,method:"POST",payload:{previewToken:preview.data.previewToken,companyId:com,branchId:branch,confirmation:"NÃO"}});
+  const invalidConfirm=await request("/api/justification-archive/imports/confirm",{token:manager,method:"POST",payload:{previewToken:preview.data.previewToken,companyId:com,branchId:branch,confirmation:"NÃO"}});
   assert.equal(invalidConfirm.status,400);
-  const validConfirm=await request("/api/justification-archive/imports/confirm",{token:master,method:"POST",payload:{previewToken:preview.data.previewToken,companyId:com,branchId:branch,confirmation:"IMPORTAR HISTORICO"}});
+  const validConfirm=await request("/api/justification-archive/imports/confirm",{token:manager,method:"POST",payload:{previewToken:preview.data.previewToken,companyId:com,branchId:branch,confirmation:"IMPORTAR HISTORICO"}});
   assert.equal(validConfirm.status,201,"Importação deve ser concluída: "+JSON.stringify(validConfirm.data));
   assert.equal(validConfirm.data.created,2);
   assert.equal(validConfirm.data.linksPending,1);
   assert.equal(validConfirm.data.skipped,1);
-  const importStatus=await request("/api/justification-archive/imports/status?companyId="+com+"&branchId="+branch,{token:master});
+  const importStatus=await request("/api/justification-archive/imports/status?companyId="+com+"&branchId="+branch,{token:manager});
   assert.equal(importStatus.status,200);
   assert.equal(importStatus.data.cases,2);
   assert.equal(importStatus.data.attachments,1);
@@ -169,14 +183,15 @@ async function main(){
   crossForm.append("companyId",com);
   crossForm.append("branchId",wrongBranch);
   crossForm.append("file",new Blob([legacyCsv],{type:"text/csv"}),"historico-ficticio.csv");
-  const crossPreview=await request("/api/justification-archive/imports/preview",{token:master,method:"POST",form:crossForm});
-  assert.equal(crossPreview.status,409,"Não pode copiar o mesmo histórico para outra filial.");
+  const crossPreview=await request("/api/justification-archive/imports/preview",{token:manager,method:"POST",form:crossForm});
+  assert.equal(crossPreview.status,200,"O servidor deve ignorar a filial informada pelo navegador.");
+  assert.equal(crossPreview.data.summary.alreadyImported,2);
 
-  const previewAgain=await request("/api/justification-archive/imports/preview",{token:master,method:"POST",form:importForm()});
+  const previewAgain=await request("/api/justification-archive/imports/preview",{token:manager,method:"POST",form:importForm()});
   assert.equal(previewAgain.status,200);
   assert.equal(previewAgain.data.summary.alreadyImported,2);
   assert.equal(previewAgain.data.summary.newCases,0);
-  const repeated=await request("/api/justification-archive/imports/confirm",{token:master,method:"POST",payload:{previewToken:previewAgain.data.previewToken,companyId:com,branchId:branch,confirmation:"IMPORTAR HISTORICO"}});
+  const repeated=await request("/api/justification-archive/imports/confirm",{token:manager,method:"POST",payload:{previewToken:previewAgain.data.previewToken,companyId:com,branchId:branch,confirmation:"IMPORTAR HISTORICO"}});
   assert.equal(repeated.status,201);
   assert.equal(repeated.data.created,0,"Reimportação não pode duplicar casos.");
   assert.equal(repeated.data.linksPending,0,"Reimportação não pode duplicar anexos.");
