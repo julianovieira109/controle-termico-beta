@@ -17,6 +17,9 @@ on:
       - 'public/index.html'
       - 'test/justification-*'
       - 'tools/smoke-justification-archive.js'
+      - 'src/routes/justification-import.js'
+      - 'src/lib/justification-csv.js'
+      - 'test/justification-legacy-import.test.js'
       - '.github/workflows/acervo-beta-check.yml'
   workflow_dispatch:
 
@@ -38,6 +41,8 @@ jobs:
       - name: Verificar sintaxe
         run: |
           node --check src/routes/justification-archive.js
+          node --check src/routes/justification-import.js
+          node --check src/lib/justification-csv.js
           node --check public/js/justification-archive.js
           node --check src/routes/system.js
           node --check src/db/migrate.js
