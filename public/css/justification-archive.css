@@ -11,3 +11,13 @@
 #justification-archive #archive-details{margin-top:16px}
 #justification-archive #archive-files li{margin:8px 0}
 @media(max-width:720px){#justification-archive .archive-grid{grid-template-columns:1fr}.archive-table{font-size:12px}}
+
+#justification-archive .archive-import-form{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:14px 0}
+#justification-archive .archive-import-form label{min-width:260px;flex:1}
+#justification-archive .archive-import-form input{width:100%}
+#justification-archive .archive-import-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
+#justification-archive .archive-import-summary>div{display:grid;gap:5px;border:1px solid var(--line,#d9e0e7);border-radius:12px;padding:12px;min-width:0}
+#justification-archive .archive-import-summary small{font-size:12px;color:var(--muted,#667085)}
+#justification-archive .archive-import-summary strong{font-size:21px;color:var(--text,#1f2937)}
+#justification-archive .archive-import-confirm-label{display:flex;flex-direction:row;align-items:flex-start;gap:9px;margin:14px 0}
+#justification-archive .archive-import-confirm-label input{flex-shrink:0;margin-top:3px}
