@@ -56,6 +56,32 @@ router.get("/units",async(_req,res,next)=>{
     res.json({companies:companies.rows,branches:branches.rows});
   }catch(error){next(error);}
 });
+// Consulta apenas o cadastro interno da filial. Sem CPF e sem inferir campos ausentes.
+router.get("/employees",async(req,res,next)=>{
+  try{
+    const {companyId,branchId}=req.query;
+    await assertUnit(companyId,branchId);
+    const q=clean(req.query.q,100);
+    if(q.length<2)return res.json({employees:[]});
+    const pattern="%"+q.replace(/[\\%_]/g,"\\router.get("/cases",async(req,res,next)=>{")+"%";
+    const {rows}=await pool.query(`
+      SELECT e.id,e.full_name,e.registration,e.status,
+             COALESCE(NULLIF(TRIM(j.name),''),NULLIF(TRIM(e.job_title),'')) AS job_title,
+             NULLIF(TRIM(d.name),'') AS department
+      FROM employees e
+      LEFT JOIN job_roles j ON j.id=e.job_role_id AND j.company_id=e.company_id
+      LEFT JOIN departments d ON d.id=e.department_id AND d.company_id=e.company_id
+      WHERE e.company_id=$1 AND e.branch_id=$2
+        AND (e.full_name ILIKE $3 ESCAPE '\\' OR e.registration ILIKE $3 ESCAPE '\\')
+      ORDER BY
+        CASE WHEN UPPER(TRIM(e.status))='ATIVO' THEN 0 ELSE 1 END,
+        CASE WHEN LOWER(TRIM(COALESCE(e.registration,'')))=LOWER(TRIM($4)) THEN 0 ELSE 1 END,
+        e.full_name,e.registration
+      LIMIT 20
+    `,[companyId,branchId,pattern,q]);
+    res.json({employees:rows});
+  }catch(error){next(error);}
+});
 router.get("/cases",async(req,res,next)=>{
   try{
     const {companyId,branchId}=req.query;
@@ -81,13 +107,36 @@ router.post("/cases",express.json({limit:"64kb"}),async(req,res,next)=>{
   try{
     const b=req.body||{};
     await assertUnit(b.companyId,b.branchId);
-    const employeeName=clean(b.employeeName,200),reason=clean(b.reason,250),absenceDate=nullable(b.absenceDate,10);
-    if(!employeeName||!reason)throw fail("Informe colaborador e motivo.");
+    const reason=clean(b.reason,250),absenceDate=nullable(b.absenceDate,10);
+    if(!reason)throw fail("Informe o motivo.");
     if(!validDate(absenceDate))throw fail("Data de ausência inválida.");
+    const employeeId=nullable(b.employeeId,80);
+    let employeeName=clean(b.employeeName,200),registration=nullable(b.registration,40);
+    let jobTitle=nullable(b.jobTitle,180),department=nullable(b.department,160);
+    if(employeeId){
+      ensureUUID(employeeId);
+      const employee=await pool.query(`
+        SELECT e.full_name,e.registration,
+          COALESCE(NULLIF(TRIM(j.name),''),NULLIF(TRIM(e.job_title),'')) AS job_title,
+          NULLIF(TRIM(d.name),'') AS department
+        FROM employees e
+        LEFT JOIN job_roles j ON j.id=e.job_role_id AND j.company_id=e.company_id
+        LEFT JOIN departments d ON d.id=e.department_id AND d.company_id=e.company_id
+        WHERE e.id=$1 AND e.company_id=$2 AND e.branch_id=$3
+      `,[employeeId,b.companyId,b.branchId]);
+      if(!employee.rows.length)throw fail("Colaborador não pertence à empresa e filial selecionadas.",404);
+      const e=employee.rows[0];
+      employeeName=e.full_name;
+      registration=nullable(e.registration,40);
+      jobTitle=nullable(e.job_title,180);
+      // Quando o setor não consta no cadastro, permite informar somente este campo manualmente.
+      department=nullable(e.department,160)||department;
+    }
+    if(!employeeName)throw fail("Selecione ou informe o colaborador.");
     const details=clean(b.details,3000);
     const r=await pool.query(
-      "INSERT INTO justification_cases(company_id,branch_id,employee_name,employee_registration,job_title,department,absence_date,reason,details,manager_email,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id,created_at",
-      [b.companyId,b.branchId,employeeName,nullable(b.registration,40),nullable(b.jobTitle,180),nullable(b.department,160),absenceDate,reason,details||null,nullable(b.managerEmail,254),req.user.sub]
+      "INSERT INTO justification_cases(company_id,branch_id,employee_id,employee_name,employee_registration,job_title,department,absence_date,reason,details,manager_email,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id,created_at",
+      [b.companyId,b.branchId,employeeId,employeeName,registration,jobTitle,department,absenceDate,reason,details||null,nullable(b.managerEmail,254),req.user.sub]
     );
     await audit(req,"CREATE","justification_cases",r.rows[0].id,{companyId:b.companyId,branchId:b.branchId});
     res.status(201).json(r.rows[0]);
