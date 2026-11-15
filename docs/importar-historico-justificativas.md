@@ -8,15 +8,15 @@ Campos: carimbo, colaborador, função, setor/departamento, data da ausência, m
 ## Operação segura
 1. Antes de começar, gerar e guardar um **backup do Beta** em Configurações → Backup e dados.
 2. No Google Sheets, abrir **Respostas ao formulário 1** e selecionar **Arquivo → Fazer download → Valores separados por vírgulas (.csv)**, sem alterar a ordem das 11 colunas.
-3. No sistema Beta, entrar como Administrador Master → **Documentos** → selecionar empresa e **filial correta**.
-4. Em **Importar histórico**, selecionar CSV (até 5 MB) e clicar **Conferir arquivo e gerar prévia**.
+3. No sistema Beta, entrar com perfil autorizado a **Gerenciar Documentos** e vinculado a uma única filial. Abrir **Documentos**: a filial será identificada pelo login, sem seleção manual.
+4. Em **Importar histórico**, conferir a filial vinculada ao perfil e selecionar CSV (até 5 MB) e clicar **Conferir arquivo e gerar prévia**.
 5. Conferir total de registros válidos, vínculos, já importados, links e inconsistências. A prévia **não grava nada**.
 6. Marcar a caixa de autorização e clicar **Confirmar importação**. A confirmação é transacional (tudo ou nada).
 7. Conferir o resumo que exibe histórico importado, anexos pendentes e registros sem nome. Gerar novo backup depois.
 
 ## Proteções
 - A importação não acessa a Senior, não recalcula jornada, intervalos, faltas ou banco de horas.
-- Apenas Administrador Master.
+- O Administrador Master configura as permissões **Consultar documentos** e **Gerenciar documentos**; o CSV só está disponível para um perfil autorizado com uma única filial.
 - CSV conferido por cabeçalhos do formulário, com datas brasileiras validadas.
 - Linhas sem nome ficam como **Não informado na origem** com status **Em conferência**. Nenhum nome é inferido.
 - Registros inválidos são listados por número de linha e não entram; o CSV pode ser corrigido na origem e lido novamente.
