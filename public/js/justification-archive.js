@@ -2,7 +2,7 @@
 "use strict";
 const byId=id=>document.getElementById(id);
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let currentCase="",currentCompany="",currentBranch="",loaded=false;
+let currentCase="",currentCompany="",currentBranch="",loaded=false,importPreview=null;
 async function archiveApi(path,options={}){
  const headers={...(options.body instanceof FormData?{}:{"Content-Type":"application/json"}),...(token?{Authorization:"Bearer "+token}:{})};
  const response=await fetch("/api/justification-archive"+path,{...options,headers:{...headers,...options.headers},cache:"no-store"});
@@ -77,13 +77,77 @@ async function downloadFile(id,name){
   a.href=url;a.download=name||"documento";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
  }catch(error){showError(error);}
 }
+function resetImportPreview(){
+ importPreview=null;
+ if(byId("archive-import-preview"))byId("archive-import-preview").hidden=true;
+ if(byId("archive-import-ack"))byId("archive-import-ack").checked=false;
+ if(byId("archive-import-confirm"))byId("archive-import-confirm").disabled=true;
+}
+function importMessage(message){if(byId("archive-import-message"))byId("archive-import-message").textContent=message;}
+async function previewImport(event){
+ event.preventDefault();resetImportPreview();clearError();
+ const companyId=byId("archive-company").value,branchId=byId("archive-branch").value;
+ const file=byId("archive-import-file")?.files?.[0];
+ if(!companyId||!branchId){showError(new Error("Escolha empresa e filial antes de conferir o histórico."));return;}
+ if(!file){showError(new Error("Selecione o CSV do histórico."));return;}
+ if(file.size>5*1024*1024){showError(new Error("O CSV deve ter até 5 MB."));return;}
+ const btn=byId("archive-import-check");btn.disabled=true;
+ importMessage("Conferindo estrutura, datas, documentos e possíveis duplicidades...");
+ try{
+   const form=new FormData();
+   form.append("file",file);
+   form.append("companyId",companyId);
+   form.append("branchId",branchId);
+   const p=await archiveApi("/imports/preview",{method:"POST",body:form});
+   importPreview={token:p.previewToken,companyId,branchId};
+   const sum=p.summary;
+   byId("archive-import-summary").innerHTML=[
+     ["Respostas encontradas",sum.sourceRows],
+     ["Prontas para importar",sum.ready],
+     ["Novas",sum.newCases],
+     ["Já importadas",sum.alreadyImported],
+     ["Links de anexos",sum.linkCount],
+     ["Sem nome",sum.missingNames],
+     ["Inconsistências",sum.invalid],
+     ["Campos com observação",sum.notesOnly]
+   ].map(([key,value])=>'<div><small>'+esc(key)+'</small><strong>'+Number(value||0).toLocaleString("pt-BR")+'</strong></div>').join("");
+   byId("archive-import-issues").textContent=p.issues?.length
+     ?p.issues.slice(0,15).map(issue=>"Linha "+issue.row+": "+issue.reason).join(" | ")+(p.issues.length>15?" (exibindo até 15 inconsistências)":"")
+     :"Nenhum registro inválido identificado.";
+   byId("archive-import-preview").hidden=false;
+   importMessage("Prévia pronta. Confira os números e a filial antes de confirmar.");
+ }catch(error){importMessage("");showError(error);}
+ finally{btn.disabled=false;}
+}
+async function confirmImport(){
+ if(!importPreview||!byId("archive-import-ack").checked)return;
+ if(byId("archive-company").value!==importPreview.companyId||byId("archive-branch").value!==importPreview.branchId){
+   resetImportPreview();showError(new Error("A empresa ou filial mudou. Leia o CSV novamente."));return;
+ }
+ const btn=byId("archive-import-confirm");btn.disabled=true;clearError();
+ importMessage("Gravando histórico na filial selecionada...");
+ try{
+   const result=await archiveApi("/imports/confirm",{method:"POST",body:JSON.stringify({
+     previewToken:importPreview.token,companyId:importPreview.companyId,branchId:importPreview.branchId,confirmation:"IMPORTAR HISTORICO"
+   })});
+   resetImportPreview();
+   byId("archive-import-file").value="";
+   importMessage("Importação concluída: "+result.created.toLocaleString("pt-BR")+" novas justificativas, "+result.duplicates.toLocaleString("pt-BR")+" já existentes, "+result.linksPending.toLocaleString("pt-BR")+" anexos com links pendentes de transferência.");
+   await loadCases();
+ }catch(error){showError(error);importMessage("Importação não confirmada.");}
+ finally{btn.disabled=!importPreview||!byId("archive-import-ack").checked;}
+}
 function bind(){
- byId("archive-company")?.addEventListener("change",()=>{refreshBranch();loadCases();});
- byId("archive-branch")?.addEventListener("change",loadCases);
+ byId("archive-company")?.addEventListener("change",()=>{resetImportPreview();refreshBranch();loadCases();});
+ byId("archive-branch")?.addEventListener("change",()=>{resetImportPreview();loadCases();});
  byId("archive-search")?.addEventListener("input",()=>{clearTimeout(bind.searchTimer);bind.searchTimer=setTimeout(loadCases,250);});
  byId("archive-refresh")?.addEventListener("click",loadCases);
  byId("archive-new-case")?.addEventListener("submit",saveCase);
  byId("archive-file-form")?.addEventListener("submit",uploadFile);
+ byId("archive-import-preview-form")?.addEventListener("submit",previewImport);
+ byId("archive-import-file")?.addEventListener("change",resetImportPreview);
+ byId("archive-import-ack")?.addEventListener("change",event=>{byId("archive-import-confirm").disabled=!importPreview||!event.target.checked;});
+ byId("archive-import-confirm")?.addEventListener("click",confirmImport);
  byId("archive-case-status")?.addEventListener("change",async event=>{if(!currentCase)return;try{await archiveApi("/cases/"+currentCase+"/status",{method:"PATCH",body:JSON.stringify({status:event.target.value})});await loadCases();}catch(error){showError(error);}});
  document.addEventListener("click",event=>{const item=event.target.closest(".archive-open");if(item)openCase(item.dataset.id);const dl=event.target.closest(".archive-download");if(dl)downloadFile(dl.dataset.id,dl.dataset.name);});
 }
