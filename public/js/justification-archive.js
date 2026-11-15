@@ -2,7 +2,7 @@
 "use strict";
 const byId=id=>document.getElementById(id);
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let currentCase="",currentCompany="",currentBranch="",loaded=false,importPreview=null;
+let currentCase="",currentCompany="",currentBranch="",loaded=false,importPreview=null,archiveScope=null;
 let employeeSearchTimer=null,employeeSearchSequence=0,selectedEmployee=null;
 let employeeDirectory=[],employeeDirectoryScope="";
 async function archiveApi(path,options={}){
@@ -15,42 +15,52 @@ function showError(error){const el=byId("archive-feedback");if(el){el.textConten
 function clearError(){const el=byId("archive-feedback");if(el){el.hidden=true;el.textContent="";}}
 function statusLabel(s){return ({PENDENTE:"Pendente",EM_CONFERENCIA:"Em conferência",CONFERIDO:"Conferido",DIVERGENTE:"Divergente",DESCONSIDERADO:"Desconsiderado"})[s]||s;}
 async function initialize(){
- if(!currentUser||currentUser.isMasterAdmin!==true)return;
+ if(!currentUser)return;
  clearError();
  try{
-   if(!loaded){
-     const {companies,branches}=await archiveApi("/units");
-     const co=byId("archive-company"),br=byId("archive-branch");
-     co.innerHTML='<option value="">Selecione a empresa</option>'+companies.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.trade_name)+'</option>').join("");
-     br.dataset.branches=JSON.stringify(branches);
-     loaded=true;
-     refreshBranch();
-   }
-   await loadCases();
-   if(!selectedEmployee){if(!byId("archive-department").value)byId("archive-department").value=defaultDepartmentForBranch();await searchEmployees();}
+  archiveScope=await archiveApi("/scope");
+  loaded=true;
+  const unit=archiveScope.units.length===1?archiveScope.units[0]:null;
+  currentCompany=unit?.company_id||"";
+  currentBranch=unit?.branch_id||"";
+  const summary=byId("archive-scope-summary");
+  if(summary)summary.textContent="Perfil: "+archiveScope.profileName+" • "+archiveScope.units.map(u=>u.company_name+" / "+u.branch_name).join("; ");
+  const importPanel=byId("archive-import-panel");
+  if(importPanel)importPanel.hidden=!archiveScope.importEnabled;
+  const unavailable=byId("archive-import-unavailable");
+  if(unavailable){
+   unavailable.hidden=archiveScope.importEnabled;
+   unavailable.textContent=archiveScope.canManage?archiveScope.importMessage:
+      "Seu perfil permite consulta, mas não importação ou cadastro de documentos.";
+  }
+  const create=byId("archive-create-panel");
+  if(create)create.hidden=!archiveScope.canManage;
+  const status=byId("archive-case-status");
+  if(status)status.disabled=!archiveScope.canManage;
+  const fileForm=byId("archive-file-form");
+  if(fileForm)fileForm.hidden=!archiveScope.canManage;
+  employeeDirectoryScope="";
+  clearEmployeeSelection();
+  resetImportPreview();
+  await loadCases();
+  if(archiveScope.canManage)await searchEmployees();
  }catch(error){showError(error);}
 }
-function refreshBranch(){
- const co=byId("archive-company"),br=byId("archive-branch");if(!br||!co)return;
- currentCompany=co.value;const branches=JSON.parse(br.dataset.branches||"[]");
- const matching=branches.filter(b=>b.company_id===currentCompany);
- br.innerHTML='<option value="">Selecione a filial</option>'+matching.map(b=>'<option value="'+esc(b.id)+'">'+esc(b.name)+'</option>').join("");
- currentBranch=br.value;
-}
 async function loadCases(){
- const body=byId("archive-table-body");if(!body)return;
- currentCompany=byId("archive-company").value;currentBranch=byId("archive-branch").value;
- if(!currentCompany||!currentBranch){body.innerHTML='<tr><td colspan="5">Selecione empresa e filial para consultar.</td></tr>';return;}
- clearError();body.innerHTML='<tr><td colspan="5">Consultando registros...</td></tr>';
+ const body=byId("archive-table-body");
+ if(!body||!archiveScope)return;
+ clearError();
+ body.innerHTML='<tr><td colspan="6">Consultando registros...</td></tr>';
  try{
- const params=new URLSearchParams({companyId:currentCompany,branchId:currentBranch,q:byId("archive-search").value,limit:"50"});
- const results=await archiveApi("/cases?"+params);
- byId("archive-total").textContent=results.total+" justificativa(s)";
- archiveApi("/imports/status?"+new URLSearchParams({companyId:currentCompany,branchId:currentBranch}))
-  .then(v=>{const el=byId("archive-import-history-status");if(el&&currentCompany===byId("archive-company").value&&currentBranch===byId("archive-branch").value)el.textContent="Histórico Google Sheets nesta filial: "+v.cases.toLocaleString("pt-BR")+" justificativas; "+v.pending.toLocaleString("pt-BR")+" links pendentes; "+v.stored.toLocaleString("pt-BR")+" arquivos já armazenados. Registros sem nome: "+v.no_name.toLocaleString("pt-BR")+".";})
-  .catch(()=>{const el=byId("archive-import-history-status");if(el)el.textContent="Não foi possível consultar o resumo do histórico.";});
- body.innerHTML=results.records.length?results.records.map(r=>'<tr><td>'+esc(r.employee_name)+(r.employee_registration?'<small> · '+esc(r.employee_registration)+'</small>':"")+'</td><td>'+esc(r.absence_date?String(r.absence_date).slice(0,10).split("-").reverse().join("/"):"—")+'</td><td>'+esc(r.reason)+'</td><td>'+esc(statusLabel(r.review_status))+'</td><td><button class="secondary archive-open" type="button" data-id="'+esc(r.id)+'">Consultar ('+r.stored_count+'/'+r.file_count+')</button></td></tr>').join(""):'<tr><td colspan="5">Nenhuma justificativa cadastrada.</td></tr>';
- }catch(error){body.innerHTML='<tr><td colspan="5">Não foi possível carregar os registros.</td></tr>';showError(error);}
+  const params=new URLSearchParams({q:byId("archive-search").value,limit:"50"});
+  const results=await archiveApi("/cases?"+params);
+  byId("archive-total").textContent=results.total+" justificativa(s)";
+  archiveApi("/imports/status").then(v=>{
+    const el=byId("archive-import-history-status");
+    if(el)el.textContent="Histórico acessível: "+v.cases.toLocaleString("pt-BR")+" justificativas; "+v.pending.toLocaleString("pt-BR")+" links pendentes; "+v.stored.toLocaleString("pt-BR")+" arquivos armazenados.";
+  }).catch(()=>{});
+  body.innerHTML=results.records.length?results.records.map(r=>'<tr><td>'+esc(r.employee_name)+(r.employee_registration?'<small> · '+esc(r.employee_registration)+'</small>':"")+'</td><td>'+esc(r.branch_name||"—")+'</td><td>'+esc(r.absence_date?String(r.absence_date).slice(0,10).split("-").reverse().join("/"):"—")+'</td><td>'+esc(r.reason)+'</td><td>'+esc(statusLabel(r.review_status))+'</td><td><button class="secondary archive-open" type="button" data-id="'+esc(r.id)+'">Consultar ('+r.stored_count+'/'+r.file_count+')</button></td></tr>').join(""):'<tr><td colspan="6">Nenhuma justificativa cadastrada nas filiais autorizadas.</td></tr>';
+ }catch(error){body.innerHTML='<tr><td colspan="6">Não foi possível carregar as justificativas.</td></tr>';showError(error);}
 }
 async function openCase(id){
  currentCase=id;const details=byId("archive-details");details.hidden=false;
@@ -65,7 +75,7 @@ async function openCase(id){
 }
 // Padrão solicitado para a operação da TRANZILOG; setores cadastrados prevalecem.
 function defaultDepartmentForBranch(){
- const name=byId("archive-branch")?.selectedOptions?.[0]?.textContent||"";
+ const name=selectedEmployee?.branch_name||archiveScope?.units?.find(u=>u.branch_id===currentBranch)?.branch_name||"";
  return /TRANS?ZILOG/i.test(name)?"Armazem":"";
 }
 function setEmployeeFieldsReadonly(isSelected,employee=null){
@@ -130,65 +140,45 @@ function chooseEmployee(employee,{keepSearchText=false,automatic=false}={}){
    (missing.length?" Não consta no cadastro: "+missing.join(", ")+". Preencha manualmente apenas os campos ausentes.":" Dados preenchidos a partir do cadastro.");
 }
 async function searchEmployees(){
- const searchInput=byId("archive-employee-search"),select=byId("archive-employee-select");
- const results=byId("archive-employee-results");
- const companyId=byId("archive-company").value,branchId=byId("archive-branch").value;
- const scope=companyId+":"+branchId,q=searchInput.value.trim(),sequence=++employeeSearchSequence;
+ const searchInput=byId("archive-employee-search"),select=byId("archive-employee-select"),results=byId("archive-employee-results");
+ const key=archiveScope?.units?.map(u=>u.branch_id).join(":")||"";
+ const q=searchInput.value.trim(),sequence=++employeeSearchSequence;
  results.hidden=true;results.innerHTML="";
- if(!companyId||!branchId){
-   select.innerHTML='<option value="">Selecione primeiro empresa e filial</option>';
-   select.disabled=true;
-   byId("archive-employee-feedback").textContent="Selecione empresa e filial para ver os nomes cadastrados.";
-   return;
+ if(!archiveScope?.units?.length){
+  select.innerHTML='<option value="">O perfil não tem filial autorizada</option>';select.disabled=true;return;
  }
  select.disabled=true;
- byId("archive-employee-feedback").textContent="Carregando os colaboradores da filial...";
+ byId("archive-employee-feedback").textContent="Consultando colaboradores autorizados...";
  try{
-   if(employeeDirectoryScope!==scope){
-     const data=await archiveApi("/employees?"+new URLSearchParams({companyId,branchId}));
-     if(sequence!==employeeSearchSequence||companyId!==byId("archive-company").value||
-        branchId!==byId("archive-branch").value)return;
-     employeeDirectory=data.employees||[];
-     employeeDirectoryScope=scope;
-   }
-   const key=normalizeEmployeeLookup(q);
-   const people=employeeDirectory.filter(e=>!key||
-     normalizeEmployeeLookup(e.full_name).includes(key)||
-     normalizeEmployeeLookup(e.registration).includes(key));
-   const previous=selectedEmployee?.id||"";
-   select.replaceChildren();
-   const placeholder=document.createElement("option");
-   placeholder.value="";
-   placeholder.textContent=people.length?"Selecione o colaborador ("+people.length+" disponíveis)":"Nenhum colaborador encontrado";
-   select.appendChild(placeholder);
-   for(const e of people){
-     const option=document.createElement("option");
-     option.value=e.id;
-     option.textContent=e.full_name+(e.registration?" | Matrícula: "+e.registration:"")+
-       (e.status&&e.status!=="ATIVO"?" | "+e.status:"");
-     select.appendChild(option);
-   }
-   select.disabled=!people.length;
-   if(previous&&people.some(e=>e.id===previous))select.value=previous;
-   else select.value="";
-   if(!people.length){
-     byId("archive-employee-feedback").textContent="Nenhum colaborador encontrado nesta filial. Confira o cadastro ou preencha os campos manualmente.";
-     return;
-   }
-   const autoEmployee=q.length>=2?findAutomaticEmployee(people,q):null;
-   if(autoEmployee){
-     chooseEmployee(autoEmployee,{keepSearchText:true,automatic:true});
-     return;
-   }
-   const active=people.filter(e=>e.status==="ATIVO").length;
-   byId("archive-employee-feedback").textContent=people.length+" colaboradores disponíveis ("+active+
-      " ativos). Escolha o nome na lista acima"+(q?" ou continue digitando.":". Você também pode pesquisar pelo nome ou matrícula.");
- }catch(error){
+  if(employeeDirectoryScope!==key){
+   const data=await archiveApi("/employees");
    if(sequence!==employeeSearchSequence)return;
-   select.innerHTML='<option value="">Não foi possível carregar os colaboradores</option>';
-   select.disabled=true;
-   byId("archive-employee-feedback").textContent="Não foi possível consultar o cadastro. Confira a filial selecionada.";
-   showError(error);
+   employeeDirectory=data.employees||[];
+   employeeDirectoryScope=key;
+  }
+  const term=normalizeEmployeeLookup(q);
+  const people=employeeDirectory.filter(e=>!term||normalizeEmployeeLookup(e.full_name).includes(term)||normalizeEmployeeLookup(e.registration).includes(term));
+  select.replaceChildren();
+  const placeholder=document.createElement("option");
+  placeholder.value="";
+  placeholder.textContent=people.length?"Selecione o colaborador ("+people.length+" disponíveis)":"Nenhum colaborador encontrado";
+  select.appendChild(placeholder);
+  for(const e of people){
+   const option=document.createElement("option");option.value=e.id;
+   option.textContent=e.full_name+(e.registration?" | Matrícula: "+e.registration:"")+(e.branch_name?" | "+e.branch_name:"")+(e.status!=="ATIVO"?" | "+e.status:"");
+   select.appendChild(option);
+  }
+  select.disabled=!people.length;
+  const old=selectedEmployee?.id||"";
+  select.value=old&&people.some(e=>e.id===old)?old:"";
+  if(!people.length){byId("archive-employee-feedback").textContent="Nenhum colaborador encontrado nas filiais autorizadas.";return;}
+  const automatic=q.length>=2?findAutomaticEmployee(people,q):null;
+  if(automatic){chooseEmployee(automatic,{keepSearchText:true,automatic:true});return;}
+  byId("archive-employee-feedback").textContent=people.length+" colaboradores disponíveis nas filiais autorizadas. Selecione um nome.";
+ }catch(error){
+  if(sequence!==employeeSearchSequence)return;
+  select.innerHTML='<option value="">Falha ao carregar colaboradores</option>';
+  select.disabled=true;showError(error);
  }
 }
 function handleEmployeeSearchChange(){
@@ -200,8 +190,9 @@ function handleEmployeeSearchChange(){
  employeeSearchTimer=setTimeout(searchEmployees,250);
 }
 async function saveCase(event){
- event.preventDefault();if(!currentCompany||!currentBranch){showError(new Error("Selecione empresa e filial."));return;}
- const fields={companyId:currentCompany,branchId:currentBranch,employeeId:byId("archive-employee-id").value||null,employeeName:byId("archive-name").value,registration:byId("archive-registration").value,jobTitle:byId("archive-job-title").value,department:byId("archive-department").value,absenceDate:byId("archive-date").value,reason:byId("archive-reason").value,details:byId("archive-details-field").value,managerEmail:byId("archive-manager").value};
+ event.preventDefault();if(!archiveScope?.canManage){showError(new Error("Seu perfil não pode cadastrar documentos."));return;}
+ if(!byId("archive-employee-id").value&&!archiveScope.importEnabled){showError(new Error("Selecione um colaborador para identificar a filial do registro."));return;}
+ const fields={employeeId:byId("archive-employee-id").value||null,employeeName:byId("archive-name").value,registration:byId("archive-registration").value,jobTitle:byId("archive-job-title").value,department:byId("archive-department").value,absenceDate:byId("archive-date").value,reason:byId("archive-reason").value,details:byId("archive-details-field").value,managerEmail:byId("archive-manager").value};
  try{const created=await archiveApi("/cases",{method:"POST",body:JSON.stringify(fields)});byId("archive-new-case").reset();clearEmployeeSelection();await loadCases();await openCase(created.id);}catch(error){showError(error);}
 }
 async function uploadFile(event){
@@ -280,8 +271,6 @@ async function confirmImport(){
  finally{btn.disabled=!importPreview||!byId("archive-import-ack").checked;}
 }
 function bind(){
- byId("archive-company")?.addEventListener("change",()=>{refreshBranch();clearEmployeeSelection();employeeDirectoryScope="";resetImportPreview();loadCases();searchEmployees();});
- byId("archive-branch")?.addEventListener("change",()=>{clearEmployeeSelection();employeeDirectoryScope="";resetImportPreview();loadCases();searchEmployees();});
  byId("archive-search")?.addEventListener("input",()=>{clearTimeout(bind.searchTimer);bind.searchTimer=setTimeout(loadCases,250);});
  byId("archive-refresh")?.addEventListener("click",loadCases);
  byId("archive-employee-select")?.addEventListener("change",event=>{
