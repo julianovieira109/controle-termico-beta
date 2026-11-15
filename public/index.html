@@ -41,7 +41,7 @@
   <link rel="stylesheet" href="/css/roster-module.css?v=2">
   <link rel="stylesheet" href="/css/enhancements.css?v=1.0.31-beta.121">
   <link rel="stylesheet" href="/css/occurrences.css?v=1.0.31-beta.102">
-  <link rel="stylesheet" href="/css/justification-archive.css?v=1">
+  <link rel="stylesheet" href="/css/justification-archive.css?v=2">
   <link rel="stylesheet" href="/css/imports-center.css?v=1.0.31-beta.88">
   <link rel="stylesheet" href="/css/bh-comparison.css?v=1.0.31-beta.98">
   <link rel="stylesheet" href="/css/theme-accessibility.css?v=1.0.31-beta.108">
@@ -1652,6 +1652,26 @@
         </div>
         <div class="table-wrap"><table class="archive-table"><thead><tr><th>Colaborador</th><th>Data</th><th>Motivo</th><th>Conferência</th><th>Documentos</th></tr></thead><tbody id="archive-table-body"><tr><td colspan="5">Selecione empresa e filial.</td></tr></tbody></table></div>
       </section>
+      <section class="panel" id="archive-import-panel">
+        <header class="panel-head"><div><h3>Importar histórico de justificativas</h3>
+          <p>Importe o CSV da aba <strong>Respostas ao formulário 1</strong> para reunir as ocorrências antigas sem duplicar cadastros.</p></div></header>
+        <p class="archive-note">Escolha a empresa e filial acima antes de importar. No Google Sheets, selecione a aba de respostas e use <strong>Arquivo → Fazer download → Valores separados por vírgulas (.csv)</strong>. Não altere nem ordene os registros. A prévia não grava dados.</p>
+        <form id="archive-import-preview-form" class="archive-import-form">
+          <label>Planilha de respostas (CSV, até 5 MB)
+            <input type="file" id="archive-import-file" accept=".csv,text/csv" required>
+          </label>
+          <button type="submit" class="secondary" id="archive-import-check">Conferir arquivo e gerar prévia</button>
+        </form>
+        <div id="archive-import-preview" hidden>
+          <h4>Prévia de importação</h4>
+          <div id="archive-import-summary" class="archive-import-summary"></div>
+          <p id="archive-import-issues" class="hint"></p>
+          <p class="archive-note">Os anexos ficarão identificados como <strong>Pendentes de transferência</strong>. Nenhum PDF ou imagem será marcado como armazenado somente por existir um link. Colaboradores sem nome serão mantidos para revisão.</p>
+          <label class="archive-import-confirm-label"><input type="checkbox" id="archive-import-ack"> Conferi a filial e autorizo inserir somente os novos registros desta prévia.</label>
+          <button type="button" class="primary" id="archive-import-confirm" disabled>Confirmar importação</button>
+        </div>
+        <p class="hint" role="status" id="archive-import-message" aria-live="polite"></p>
+      </section>
       <section class="panel"><h3>Cadastrar justificativa</h3>
         <form id="archive-new-case"><div class="archive-grid">
           <label>Colaborador<input id="archive-name" maxlength="200" required></label>
@@ -3009,7 +3029,7 @@
   <script src="/js/imports-center.js?v=1.0.31-beta.93"></script>
   <script src="/js/occurrences-print-template.js?v=1.0.31-beta.36"></script>
   <script src="/js/occurrences-control.js?v=1.0.31-beta.104"></script>
-  <script src="/js/justification-archive.js?v=1"></script>
+  <script src="/js/justification-archive.js?v=2"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
   <script src="/js/roster-module.js?v=2"></script>
