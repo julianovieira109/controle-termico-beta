@@ -109,3 +109,7 @@ O simulador simples usa `planningOnly` no gerador: falta de coordenador/cargo e 
 A apresentação de jornadas utiliza apenas HH:mm, sem sufixos repetidos após meia-noite. Os pontos em minutos absolutos de `journeyTimes` permanecem iguais para carga, intervalos e cobertura noturna.
 
 O relatório PDF de folgas deixa de inserir linhas de códigos e horários do turno antes dos colaboradores. Grupos, marcações e totais são preservados. A alteração se aplica a relatórios semanais e mensais gerados novamente.
+
+## Liderança conferida e disponibilidade no aviso
+
+`leadershipLevel`, `planningCoordinator` e `notice` são campos de planejamento persistidos no JSON de roster_plans, vinculados ao UUID oficial existente e auditados. Não há lista nominativa publicada no código. O cargo e vínculo originais seguem protegidos. A projeção usa um ajuste de coordenador somente na 5x2; null restaura a origem. Após PUT, a projeção é refeita para devolver os valores efetivos sem uma tela desatualizada. Supervisor é reconhecido separadamente e participa das conferências operacionais. `notice` valida workUntil <= contractEnd <= settlementDate. `availableForWork` corta novas sugestões após workUntil; `status` registra indisponibilidade planejada após a data, antes de considerar marcações antigas, e as coberturas descontam essa pessoa. O cadastro de RH não é inativado por estes metadados. A atribuição nominativa é feita pelos endpoints autenticados existentes, sem seeds ou credenciais no repositório.

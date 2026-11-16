@@ -1,5 +1,5 @@
 import {moveDay,validDay} from './business-date';
-import {days,employed,planned,restRule,status,weeklyRestDays,withWeeklyFolgas,type Employee,type State} from './roster';
+import {days,employed,availableForWork,planned,restRule,status,weeklyRestDays,withWeeklyFolgas,type Employee,type State} from './roster';
 import {isLeader} from './leadership';
 import {workIntervals} from './leadership-hours';
 import {specialSchedule} from './planning-reference';
@@ -19,7 +19,7 @@ const weekday=(date:string)=>days[(new Date(date+'T12:00:00Z').getUTCDay()+6)%7]
 const at=(date:string)=>new Date(date+'T12:00:00');
 function configured(employee:Employee,date:string,planningOnly:boolean){if(planningOnly)return planned(employee,date)&&weeklyRestDays(employee,date).length===2;return employee.included||Boolean(employee.off1||employee.off2||employee.restRules?.length||employee.weeklyPattern&&Object.keys(employee.weeklyPattern).length);}
 function exclusion(state:State,employee:Employee,date:string,includeOffice:boolean,planningOnly=false){
- if((!planningOnly&&!employee.active)||!employed(employee,at(date)))return 'Sem vínculo ativo na vigência';
+ if((!planningOnly&&!employee.active)||!availableForWork(employee,at(date)))return 'Sem vínculo ativo na vigência';
  if(configured(employee,date,planningOnly))return 'Grupo e planejamento existentes preservados';
  if(!includeOffice&&!['1º','2º','3º'].includes(employee.shift))return 'Comercial / ADM / outros horários fora deste lote';
  if(specialSchedule(employee))return 'Aprendiz ou jornada reduzida: revisão individual';
@@ -33,7 +33,7 @@ function scope(state:State,ids:string[],date:string,includeOffice:boolean,planni
  const selected=new Set(ids);const excluded:OperationalResult['excluded']=[],candidates:Employee[]=[];
  for(const employee of state.employees.filter(employee=>selected.has(employee.id))){const reason=exclusion(state,employee,date,includeOffice,planningOnly);if(reason)excluded.push({id:employee.id,name:employee.name,reason});else candidates.push(employee);}
  const keys=new Set(candidates.map(teamKey));
- const members=state.employees.filter(employee=>keys.has(teamKey(employee))&&!specialSchedule(employee)&&employed(employee,at(date))&&(candidates.some(item=>item.id===employee.id)||planned(employee,date)||employee.restRules?.some(rule=>rule.effectiveDate>=date&&rule.effectiveDate<=moveDay(date,27)&&rule.included!==false)));
+ const members=state.employees.filter(employee=>keys.has(teamKey(employee))&&!specialSchedule(employee)&&availableForWork(employee,at(date))&&(candidates.some(item=>item.id===employee.id)||planned(employee,date)||employee.restRules?.some(rule=>rule.effectiveDate>=date&&rule.effectiveDate<=moveDay(date,27)&&rule.included!==false)));
  return {candidates,members,excluded};
 }
 export function operationalDefaults(state:State,ids:string[],effectiveDate:string,includeOffice=false,planningOnly=false):OperationalConfig{

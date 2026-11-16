@@ -35,6 +35,7 @@ async function audit(db,req,scope,id,before,after,action,summary){
  await db.query(`INSERT INTO audit_logs(user_id,action,entity,entity_id,details,ip_address) VALUES($1,$2,'roster_plans',$3,$4,$5)`,[req.user.sub,action,id,JSON.stringify({companyId:scope.companyId,branchId:scope.branchId,summary,changes:service.changes(before,after)}),req.ip||null]);
 }
 async function save(db,req,scope,current,payload,officialRows,summary,action='UPDATE_ROSTER'){
+ payload.state=service.project(officialRows,payload).state;
  const now=new Date().toISOString();payload.state.history=[{at:now,action:`${req.user.name||'Usuário'}: ${summary}`},...payload.state.history].slice(0,500);
  const {rows}=current.id?await db.query(`UPDATE roster_plans SET payload=$1,version=version+1,updated_at=NOW(),updated_by=$2 WHERE id=$3 AND version=$4 RETURNING *`,[JSON.stringify(payload),req.user.sub,current.id,current.version]):await db.query(`INSERT INTO roster_plans(company_id,branch_id,payload,version,updated_by) VALUES($1,$2,$3,1,$4) RETURNING *`,[scope.companyId,scope.branchId,JSON.stringify(payload),req.user.sub]);
  if(!rows[0])throw service.fail('Planejamento alterado por outro acesso. Recarregue antes de gravar.',409);

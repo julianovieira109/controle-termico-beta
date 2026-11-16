@@ -1,6 +1,6 @@
 const crypto=require('node:crypto');
 const rules=require('../generated/roster-rules.cjs');
-const planningFields=['shift','included','off1','off2','note','journeys','restRules','weeklyPattern','area','leader','leadershipReviewedAt'];
+const planningFields=['shift','included','off1','off2','note','journeys','restRules','weeklyPattern','area','leader','leadershipReviewedAt','leadershipLevel','planningCoordinator','notice'];
 const officialFields=['id','officialEmployeeId','name','code','schedule','role','active','admissionDate','dismissalDate','fixedWednesday','officialShift','coordinatorId','coordinatorName','coordinatorSource'];
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const registration=value=>/^\d{1,12}$/.test(String(value||''))?String(value).replace(/^0+(?=\d)/,''):null;
@@ -35,7 +35,7 @@ function project(rows,stored={}){
   const area=/\b(ADM|ADMINISTRATIVO|ADMINISTRATIVA)\b/.test(normalizedShift)?'ADM':/\bCOMERCIAL\b/.test(normalizedShift)?'Comercial':'Não definida';
   const shift=area!=='Não definida'?'Outros':/^1 (TURNO|TUR)/.test(normalizedShift)?'1º':/^2 (TURNO|TUR)/.test(normalizedShift)?'2º':/^3 (TURNO|TUR)/.test(normalizedShift)?'3º':'Outros';
   return {...{shift,included:false,off1:'',off2:'',note:'Planejamento de jornada e folgas ainda não definido.',area},...pick(before||{},planningFields),
-   id,officialEmployeeId:row.id,name:row.full_name,code:row.shift_senior_code||'',schedule:row.shift_description||'',role:row.job_role_name||row.job_title||'',officialShift:row.shift_name||'',coordinatorId:row.coordinator_id||'',coordinatorName:row.coordinator_name||'',coordinatorSource:row.coordinator_source||'',
+   id,officialEmployeeId:row.id,name:row.full_name,code:row.shift_senior_code||'',schedule:row.shift_description||'',role:row.job_role_name||row.job_title||'',officialShift:row.shift_name||'',coordinatorId:before?.planningCoordinator?.id||row.coordinator_id||'',coordinatorName:before?.planningCoordinator?.name||row.coordinator_name||'',coordinatorSource:before?.planningCoordinator?'PLANEJAMENTO_5X2':row.coordinator_source||'',
    active:row.status==='ATIVO',admissionDate:date(row.admission_date),dismissalDate:date(row.termination_date),fixedWednesday:before?.fixedWednesday===true};
  });
  const overrides=employees.flatMap(employee=>(byOfficial.get(employee.officialEmployeeId)?.overrides||[]).map(o=>({...o,id:employee.id})));

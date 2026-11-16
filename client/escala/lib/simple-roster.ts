@@ -1,13 +1,13 @@
 import {applyComparisonHours} from './schedule-comparison';
 import {operationalDefaults,generateOperational} from './operational-generator';
-import {employed,issues,planned,weeklyRestDays,type State} from './roster';
+import {availableForWork,issues,planned,weeklyRestDays,type State} from './roster';
 import {moveDay} from './business-date';
 import {hourlyCoverage} from './leadership-hours';
 import {isLeader} from './leadership';
 export function simpleRoster(state:State,hours:40|42|44,date:string){
  const assigned=applyComparisonHours(state,hours,date);
  const excludedIds=new Set(assigned.excluded.map(e=>e.id));
- const ids=assigned.state.employees.filter(e=>employed(e,new Date(date+'T12:00:00'))&&!excludedIds.has(e.id)).map(e=>e.id);
+ const ids=assigned.state.employees.filter(e=>availableForWork(e,new Date(date+'T12:00:00'))&&!excludedIds.has(e.id)).map(e=>e.id);
  const config=operationalDefaults(assigned.state,ids,date,true,true);
  const generated=generateOperational(assigned.state,ids,config);
  return {state:generated.state,ids,count:assigned.count,excluded:assigned.excluded};

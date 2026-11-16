@@ -1,11 +1,11 @@
 import {referenceProposal,specialSchedule} from './planning-reference';
 import {journeyText,isJourney} from './journeys';
-import {employed,type Employee} from './roster';
+import {availableForWork,type Employee} from './roster';
 import {validDay} from './business-date';
 export const comparisonHours=[40,42,44] as const;
 export function compareSchedules(employees:Employee[],date:string){
  if(!validDay(date))throw Error('Informe uma data válida para a sugestão.');
- return employees.filter(employee=>employed(employee,new Date(date+'T12:00:00'))).map(employee=>({
+ return employees.filter(employee=>availableForWork(employee,new Date(date+'T12:00:00'))).map(employee=>({
   employee,
   options:comparisonHours.map(hours=>{
    const journey=referenceProposal(employee,hours,date);

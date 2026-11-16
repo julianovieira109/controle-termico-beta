@@ -1,5 +1,5 @@
 import {type Employee,type State} from './roster';
-export type LeadershipLevel='Líder'|'Encarregado'|'Coordenador';
+export type LeadershipLevel='Líder'|'Encarregado'|'Supervisor'|'Coordenador';
 export const leadershipSourceId='beta-planning';
 export const officialLeadership:{id:string;name:string;role:string;level:LeadershipLevel}[]=[];
 export const normalizedEmployeeId=(id:string)=>id.replace(/^0+(?=\d)/,'');
