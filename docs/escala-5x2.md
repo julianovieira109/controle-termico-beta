@@ -97,3 +97,7 @@ A comparação permite escolher explicitamente 40h, 42h ou 44h para todos os ele
 ## Fluxo simplificado do simulador
 
 A aba Simulador 5x2 concentra jornada (40/42/44), data e Gerar sugestão. Usa `applyComparisonHours` e o gerador operacional existente para compor uma prévia completa: horários individuais e folgas ainda não planejadas, com os grupos anteriores preservados. Até 400 pessoas ainda sem planejamento por geração. A tabela apresenta sete dias a partir da vigência; a busca é opcional e não reduz o lote salvo. Ajustar modifica apenas entrada e duas folgas na prévia. Revisões agrupam pendências individuais e cobertura de liderança por turno/vínculo, usando `hourlyCoverage`, que desconta intervalos e considera a madrugada anterior. Avisos não bloqueiam salvar. Comparação e configuração detalhada ficam recolhidas. `roster.view` permite simular/baixar, `roster.manage` permite salvar pelo PUT auditado existente. Nenhuma gravação ocorre antes de Salvar rascunho. Prévia fica obsoleta se data, jornada ou estado mudarem. Ponto e controle térmico não são alterados.
+
+## Lançar a prévia no calendário
+
+Lançar em Escalas e folgas usa o mesmo PUT auditado de Salvar rascunho. Só após sucesso chama `onApplied(date)`, seleciona a semana/mês da vigência, limpa filtros e abre Escalas e folgas. Falha ou conflito mantém a prévia e não navega. A regra continua recorrente a partir da vigência; a visão mensal lê os mesmos dados. Geração e PDF não gravam. Exige roster.manage e mantém ponto e controle térmico preservados.

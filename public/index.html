@@ -1603,6 +1603,7 @@
               <p>O resultado mostra uma semana com nomes, turnos, líder/coordenador vinculado, horários e folgas. As folgas existentes são preservadas; quem ainda não tem planejamento recebe uma proposta, conforme os dados disponíveis. A folga fixa sugerida continua sendo sábado no 3º turno e domingo nos demais. Aprendizes, jornadas reduzidas e horários incompletos ficam para revisão individual. Se cargo ou vínculo estiverem ausentes, as folgas podem exigir ajuste. O gerador aceita até 400 pessoas ainda sem planejamento por prévia.</p>
               <p>Use <strong>Ajustar</strong> na linha para mudar a entrada e as duas folgas somente na sugestão. O intervalo mantém a duração original e a saída acompanha a jornada. Clique em <strong>Concluir ajuste</strong>. <strong>Revisões e filtros</strong> reúne a busca e os avisos, incluindo conferência de liderança nos horários efetivos, descontando os intervalos e considerando a passagem da meia-noite. Os avisos não bloqueiam o rascunho. <strong>Comparar as três jornadas</strong> e os ajustes detalhados ficam recolhidos.</p>
               <p><strong>Baixar sugestão (CSV)</strong> exporta a semana exibida. A busca filtra tabela e CSV; <strong>Salvar rascunho</strong> grava todos os elegíveis da unidade, com histórico e auditoria. Simular e baixar exigem <strong>roster.view</strong>; salvar exige também <strong>roster.manage</strong>. Escolher outra jornada/data ou atualizar os dados invalida a prévia: gere novamente. Conflitos ao salvar exigem atualizar a unidade.</p>
+              <p>Para lançar a prévia diretamente no calendário, clique em <strong>Lançar em Escalas e folgas</strong>. O sistema grava os horários e as folgas e abre a semana da data escolhida, com os filtros de turno, coordenador e busca limpos para mostrar a equipe. A visão <strong>Mês</strong> consulta o mesmo planejamento salvo. A regra é recorrente a partir da vigência, não apenas nos sete dias da prévia. O botão exige <strong>roster.manage</strong>; avisos não impedem o rascunho. Se a gravação falhar ou houver conflito de edição, a prévia permanece no simulador para revisão; o calendário só abre após confirmação de salvamento. <strong>Salvar rascunho</strong> também grava, mas mantém você no simulador. O PDF de folgas apenas consulta os dados existentes.</p>
               <p>Esta ferramenta salva apenas planejamento 5x2. Ponto, controle térmico, turnos e vínculos oficiais permanecem preservados. Nenhuma alteração é gravada ao gerar ou ajustar a prévia. As novas regras valem a partir da data escolhida; outras vigências e exceções por data são preservadas. Não é necessário reimportar dados. Após a publicação desta atualização, use Ctrl+F5. As opções anteriores de gerar folgas e definir folgas da equipe permanecem em <strong>Escalas e folgas → Mais opções</strong>. Cálculos usam horas de relógio; confira as regras aplicáveis antes de adotar horários.</p>
               <h4>Conferir pendências</h4>
               <p>A aba <strong>Pendências</strong> separa ocorrências de <strong>Cadastro e folgas, Jornadas e Liderança</strong>, com filtros e ações para resolver cada tipo. Uma pessoa pode ter mais de uma ocorrência: o total de ocorrências não é o total de colaboradores. Pendências de vínculo e importação aparecem separadas, acima das abas. Uma unidade sem planejamento mostra uma orientação para configurar jornadas/folgas ou importar o arquivo anterior; o sistema não inventa esses dados.</p>
@@ -3033,7 +3034,7 @@
     <form id="wf-form" class="wf-form"><label for="wf-input">Seu pedido ou resposta</label><div class="wf-entry"><input id="wf-input" maxlength="1000" autocomplete="off" placeholder="Ex.: BH do João ou cadastrar colaborador" required><button id="wf-send" type="submit">Enviar</button></div><small>Escreva “ajuda” para ver sugestões ou “cancelar” para encerrar o pedido. Nenhuma alteração é gravada sem confirmação.</small></form>
   </dialog>
   <script src="/js/core.js?v=1.0.31-beta.122"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.126"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.127"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -3052,6 +3053,6 @@
   <script src="/js/justification-archive.js?v=7"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
-  <script src="/js/roster-module.js?v=6"></script>
+  <script src="/js/roster-module.js?v=7"></script>
 </body>
 </html>
