@@ -105,3 +105,5 @@ Lançar em Escalas e folgas usa o mesmo PUT auditado de Salvar rascunho. Só ap�
 ## Geração com cadastros reais e vigências futuras
 
 O simulador simples usa `planningOnly` no gerador: falta de coordenador/cargo e exceções por data deixam de excluir a criação da regra semanal. Os vínculos não são preenchidos por suposição e as exceções permanecem intactas. Apenas uma regra já ativa com duas folgas é preservada como configurada; um planejamento futuro não impede gerar uma regra anterior. `withWeeklyFolgas` conserva as vigências futuras. O gerador operacional avançado mantém seus critérios anteriores. A tela integrada do simulador oculta os cabeçalhos duplicados, o convite de importação e os controles de backup, mostra o horário uma vez por pessoa e permite filtrar turno.
+
+A apresentação de jornadas utiliza apenas HH:mm, sem sufixos repetidos após meia-noite. Os pontos em minutos absolutos de `journeyTimes` permanecem iguais para carga, intervalos e cobertura noturna.

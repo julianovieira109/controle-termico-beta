@@ -58,7 +58,7 @@ test('quarta fixa só é aplicada ao vínculo explicitamente migrado',()=>{
  assert.equal(employee.fixedWednesday,true);assert.equal(employee.area,'Comercial');assert.equal(rules.status(employee,new Date('2026-11-18T12:00:00'),payload.state),'F');
 });
 test('jornadas 44/42/40 e passagem da meia-noite mantêm horas de relógio',()=>{
- for(const hours of [44,42,40]){const journey={hours,option:1,start:'22:00',breakAfter:120,breakMinutes:60,effectiveDate:'2026-11-01'};assert.equal(rules.isJourney(journey),true);const result=rules.journeyTimes(journey);assert.equal(result.daily,hours*12);assert.ok(result.labels.at(-1).includes('(+1 dia)'));}
+ for(const hours of [44,42,40]){const journey={hours,option:1,start:'22:00',breakAfter:120,breakMinutes:60,effectiveDate:'2026-11-01'};assert.equal(rules.isJourney(journey),true);const result=rules.journeyTimes(journey);assert.equal(result.daily,hours*12);assert.ok(result.points.at(-1)>=1440);assert.match(result.labels.at(-1),/^\d{2}:\d{2}$/);}
  const week=rules.displayedCalendarDays('2026-11','week','2026-11-13');assert.equal(week.length,7);
 });
 test('classifica Comercial pelo turno oficial e protege coordenador/turno de referência',()=>{
@@ -76,7 +76,7 @@ test('separa equipes por turno, coordenador e grupo de folgas sem mesclar respon
 test('proposta usa entrada e intervalo reais da Senior, incluindo terceiro turno às 20h',()=>{
  const employee=source({schedule:'20:00-00:00-01:00-06:00',role:'OPERADOR'});
  assert.deepEqual(rules.referenceSchedule(employee),{start:'20:00',breakAfter:240,breakMinutes:60,daily:540});
- const proposal=rules.referenceProposal(employee,40,'2026-12-01');assert.equal(proposal.start,'20:00');assert.equal(rules.journeyTimes(proposal).labels[3],'05:00 (+1 dia)');assert.equal(employee.schedule,'20:00-00:00-01:00-06:00');
+ const proposal=rules.referenceProposal(employee,40,'2026-12-01');assert.equal(proposal.start,'20:00');assert.equal(rules.journeyTimes(proposal).labels[3],'05:00');assert.equal(employee.schedule,'20:00-00:00-01:00-06:00');
  assert.equal(rules.referenceProposal(source({schedule:'06:00-12:00-13:00-14:20'}),44,'2026-12-01').breakAfter,360);
  assert.equal(rules.referenceProposal(source({schedule:'08:00-12PRE13:30PRE18:00'}),40,'2026-12-01'),undefined);
  assert.equal(rules.referenceProposal(source({schedule:'14:00-18:00',role:'APRENDIZ'}),40,'2026-12-01'),undefined);
