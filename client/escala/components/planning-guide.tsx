@@ -1,52 +1,54 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
-import {compareSchedules,comparisonCsv,comparisonHours,applyComparisonHours} from '../lib/schedule-comparison';
-import {duration} from '../lib/journeys';
-import {businessToday,validDay} from '../lib/business-date';
-import type {State} from '../lib/roster';
+import {useMemo,useRef,useState} from 'react';
+import {compareSchedules,comparisonCsv,comparisonHours} from '../lib/schedule-comparison';
+import {simpleRoster,simpleRosterAlerts} from '../lib/simple-roster';
+import {duration,journeyText,selectedJourney,isJourney} from '../lib/journeys';
+import {businessToday,moveDay,validDay} from '../lib/business-date';
+import {days,restRule,status,withWeeklyFolgas,type State} from '../lib/roster';
 import {readOnly} from '../bridge';
+type Simulation=ReturnType<typeof simpleRoster>&{source:State;hours:40|42|44;date:string};
 export default function PlanningGuide({state,busy,save}:{state:State;busy:boolean;save:(state:State,action:string)=>Promise<boolean>}){
- const employees=state.employees;
- const [hours,setHours]=useState<40|42|44|undefined>(),[confirmed,setConfirmed]=useState(false),[saving,setSaving]=useState(false),[result,setResult]=useState('');
+ const [hours,setHours]=useState<40|42|44>(40),[date,setDate]=useState(businessToday);
+ const [draft,setDraft]=useState<Simulation|null>(null),[saving,setSaving]=useState(false),[generating,setGenerating]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(''),[query,setQuery]=useState('');
+ const [edit,setEdit]=useState<{id:string;off1:string;off2:string;start:string}|null>(null);
  const lock=useRef(false);
- const [date,setDate]=useState(businessToday),[shift,setShift]=useState(''),[coordinator,setCoordinator]=useState(''),[query,setQuery]=useState('');
- useEffect(()=>{setConfirmed(false);},[date,hours,state]);
- const bulk=useMemo(()=>hours&&validDay(date)?applyComparisonHours(state,hours,date):null,[state,hours,date]);
- async function applyAll(){
-  if(!hours||!bulk?.count||!confirmed||busy||saving||lock.current||readOnly())return;
-  lock.current=true;setSaving(true);setResult('');
-  try{const current=applyComparisonHours(state,hours,date);
-   if(await save(current.state,`Jornada ${hours}h para todos os elegíveis da unidade: ${current.count} colaboradores; vigência ${date}; ${current.excluded.length} pessoas preservadas para revisão individual. Entrada, intervalo, turno, liderança e folgas preservados. Somente planejamento 5x2.`)){
-    setResult(`${hours}h por semana salvas no planejamento 5x2 de ${current.count} colaboradores. ${current.excluded.length} pessoas preservadas para revisão individual.`);setConfirmed(false);
-   }else setResult('Não foi possível salvar. Confira o aviso do sistema e atualize a unidade se necessário.');
-  }catch(error){setResult((error as Error).message);}finally{lock.current=false;setSaving(false);}
- }
- const comparison=useMemo(()=>validDay(date)?compareSchedules(employees,date):[],[employees,date]);
- const rows=comparison.filter(({employee:e})=>(!shift||(e.officialShift||e.shift)===shift)&&(!coordinator||(e.coordinatorId||'unassigned')===coordinator)&&`${e.id} ${e.name}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')));
- const shifts=[...new Set(comparison.map(({employee:e})=>e.officialShift||e.shift))].sort();
- const coordinators=[...new Map(comparison.map(({employee:e})=>[e.coordinatorId||'unassigned',e.coordinatorName||'Sem vínculo informado'])).entries()];
- function download(){const url=URL.createObjectURL(new Blob([comparisonCsv(rows,date)],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=`Sugestoes_5x2_40h_42h_44h_${date}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
- return <section className="planning-guide" aria-label="Comparação de novos horários 5x2">
-  <h2>Sugestões de novos horários: 40h, 42h e 44h</h2>
-  <p>Compare as três alternativas para cada colaborador, mantendo a entrada e o intervalo do horário atual. Cada opção considera cinco dias de trabalho e duas folgas. Turno e líder/coordenador vinculado são mantidos como referência.</p>
-  <p><strong>Esta comparação apenas sugere horários.</strong> Gerar e baixar não grava jornadas ou folgas. A aplicação confirmada abaixo salva somente no planejamento 5x2; ponto e controle térmico permanecem preservados.</p>
-  <div className="operational-controls">
-   <label>Data de referência<input aria-label="Data de referência das sugestões" type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
-   <label>Turno<select aria-label="Turno das sugestões" value={shift} onChange={e=>setShift(e.target.value)}><option value="">Todos os turnos</option>{shifts.map(value=><option key={value}>{value}</option>)}</select></label>
-   <label>Líder / coordenador vinculado<select aria-label="Líder ou coordenador das sugestões" value={coordinator} onChange={e=>setCoordinator(e.target.value)}><option value="">Todos os vínculos</option>{coordinators.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
-   <label>Colaborador<input aria-label="Buscar colaborador nas sugestões" placeholder="Nome ou matrícula" value={query} onChange={e=>setQuery(e.target.value)}/></label>
+ const preview=draft&&draft.source===state&&draft.hours===hours&&draft.date===date?draft:null;
+ const week=useMemo(()=>validDay(date)?Array.from({length:7},(_,i)=>moveDay(date,i)):[],[date]);
+ const alerts=useMemo(()=>preview?simpleRosterAlerts(preview.state,preview.ids,date):[],[preview,date]);
+ const rows=preview?.state.employees.filter(e=>preview.ids.includes(e.id)&&`${e.name} ${e.id} ${e.officialShift||e.shift} ${e.coordinatorName||''}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')))||[];
+ const comparison=useMemo(()=>validDay(date)?compareSchedules(state.employees,date):[],[state,date]);
+ function reset(){setEdit(null);setMessage('');setError('');}
+ async function generate(){if(generating||busy||saving)return;reset();setGenerating(true);setDraft(null);await new Promise(resolve=>setTimeout(resolve,0));try{setDraft({...simpleRoster(state,hours,date),source:state,hours,date});}catch(e){setError((e as Error).message);}finally{setGenerating(false);}}
+ async function saveDraft(){if(!preview?.count||busy||saving||lock.current||readOnly())return;lock.current=true;setSaving(true);setError('');try{
+  if(await save(preview.state,`Simulador simples 5x2: ${hours}h, vigência ${date}; ${preview.count} colaboradores; ${alerts.length} alertas para revisão. Somente rascunho no planejamento. ${alerts.join(' | ').slice(0,3000)}`)){setDraft(null);setEdit(null);setMessage('Rascunho salvo no planejamento 5x2.');}else setError('Não foi possível salvar. Confira o aviso e atualize a unidade se necessário.');
+ }catch(e){setError((e as Error).message);}finally{lock.current=false;setSaving(false);}}
+ function adjust(event:React.FormEvent){event.preventDefault();if(!edit||!preview)return;try{
+  const employees=preview.state.employees.map(employee=>{if(employee.id!==edit.id)return employee;const journey=selectedJourney(employee,date);if(!journey)throw Error('Confira a jornada desta pessoa.');const changed={...journey,start:edit.start,effectiveDate:date};if(!isJourney(changed))throw Error('Informe uma entrada válida.');return withWeeklyFolgas({...employee,journeys:[...(employee.journeys||[]).filter(j=>j.effectiveDate!==date),changed]},edit.off1,edit.off2,date,true);});
+  setDraft({...preview,state:{...preview.state,employees}});setEdit(null);setError('');
+ }catch(e){setError((e as Error).message);}}
+ function download(all=false){if(!preview&&!all)return;const csv=all?comparisonCsv(comparison,date):'\uFEFF'+[
+  ['Status','Matrícula','Colaborador','Turno','Líder / coordenador','Carga semanal',...week,'Alertas'],
+  ...rows.map(employee=>['RASCUNHO 5x2',employee.id,employee.name,employee.officialShift||employee.shift,employee.coordinatorName||'Sem vínculo informado',hours+'h',...week.map(day=>{const mark=status(employee,new Date(day+'T12:00:00'),preview!.state),journey=selectedJourney(employee,day);return mark==='T'?journey?journeyText(journey):'Horário pendente':mark==='F'?'Folga':mark==='A'?'Ausência':'Revisar';}),alerts.join(' | ')])
+ ].map(row=>row.map(value=>{let text=String(value??'');if(/^[=+@-]/.test(text))text="'"+text;return '"'+text.replaceAll('"','""')+'"';}).join(';')).join('\r\n');
+ const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`Sugestao_5x2_${all?'comparacao':hours+'h'}_${date}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+ return <section className="planning-guide simple-roster" aria-label="Simulador simples 5x2">
+  <h2>Simular escala 5x2</h2><p>Escolha a jornada e gere uma sugestão para toda a equipe da unidade.</p>
+  <div className="simple-roster-controls"><fieldset><legend>Jornada semanal</legend><div className="simple-roster-hours">{comparisonHours.map(value=><button key={value} type="button" aria-pressed={hours===value} disabled={busy||saving||generating} onClick={()=>{setHours(value);reset();}}><strong>{value}h</strong><small>5 dias de {duration(value*12)}</small></button>)}</div></fieldset>
+   <label>A partir de<input aria-label="Início da sugestão" type="date" disabled={busy||saving||generating} value={date} onChange={e=>{setDate(e.target.value);reset();}}/></label>
+   <button type="button" className="primary" disabled={busy||saving||generating||!validDay(date)} onClick={generate}>{generating?'Gerando…':'Gerar sugestão'}</button>
   </div>
-  {!validDay(date)&&<p role="alert">Informe uma data válida para gerar as sugestões.</p>}
-  <div className="dataScroll"><table className="dataTable"><thead><tr><th>Colaborador</th><th>Turno</th><th>Líder / coordenador vinculado</th><th>Horário atual</th>{comparisonHours.map(hours=><th key={hours}>{hours}h por semana<small>5 dias de {duration(hours*12)}</small></th>)}</tr></thead><tbody>{rows.map(({employee,options})=><tr key={employee.id}><td><strong>{employee.name}</strong><small>Matrícula {employee.id} · Escala {employee.code||'não informada'}</small></td><td>{employee.officialShift||employee.shift}</td><td>{employee.coordinatorName||'Sem vínculo informado'}</td><td>{employee.schedule||'Horário não informado'}</td>{options.map(option=><td key={option.hours}>{option.text}</td>)}</tr>)}</tbody></table></div>
-  {!rows.length&&validDay(date)&&<p>Nenhum colaborador com vínculo na data e nos filtros selecionados.</p>}
-  <div className="operational-actions"><button type="button" disabled={!rows.length||!validDay(date)} onClick={download}>Baixar as três sugestões (CSV)</button><span>{rows.length} colaboradores · entrada / intervalo / saída em cada opção</span></div>
-  <div className="operational-save-status" aria-label="Aplicar jornada para todos">
-   <h3>Escolher uma jornada para todos</h3>
-   <label>Carga semanal para toda a unidade<select aria-label="Jornada para todos" disabled={busy||saving||readOnly()} value={hours||''} onChange={e=>setHours(e.target.value?Number(e.target.value) as 40|42|44:undefined)}><option value="">Escolha a jornada</option>{comparisonHours.map(value=><option key={value} value={value}>{value}h por semana · 5 dias de {duration(value*12)}</option>)}</select></label>
-   <p>A vigência será a data de referência acima. Aplica a todos os colaboradores elegíveis da empresa e filial carregadas, em todos os turnos, independentemente dos filtros da tabela. Cada pessoa mantém sua entrada e seu intervalo atuais. Folgas e jornadas de outras vigências são preservadas.</p>
-   {bulk&&<><p><strong>{bulk.count} colaboradores receberão {hours}h por semana.</strong> {bulk.excluded.length} pessoas ficam preservadas para revisão individual.</p>{bulk.excluded.length>0&&<details><summary>Conferir pessoas que não receberão a jornada</summary>{bulk.excluded.map(person=><p key={person.id}>{person.name} · {person.id}: {person.reason}</p>)}</details>}</>}
-   {readOnly()?<p>Seu perfil permite somente consultar o planejamento.</p>:<><label className="operational-confirm"><input type="checkbox" disabled={busy||saving||!bulk?.count} checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> Confirmo a jornada escolhida para todos os elegíveis da unidade, somente no planejamento 5x2.</label><button type="button" className="primary" disabled={busy||saving||!bulk?.count||!confirmed} onClick={applyAll}>{saving?'Salvando…':'Aplicar jornada para todos na 5x2'}</button></>}
-   {result&&<p role="status">{result}</p>}
-  </div>
-  <p>Horários noturnos indicam quando a saída ocorre no dia seguinte. Horários incompletos, aprendizes e jornadas reduzidas ficam para revisão individual. As datas das duas folgas são organizadas separadamente em Escalas e folgas. Cálculo em horas de relógio, sem conversão noturna; confira cobertura da equipe e regras aplicáveis antes de adotar um horário.</p>
+  <p className="simple-roster-note">Somente planejamento 5x2. Ponto e controle térmico permanecem preservados.</p>
+  {!validDay(date)&&<p role="alert">Informe uma data válida.</p>}
+  {error&&<p role="alert" className="error">{error}</p>}{message&&<p role="status" className="importSuccess">{message}</p>}
+  {preview&&<>
+   <div className="simple-roster-result"><strong>{preview.count} colaboradores · {hours}h por semana</strong><span>{preview.excluded.length} para revisão individual · {alerts.length} {alerts.length===1?'aviso':'avisos'}</span></div>
+   <p>Entrada e intervalo atuais mantidos. As folgas já planejadas são preservadas; o gerador sugere as que faltam. Você pode ajustar antes de salvar.</p>
+   <details className="simple-roster-details"><summary>Revisões e filtros</summary><label>Buscar na sugestão<input aria-label="Buscar na sugestão" placeholder="Nome, turno ou líder" value={query} onChange={e=>setQuery(e.target.value)}/></label>{preview.excluded.map(person=><p key={person.id}>{person.name}: {person.reason}</p>)}{alerts.map((alert,i)=><p key={i}>{alert}</p>)}<p>Os avisos não impedem guardar o rascunho. A busca filtra a visualização e o CSV; salvar inclui todos os elegíveis da unidade.</p></details>
+   {edit&&<form className="simple-roster-edit" aria-label="Ajustar sugestão individual" onSubmit={adjust}><strong>{preview.state.employees.find(e=>e.id===edit.id)?.name}</strong><label>Entrada<input type="time" required value={edit.start} onChange={e=>setEdit({...edit,start:e.target.value})}/></label><label>Primeira folga<select required value={edit.off1} onChange={e=>setEdit({...edit,off1:e.target.value})}><option value="">Escolha</option>{days.map(day=><option key={day} disabled={edit.off2===day}>{day}</option>)}</select></label><label>Segunda folga<select required value={edit.off2} onChange={e=>setEdit({...edit,off2:e.target.value})}><option value="">Escolha</option>{days.map(day=><option key={day} disabled={edit.off1===day}>{day}</option>)}</select></label><button type="submit">Concluir ajuste</button><button type="button" onClick={()=>setEdit(null)}>Cancelar</button></form>}
+   <p className="simple-roster-swipe">Deslize a tabela para ver os outros dias e ajustar a sugestão.</p>
+   <div className="dataScroll"><table className="dataTable simple-roster-table"><thead><tr><th>Colaborador / turno / líder</th>{week.map(day=><th key={day}>{days[(new Date(day+'T12:00:00').getDay()+6)%7]}<small>{day.slice(8)}/{day.slice(5,7)}</small></th>)}<th/></tr></thead><tbody>{rows.map(employee=>{const original=state.employees.find(e=>e.id===employee.id)!;return <tr key={employee.id}><td><strong>{employee.name}</strong><small>{employee.officialShift||employee.shift} · {employee.coordinatorName||'Sem vínculo informado'}</small><small>Atual: {original.schedule||'Horário não informado'}</small></td>{week.map(day=>{const mark=status(employee,new Date(day+'T12:00:00'),preview.state),journey=selectedJourney(employee,day);return <td key={day} className={mark==='F'?'simple-roster-off':''}>{mark==='F'?'Folga':mark==='A'?'Ausência':mark==='T'&&journey?journeyText(journey):'Revisar'}</td>})}<td><button type="button" disabled={busy||saving||generating||Boolean(edit)} onClick={()=>{const rule=restRule(employee,date);setEdit({id:employee.id,off1:rule.off1,off2:rule.off2,start:selectedJourney(employee,date)?.start||''});setError('');}}>Ajustar</button></td></tr>})}</tbody></table></div>
+   {!rows.length&&<p>Nenhum colaborador nesta visualização.</p>}
+   <div className="operational-actions"><button type="button" disabled={!rows.length||saving||Boolean(edit)} onClick={()=>download()}>Baixar sugestão (CSV)</button>{readOnly()?<span>Seu perfil permite simular e baixar. Salvar exige permissão de edição.</span>:<button type="button" className="primary" disabled={!preview.count||busy||saving||Boolean(edit)} onClick={saveDraft}>{saving?'Salvando…':'Salvar rascunho'}</button>}</div>
+  </>}
+  <details className="simple-roster-details"><summary>Comparar as três jornadas</summary><p>Mesma entrada e intervalo atuais, com a saída calculada para cada carga.</p><div className="dataScroll"><table className="dataTable"><thead><tr><th>Colaborador</th>{comparisonHours.map(value=><th key={value}>{value}h</th>)}</tr></thead><tbody>{comparison.map(row=><tr key={row.employee.id}><td>{row.employee.name}</td>{row.options.map(option=><td key={option.hours}>{option.text}</td>)}</tr>)}</tbody></table></div><button type="button" disabled={!comparison.length} onClick={()=>download(true)}>Baixar comparação (CSV)</button></details>
  </section>;
 }

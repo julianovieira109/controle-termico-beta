@@ -12,3 +12,5 @@ export {managementPending} from './lib/management-pending';
 export {fixedRestDay,operationalDefaults,generateOperational} from './lib/operational-generator';
 
 export {compareSchedules,comparisonCsv,applyComparisonHours} from './lib/schedule-comparison';
+
+export {simpleRoster,simpleRosterAlerts} from './lib/simple-roster';

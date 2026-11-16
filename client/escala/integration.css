@@ -190,3 +190,18 @@ body{background:var(--roster-bg)}
 .operational-preview,.operational-team,.operational-blockers{scroll-margin-top:12px}
 :host([data-theme="dark"]) .operational-blockers>summary{color:#ffb6a0}
 .beta-roster .operational-generator label.operational-confirm{flex-direction:row}
+
+.simple-roster-controls{display:flex;align-items:end;gap:16px;flex-wrap:wrap;margin:20px 0 12px}
+.simple-roster-controls fieldset{border:0;padding:0;margin:0}.simple-roster-controls legend{font-size:13px;font-weight:700;margin-bottom:8px}
+.simple-roster-hours{display:flex;gap:8px}.simple-roster-hours button{display:grid;gap:4px;min-width:105px;padding:12px!important;text-align:center}.simple-roster-hours strong{font-size:21px}.simple-roster-hours small{font-size:11px}
+.simple-roster-hours button[aria-pressed="true"]{background:var(--roster-primary);color:#fff;border-color:var(--roster-primary)}
+.simple-roster-controls>label{display:grid;gap:8px;margin:0}.simple-roster-note{color:var(--roster-muted);font-size:12px!important}
+.simple-roster-result{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid var(--roster-line)}
+.simple-roster-details{margin:16px 0;padding:12px;border:1px solid var(--roster-line);border-radius:10px}.simple-roster-details>summary{cursor:pointer;font-weight:600}
+.simple-roster-table{min-width:1100px}.simple-roster-table td{font-size:12px}.simple-roster-table td:first-child{min-width:230px}.simple-roster-off{color:var(--roster-primary);font-weight:700;background:var(--roster-soft)}
+.simple-roster-edit{display:flex;align-items:end;gap:12px;flex-wrap:wrap;border:1px solid var(--roster-line);border-radius:10px;padding:14px;margin:14px 0}.simple-roster-edit>strong{flex-basis:100%}.simple-roster-edit>label{display:grid;gap:6px;margin:0}
+@media(max-width:600px){.simple-roster-controls{display:grid;grid-template-columns:1fr}.simple-roster-hours{width:100%}.simple-roster-hours button{flex:1;min-width:0}.simple-roster-edit>label{flex:1 1 120px}.simple-roster .operational-actions>button{width:100%}}
+
+.roster-extra-actions{position:relative}.roster-extra-actions>summary{cursor:pointer;padding:10px;border:1px solid var(--roster-line);border-radius:8px}.roster-extra-actions>button{display:block;margin-top:8px}
+
+.simple-roster-swipe{display:none}@media(max-width:600px){.simple-roster-swipe{display:block;color:var(--roster-muted);font-size:12px!important}}
