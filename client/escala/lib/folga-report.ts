@@ -1,5 +1,4 @@
 import {unitContext} from '../bridge';
-import {scheduleDescription,sectionSchedules} from './schedule-display';
 import {jsPDF} from 'jspdf';
 import {autoTable,type RowInput} from 'jspdf-autotable';
 import {key,status,planned,primaryRestDay,type State,type Employee} from './roster';
@@ -14,7 +13,6 @@ const weekdays=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const dayWidth=(width-margin*2-218)/dates.length;
 for(let index=0;index<sections.length;index++){
  const section=sections[index];if(index)doc.addPage();const body:RowInput[]=[];
- for(const schedule of sectionSchedules(section.employees,dates))body.push([{content:'Escala e horário do turno: '+schedule.replaceAll('\n',' | '),colSpan:dates.length+3,styles:{fillColor:[237,244,253],textColor:[38,68,105],halign:'left',fontSize:8,cellPadding:6}}]);
  for(const group of section.groups){
   body.push([{content:`Coordenador: ${group.rows[0]?.employee.coordinatorName||'Sem coordenador vinculado'} | ${group.label} | ${group.rows.length} colaborador(es)`,colSpan:dates.length+3,styles:{fillColor:[214,225,239],textColor:[33,64,98],fontStyle:'bold',fontSize:9,cellPadding:6}}]);
   for(const r of group.rows){const e=r.employee;

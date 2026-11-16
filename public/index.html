@@ -1598,6 +1598,7 @@
               <p>Se a tela mostra propostas e alertas, a sugestão já foi gerada. Confira os alertas agrupados por equipe e motivo; eles continuam disponíveis antes da gravação e um resumo fica registrado em Ajustes e histórico. Pessoas fora do lote e planejamentos existentes ficam preservados.</p>
               <p>Abra <strong>Alertas para revisar</strong> para consultar os motivos agrupados por equipe. O mesmo problema pode ocorrer em várias datas; não são necessariamente problemas ou pessoas diferentes. <strong>Revisar limites desta equipe</strong> abre os parâmetros correspondentes. Falta de liderança requer conferir a aba Liderança e a cobertura habilitada; horário incompleto depende de conferir os dados recebidos da Senior. Depois de ajustar informações ou limites que reflitam a operação, gere outra prévia.</p>
               <p><strong>Baixar prévia para conferência</strong> exporta as propostas e alertas sem gravar. Para guardar a sugestão, marque a confirmação e use <strong>Salvar rascunho na 5x2</strong>, mesmo com alertas. É necessário ter propostas elegíveis e permissão <strong>roster.manage</strong>. Conflitos de edição exigem atualizar a unidade. Use Ctrl+F5 após esta atualização; não é necessário reimportar pontos.</p>
+              <p>O <strong>Relatório semanal/mensal de folgas (PDF)</strong> apresenta colaboradores, grupos e marcações de trabalho/folga, sem as linhas repetidas de códigos de escala e horários do turno. Gere novamente o PDF para obter o formato atualizado; arquivos já baixados permanecem iguais.</p>
               <h4>Simulador simples 5x2</h4>
               <p>Em <strong>Menu principal → Escala 5x2</strong>, carregue a empresa/filial e clique em <strong>Simular escala 5x2</strong>, ou abra a aba <strong>Simulador 5x2</strong>. Escolha <strong>40h, 42h ou 44h</strong>, confira <strong>A partir de</strong> e clique em <strong>Gerar sugestão</strong>. A seleção vale para todos os elegíveis da unidade: cinco dias de 8h, 8h24 ou 8h48. A entrada e o intervalo atuais são a referência para calcular a saída. Os horários são exibidos apenas como HH:mm, sem repetir o marcador de dia seguinte; o cálculo continua considerando a passagem da meia-noite.</p>
               <p>O resultado mostra uma semana com nomes, turnos, líder/coordenador vinculado, o horário sugerido em uma única coluna e os dias de trabalho/folga. Use <strong>Ver turno</strong> para facilitar a conferência; o filtro não reduz o lote salvo. As folgas existentes são preservadas; quem ainda não tem planejamento recebe uma proposta, conforme os dados disponíveis. A folga fixa sugerida continua sendo sábado no 3º turno e domingo nos demais. Aprendizes, jornadas reduzidas e horários incompletos ficam para revisão individual. A falta de cargo ou vínculo de liderança não impede gerar horários e folgas: os dados ficam indicados para conferência, sem inventar um responsável. Planejamentos futuros são preservados e não bloqueiam uma sugestão com início anterior. O gerador aceita até 400 pessoas ainda sem planejamento por prévia.</p>
@@ -3034,7 +3035,7 @@
     <form id="wf-form" class="wf-form"><label for="wf-input">Seu pedido ou resposta</label><div class="wf-entry"><input id="wf-input" maxlength="1000" autocomplete="off" placeholder="Ex.: BH do João ou cadastrar colaborador" required><button id="wf-send" type="submit">Enviar</button></div><small>Escreva “ajuda” para ver sugestões ou “cancelar” para encerrar o pedido. Nenhuma alteração é gravada sem confirmação.</small></form>
   </dialog>
   <script src="/js/core.js?v=1.0.31-beta.122"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.129"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.130"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -3053,6 +3054,6 @@
   <script src="/js/justification-archive.js?v=7"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
-  <script src="/js/roster-module.js?v=9"></script>
+  <script src="/js/roster-module.js?v=10"></script>
 </body>
 </html>
