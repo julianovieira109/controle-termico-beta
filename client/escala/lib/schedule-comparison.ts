@@ -20,3 +20,14 @@ export function comparisonCsv(rows:ReturnType<typeof compareSchedules>,date:stri
  ...rows.flatMap(row=>row.options.map(option=>['SUGESTÃO 5x2 — SEM APLICAÇÃO',date,row.employee.id,row.employee.name,row.employee.officialShift||row.employee.shift,row.employee.coordinatorName||'Sem vínculo informado',row.employee.schedule,option.hours+'h',option.hours===40?'8h':option.hours===42?'8h24':'8h48',option.text,5,2]))];
  return '\uFEFF'+data.map(row=>row.map(escape).join(';')).join('\r\n');
 }
+
+export function applyComparisonHours(state:import('./roster').State,hours:40|42|44,date:string){
+ if(!comparisonHours.includes(hours))throw Error('Escolha uma jornada de 40h, 42h ou 44h.');
+ const rows=compareSchedules(state.employees,date);
+ const proposals=new Map(rows.flatMap(row=>{const journey=row.options.find(option=>option.hours===hours)?.journey;return journey?[[row.employee.id,journey] as const]:[];}));
+ const excluded=rows.filter(row=>!proposals.has(row.employee.id)).map(row=>({id:row.employee.id,name:row.employee.name,reason:row.options.find(option=>option.hours===hours)!.text}));
+ return {count:proposals.size,excluded,state:{...state,employees:state.employees.map(employee=>{
+  const journey=proposals.get(employee.id);if(!journey)return employee;
+  return {...employee,journeys:[...(employee.journeys||[]).filter(prior=>prior.effectiveDate!==date),{...journey}].sort((a,b)=>a.effectiveDate.localeCompare(b.effectiveDate))};
+ })}};
+}

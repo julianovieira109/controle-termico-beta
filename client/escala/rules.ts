@@ -11,4 +11,4 @@ export {referenceSchedule,specialSchedule,referenceProposal} from './lib/plannin
 export {managementPending} from './lib/management-pending';
 export {fixedRestDay,operationalDefaults,generateOperational} from './lib/operational-generator';
 
-export {compareSchedules,comparisonCsv} from './lib/schedule-comparison';
+export {compareSchedules,comparisonCsv,applyComparisonHours} from './lib/schedule-comparison';

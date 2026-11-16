@@ -89,3 +89,7 @@ Validação no navegador local: confirmação marcável em prévia bloqueada, ap
 ## Comparação de novos horários por colaborador
 
 O botão Sugerir horários 40h / 42h / 44h abre a aba Jornadas com comparação simultânea por colaborador, sem deduplicar pessoas da mesma escala. Entrada e intervalo oficiais são preservados; a saída resulta de 480/504/528 minutos de trabalho diário, em cinco dias. A tabela mostra turno e coordenador vinculado, sem inferir um líder individual. Filtros de data, turno, vínculo e busca limitam tabela e CSV. Horários incompletos ou especiais ficam pendentes individualmente. Não grava estado e não altera ponto, controle térmico ou folgas. A organização das duas folgas permanece separada. A edição de jornada está recolhida em uma seção distinta.
+
+## Aplicação da carga para todos na unidade
+
+A comparação permite escolher explicitamente 40h, 42h ou 44h para todos os elegíveis da unidade carregada, independente dos filtros visuais. Mostra contagem e exclusões antes da confirmação. Cada colaborador recebe sua própria proposta baseada na entrada/intervalo oficiais. Especialidades, horários incompletos e vínculos fora da vigência são preservados. Usa o PUT de planejamento existente, permissão roster.manage, versão/fingerprint, histórico e auditoria. Substitui somente a jornada na mesma vigência, conservando anteriores e futuras. Não altera folgas nem grava nas tabelas oficiais ou do ponto/controle térmico.

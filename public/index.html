@@ -1602,6 +1602,8 @@
               <p>Em <strong>Menu principal → Escala 5x2</strong>, carregue a unidade e clique em <strong>Sugerir horários 40h / 42h / 44h</strong>. Na aba Jornadas, a comparação é gerada para cada colaborador com vínculo na data de referência. As três opções aparecem lado a lado: <strong>40h = 5 dias de 8h; 42h = 5 dias de 8h24; 44h = 5 dias de 8h48</strong>, com duas folgas organizadas separadamente em Escalas e folgas.</p>
               <p>A sugestão mantém a entrada e o intervalo do horário oficial atual e calcula a nova saída. A tabela mostra nome, matrícula, escala, turno e líder/coordenador vinculado, conforme os dados disponíveis, sem atribuir liderança por suposição. Filtre turno, vínculo ou colaborador e escolha a data de referência. Horários incompletos, aprendizes e jornadas reduzidas ficam para revisão individual; saídas no dia seguinte são identificadas.</p>
               <p><strong>Baixar as três sugestões (CSV)</strong> exporta o comparativo dos filtros atuais. Consulta exige <strong>roster.view</strong>. Gerar e baixar sugestões não grava jornadas ou folgas e não altera o ponto, o controle térmico ou as escalas oficiais. Não é necessário reimportar dados; use Ctrl+F5 após atualizar. Para guardar uma jornada escolhida apenas na 5x2, abra separadamente <strong>Ajustar e guardar uma jornada no planejamento 5x2</strong>, conforme sua permissão de edição. Cálculos usam horas de relógio, sem conversão noturna; confira cobertura e regras aplicáveis antes da adoção.</p>
+              <p><strong>Escolher uma jornada para todos:</strong> no comparativo, selecione 40h, 42h ou 44h em <strong>Carga semanal para toda a unidade</strong>. A vigência é a data de referência acima. Confira a quantidade de elegíveis e a lista de pessoas preservadas, marque a confirmação e clique em <strong>Aplicar jornada para todos na 5x2</strong>. A ação inclui todos os turnos da empresa/filial carregada, independentemente dos filtros da tabela. Cada pessoa conserva sua própria entrada e intervalo; o sistema calcula a saída conforme a carga escolhida. Aprendizes, jornadas reduzidas e horários incompletos permanecem para revisão individual.</p>
+              <p>Aplicar exige <strong>roster.manage</strong>. Salva jornadas somente no planejamento 5x2, com histórico, auditoria e proteção contra edição concorrente. Substitui a jornada planejada na mesma vigência e preserva as de outras datas, folgas, turno, vínculos, ponto e controle térmico. Confira as folgas separadamente: escolher a carga não distribui folgas. Não é necessário reimportar dados; após atualizar, use Ctrl+F5.</p>
               <h4>Conferir pendências</h4>
               <p>A aba <strong>Pendências</strong> separa ocorrências de <strong>Cadastro e folgas, Jornadas e Liderança</strong>, com filtros e ações para resolver cada tipo. Uma pessoa pode ter mais de uma ocorrência: o total de ocorrências não é o total de colaboradores. Pendências de vínculo e importação aparecem separadas, acima das abas. Uma unidade sem planejamento mostra uma orientação para configurar jornadas/folgas ou importar o arquivo anterior; o sistema não inventa esses dados.</p>
               <h4>Migrar o backup da escala anterior</h4>
@@ -3031,7 +3033,7 @@
     <form id="wf-form" class="wf-form"><label for="wf-input">Seu pedido ou resposta</label><div class="wf-entry"><input id="wf-input" maxlength="1000" autocomplete="off" placeholder="Ex.: BH do João ou cadastrar colaborador" required><button id="wf-send" type="submit">Enviar</button></div><small>Escreva “ajuda” para ver sugestões ou “cancelar” para encerrar o pedido. Nenhuma alteração é gravada sem confirmação.</small></form>
   </dialog>
   <script src="/js/core.js?v=1.0.31-beta.122"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.124"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.125"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -3050,6 +3052,6 @@
   <script src="/js/justification-archive.js?v=7"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
-  <script src="/js/roster-module.js?v=4"></script>
+  <script src="/js/roster-module.js?v=5"></script>
 </body>
 </html>
