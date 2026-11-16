@@ -9,7 +9,7 @@ export type TeamMinimum={key:string;name:string;primary:string;count:number;lead
 export type OperationalConfig={effectiveDate:string;includeOffice:boolean;preferConsecutive:boolean;teams:TeamMinimum[]};
 export type OperationalIssue={team:string;date?:string;reason:string};
 export type OperationalChange={id:string;name:string;team:string;role:string;leader:boolean;off1:string;off2:string};
-export type OperationalResult={state:State;changes:OperationalChange[];excluded:{id:string;name:string;reason:string}[];issues:OperationalIssue[];warnings:string[];coverage:{team:string;date:string;operating:boolean;people:number;leaders:number;minimumPeople:number;minimumLeaders:number;shortages:string[]}[];groups:{team:string;pair:string;people:number;leaders:string[]}[];canApply:boolean};
+export type OperationalResult={state:State;changes:OperationalChange[];excluded:{id:string;name:string;reason:string}[];issues:OperationalIssue[];warnings:string[];coverage:{team:string;date:string;operating:boolean;people:number;leaders:number;minimumPeople:number;minimumLeaders:number;shortages:string[]}[];groups:{team:string;pair:string;people:number;leaders:string[]}[];canApply:boolean;canSaveDraft:boolean};
 const norm=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
 const roleKey=(employee:Employee)=>norm(employee.role||'');
 const teamKey=(employee:Employee)=>JSON.stringify([sectionOf(employee),employee.coordinatorId||'']);
@@ -126,5 +126,5 @@ export function generateOperational(state:State,ids:string[],config:OperationalC
  if(!changes.length)warnings.push('Nenhuma pessoa elegível. Grupos existentes, jornadas especiais e dados incompletos ficam preservados.');
  warnings.push('O gerador define folgas e preserva a duração da jornada. Confira a carga semanal em Jornadas e reavalie a cobertura após mudanças de horários ou equipe.');
  warnings.push('Pessoas são contadas por dia de entrada; funções e líderes também são conferidos nas janelas dos horários cadastrados. Férias, atestados e ausências não informados no planejamento não entram nesta simulação.');
- return {state:next,changes,excluded,issues,warnings,coverage,groups,canApply:changes.length>0&&issues.length===0};
+ return {state:next,changes,excluded,issues,warnings,coverage,groups,canSaveDraft:changes.length>0,canApply:changes.length>0&&issues.length===0};
 }

@@ -21,7 +21,7 @@ test('função de uma única pessoa gera alerta, sem inventar substituição; m�
  const before=fixture();before.employees[2].role='EMPILHADEIRISTA';const blocked=generate(before);assert.equal(blocked.canApply,false);assert.ok(blocked.issues.some(issue=>issue.reason.includes('EMPILHADEIRISTA')));
  const acknowledged=generate(before,config=>({...config,teams:config.teams.map(team=>({...team,roles:team.roles.map(role=>({...role,minimum:role.name==='EMPILHADEIRISTA'?0:role.minimum}))}))}));assert.equal(acknowledged.canApply,true,JSON.stringify(acknowledged.issues));assert.equal(before.employees[2].included,false);
 });
-test('sem líderes suficientes a sugestão fica bloqueada e não troca coordenadores',()=>{
+test('sem líderes suficientes a cobertura não é validada e não troca coordenadores',()=>{
  const before=fixture();before.employees[1].role='OPERADOR';const result=generate(before);assert.equal(result.canApply,false);assert.ok(result.issues.some(issue=>/Líderes|líder/.test(issue.reason)));assert.ok(result.state.employees.every(e=>e.coordinatorId==='coord-a'));
 });
 test('alerta horário noturno sem líder após o retorno antecipado do intervalo',()=>{
@@ -37,4 +37,27 @@ test('dados incompletos, mínimos inválidos e grupos legados sem duas folgas s�
 });
 test('função é conferida por horário, não apenas pela presença em algum momento do dia',()=>{
  const before=fixture();before.employees[2].schedule='08:00-12:00-13:00-17:00';const result=generate(before);assert.equal(result.canApply,false);assert.ok(result.issues.some(issue=>issue.reason.includes('minutos abaixo do mínimo na janela do cargo')));
+});
+
+test('salva propostas como rascunho com alertas sem validar cobertura nem modificar dados oficiais',()=>{
+ const before=fixture();before.employees[0].role='OPERADOR';before.employees[1].role='OPERADOR';before.employees[5].schedule='Horário a conferir';
+ const snapshot=structuredClone(before),result=generate(before);
+ assert.equal(result.canApply,false);
+ assert.equal(result.canSaveDraft,true);
+ assert.ok(result.issues.length>0);
+ assert.ok(result.changes.length>0);
+ const protectedState=service.protect(result.state,before);
+ for(const employee of protectedState.employees){
+  const original=before.employees.find(item=>item.id===employee.id);
+  for(const field of ['schedule','code','role','coordinatorId','officialShift','officialEmployeeId'])assert.equal(employee[field],original[field]);
+ }
+ assert.deepEqual(result.state.employees.find(e=>e.id==='6'),before.employees.find(e=>e.id==='6'));
+ assert.deepEqual(before,snapshot);
+});
+test('sem propostas elegíveis não habilita salvar rascunho',()=>{
+ const before=fixture({schedule:'Horário a conferir'}),result=generate(before);
+ assert.equal(result.changes.length,0);
+ assert.equal(result.canSaveDraft,false);
+ assert.equal(result.canApply,false);
+ assert.ok(result.issues.length>0);
 });
