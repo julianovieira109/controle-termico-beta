@@ -1,4 +1,4 @@
-export {validState,normalizeRoster,restRule,weeklyStatus,days,status,withWeeklyFolgas} from './lib/roster';
+export {validState,normalizeRoster,restRule,weeklyStatus,weeklyRestDays,days,status,withWeeklyFolgas} from './lib/roster';
 export {validDay} from './lib/business-date';
 export {assignJourney,journeyTimes,selectedJourney,isJourney} from './lib/journeys';
 export {undoJourneyChange} from './lib/journey-transactions';

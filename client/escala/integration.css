@@ -205,3 +205,10 @@ body{background:var(--roster-bg)}
 .roster-extra-actions{position:relative}.roster-extra-actions>summary{cursor:pointer;padding:10px;border:1px solid var(--roster-line);border-radius:8px}.roster-extra-actions>button{display:block;margin-top:8px}
 
 .simple-roster-swipe{display:none}@media(max-width:600px){.simple-roster-swipe{display:block;color:var(--roster-muted);font-size:12px!important}}
+
+.beta-roster .simulator-hidden{display:none!important}.beta-roster .simulator-panel{border:0;background:transparent;box-shadow:none;overflow:visible}.beta-roster .simulator-panel>.simple-roster{margin-bottom:0;background:var(--roster-surface);padding:20px;border:1px solid var(--roster-line)}
+.beta-roster .simple-roster-table{min-width:970px}.beta-roster .simple-roster-table td:first-child{min-width:220px}.beta-roster .simple-roster-new-time{min-width:145px;font-weight:600}.beta-roster .simple-roster-table td:not(:first-child):not(:nth-child(2)){text-align:center;min-width:65px}.beta-roster .simple-roster-table td.simple-roster-new-time{text-align:left}
+.beta-roster .simple-roster-turn{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin:12px 0}.beta-roster .simple-roster-turn select{max-width:200px}.beta-roster .simple-roster-table .simple-roster-off{border-radius:6px}
+@media(max-width:600px){.beta-roster .simulator-panel>.simple-roster{padding:14px}.beta-roster .simple-roster-turn{justify-content:flex-start}}
+
+.beta-roster .simple-roster-turn{flex-direction:row;width:fit-content;margin:12px 0 12px auto}@media(max-width:600px){.beta-roster .simple-roster-turn{margin-left:0}}

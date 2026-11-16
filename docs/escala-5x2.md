@@ -101,3 +101,7 @@ A aba Simulador 5x2 concentra jornada (40/42/44), data e Gerar sugestão. Usa `a
 ## Lançar a prévia no calendário
 
 Lançar em Escalas e folgas usa o mesmo PUT auditado de Salvar rascunho. Só após sucesso chama `onApplied(date)`, seleciona a semana/mês da vigência, limpa filtros e abre Escalas e folgas. Falha ou conflito mantém a prévia e não navega. A regra continua recorrente a partir da vigência; a visão mensal lê os mesmos dados. Geração e PDF não gravam. Exige roster.manage e mantém ponto e controle térmico preservados.
+
+## Geração com cadastros reais e vigências futuras
+
+O simulador simples usa `planningOnly` no gerador: falta de coordenador/cargo e exceções por data deixam de excluir a criação da regra semanal. Os vínculos não são preenchidos por suposição e as exceções permanecem intactas. Apenas uma regra já ativa com duas folgas é preservada como configurada; um planejamento futuro não impede gerar uma regra anterior. `withWeeklyFolgas` conserva as vigências futuras. O gerador operacional avançado mantém seus critérios anteriores. A tela integrada do simulador oculta os cabeçalhos duplicados, o convite de importação e os controles de backup, mostra o horário uma vez por pessoa e permite filtrar turno.

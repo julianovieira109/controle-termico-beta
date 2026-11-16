@@ -40,3 +40,21 @@ test('sem elegíveis não sugere jornada ou folgas e data inválida é recusada'
  const result=rules.simpleRoster(before,40,date);assert.equal(result.count,0);assert.deepEqual(result.state,before);
  assert.throws(()=>rules.simpleRoster(before,40,'2026-02-30'),/data válida/);
 });
+
+test('cadastro sem coordenador ou cargo recebe horário e duas folgas com aviso, sem inventar vínculos',()=>{
+ const before=fixture();for(const employee of before.employees){delete employee.coordinatorId;delete employee.coordinatorName;employee.role='';}
+ const result=rules.simpleRoster(before,40,date);
+ for(const employee of result.state.employees){assert.equal(rules.restRule(employee,date).included,true);assert.equal(rules.weeklyRestDays(employee,date).length,2);assert.equal(employee.coordinatorId,undefined);assert.equal(employee.role,'');}
+ assert.ok(rules.simpleRosterAlerts(result.state,result.ids,date).some(a=>/não vinculado/.test(a)));
+ assert.doesNotThrow(()=>service.protect(result.state,before));
+});
+test('planejamento futuro não bloqueia sugestão anterior e mantém todas as regras e jornadas futuras',()=>{
+ const before=fixture(),future='2026-12-31';
+ before.employees=before.employees.map(employee=>({...rules.withWeeklyFolgas(employee,'Dom','Qui',future,true),journeys:[{hours:40,option:1,start:'06:00',breakAfter:240,breakMinutes:60,effectiveDate:future}]}));
+ const snapshot=structuredClone(before),result=rules.simpleRoster(before,42,date);
+ for(let i=0;i<before.employees.length;i++){
+  const employee=result.state.employees[i];assert.equal(rules.restRule(employee,date).included,true);assert.equal(rules.weeklyRestDays(employee,date).length,2);
+  assert.deepEqual(rules.restRule(employee,future),rules.restRule(before.employees[i],future));assert.deepEqual(rules.selectedJourney(employee,future),rules.selectedJourney(before.employees[i],future));
+ }
+ assert.deepEqual(before,snapshot);assert.doesNotThrow(()=>service.protect(result.state,before));
+});

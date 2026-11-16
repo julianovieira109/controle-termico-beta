@@ -6,7 +6,7 @@ import {specialSchedule} from './planning-reference';
 import {sectionOf} from './roster-groups';
 export type RoleMinimum={key:string;name:string;count:number;minimum:number};
 export type TeamMinimum={key:string;name:string;primary:string;count:number;leaders:number;minimumPeople:number;minimumLeaders:number;roles:RoleMinimum[]};
-export type OperationalConfig={effectiveDate:string;includeOffice:boolean;preferConsecutive:boolean;teams:TeamMinimum[]};
+export type OperationalConfig={effectiveDate:string;includeOffice:boolean;preferConsecutive:boolean;planningOnly?:boolean;teams:TeamMinimum[]};
 export type OperationalIssue={team:string;date?:string;reason:string};
 export type OperationalChange={id:string;name:string;team:string;role:string;leader:boolean;off1:string;off2:string};
 export type OperationalResult={state:State;changes:OperationalChange[];excluded:{id:string;name:string;reason:string}[];issues:OperationalIssue[];warnings:string[];coverage:{team:string;date:string;operating:boolean;people:number;leaders:number;minimumPeople:number;minimumLeaders:number;shortages:string[]}[];groups:{team:string;pair:string;people:number;leaders:string[]}[];canApply:boolean;canSaveDraft:boolean};
@@ -17,41 +17,41 @@ const teamName=(employee:Employee)=>sectionOf(employee)+' · '+(employee.coordin
 export const fixedRestDay=(employee:Employee)=>employee.shift==='3º'?'Sab':'Dom';
 const weekday=(date:string)=>days[(new Date(date+'T12:00:00Z').getUTCDay()+6)%7];
 const at=(date:string)=>new Date(date+'T12:00:00');
-function configured(employee:Employee){return employee.included||Boolean(employee.off1||employee.off2||employee.restRules?.length||employee.weeklyPattern&&Object.keys(employee.weeklyPattern).length);}
-function exclusion(state:State,employee:Employee,date:string,includeOffice:boolean){
- if(!employee.active||!employed(employee,at(date)))return 'Sem vínculo ativo na vigência';
- if(configured(employee))return 'Grupo e planejamento existentes preservados';
+function configured(employee:Employee,date:string,planningOnly:boolean){if(planningOnly)return planned(employee,date)&&weeklyRestDays(employee,date).length===2;return employee.included||Boolean(employee.off1||employee.off2||employee.restRules?.length||employee.weeklyPattern&&Object.keys(employee.weeklyPattern).length);}
+function exclusion(state:State,employee:Employee,date:string,includeOffice:boolean,planningOnly=false){
+ if((!planningOnly&&!employee.active)||!employed(employee,at(date)))return 'Sem vínculo ativo na vigência';
+ if(configured(employee,date,planningOnly))return 'Grupo e planejamento existentes preservados';
  if(!includeOffice&&!['1º','2º','3º'].includes(employee.shift))return 'Comercial / ADM / outros horários fora deste lote';
  if(specialSchedule(employee))return 'Aprendiz ou jornada reduzida: revisão individual';
- if(!employee.coordinatorId)return 'Coordenador não vinculado: conferir equipe';
- if(!employee.role?.trim())return 'Cargo não informado';
+ if(!planningOnly&&!employee.coordinatorId)return 'Coordenador não vinculado: conferir equipe';
+ if(!planningOnly&&!employee.role?.trim())return 'Cargo não informado';
  if(!workIntervals(employee,date))return 'Horário incompleto: conferir referência Senior';
- if(state.overrides.some(item=>item.id===employee.id&&item.date>=date))return 'Exceções por data preservadas: revisão individual';
+ if(!planningOnly&&state.overrides.some(item=>item.id===employee.id&&item.date>=date))return 'Exceções por data preservadas: revisão individual';
  return '';
 }
-function scope(state:State,ids:string[],date:string,includeOffice:boolean){
+function scope(state:State,ids:string[],date:string,includeOffice:boolean,planningOnly=false){
  const selected=new Set(ids);const excluded:OperationalResult['excluded']=[],candidates:Employee[]=[];
- for(const employee of state.employees.filter(employee=>selected.has(employee.id))){const reason=exclusion(state,employee,date,includeOffice);if(reason)excluded.push({id:employee.id,name:employee.name,reason});else candidates.push(employee);}
+ for(const employee of state.employees.filter(employee=>selected.has(employee.id))){const reason=exclusion(state,employee,date,includeOffice,planningOnly);if(reason)excluded.push({id:employee.id,name:employee.name,reason});else candidates.push(employee);}
  const keys=new Set(candidates.map(teamKey));
  const members=state.employees.filter(employee=>keys.has(teamKey(employee))&&!specialSchedule(employee)&&employed(employee,at(date))&&(candidates.some(item=>item.id===employee.id)||planned(employee,date)||employee.restRules?.some(rule=>rule.effectiveDate>=date&&rule.effectiveDate<=moveDay(date,27)&&rule.included!==false)));
  return {candidates,members,excluded};
 }
-export function operationalDefaults(state:State,ids:string[],effectiveDate:string,includeOffice=false):OperationalConfig{
+export function operationalDefaults(state:State,ids:string[],effectiveDate:string,includeOffice=false,planningOnly=false):OperationalConfig{
  if(!validDay(effectiveDate))throw Error('Informe uma vigência válida.');
- const {members}=scope(state,ids,effectiveDate,includeOffice);const map=new Map<string,Employee[]>();
+ const {members}=scope(state,ids,effectiveDate,includeOffice,planningOnly);const map=new Map<string,Employee[]>();
  for(const employee of members){const key=teamKey(employee);map.set(key,[...(map.get(key)||[]),employee]);}
  const teams=[...map].map(([key,team])=>{
   const leaders=team.filter(isLeader).length;const groups=Math.max(2,Math.min(6,leaders));const roles=new Map<string,Employee[]>();
   for(const employee of team){const key=roleKey(employee);roles.set(key,[...(roles.get(key)||[]),employee]);}
   return {key,name:teamName(team[0]),primary:fixedRestDay(team[0]),count:team.length,leaders,minimumPeople:Math.max(1,team.length-Math.ceil(team.length/groups)),minimumLeaders:1,roles:[...roles].map(([key,people])=>({key,name:people[0].role||'Cargo não informado',count:people.length,minimum:people.every(isLeader)?0:Math.max(1,people.length-Math.ceil(people.length/groups))})).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))};
  }).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
- return {effectiveDate,includeOffice,preferConsecutive:true,teams};
+ return {effectiveDate,includeOffice,preferConsecutive:true,planningOnly,teams};
 }
 export function generateOperational(state:State,ids:string[],config:OperationalConfig):OperationalResult{
  if(!validDay(config.effectiveDate))throw Error('Informe uma vigência válida.');
- const {candidates,members,excluded}=scope(state,ids,config.effectiveDate,config.includeOffice);
+ const {candidates,members,excluded}=scope(state,ids,config.effectiveDate,config.includeOffice,config.planningOnly===true);
  if(candidates.length>400)throw Error('Filtre por turno ou coordenador para gerar até 400 pessoas por prévia.');
- const defaults=operationalDefaults(state,ids,config.effectiveDate,config.includeOffice);
+ const defaults=operationalDefaults(state,ids,config.effectiveDate,config.includeOffice,config.planningOnly===true);
  if(new Set(config.teams.map(team=>team.key)).size!==config.teams.length||defaults.teams.length!==config.teams.length||defaults.teams.some(team=>!config.teams.some(item=>item.key===team.key)))throw Error('A equipe mudou. Gere novamente os parâmetros.');
  for(const team of config.teams){const expected=defaults.teams.find(item=>item.key===team.key)!;
   if(team.primary!==expected.primary||!Number.isInteger(team.minimumPeople)||team.minimumPeople<1||!Number.isInteger(team.minimumLeaders)||team.minimumLeaders<1||team.minimumPeople>2000||team.minimumLeaders>2000||new Set(team.roles.map(role=>role.key)).size!==team.roles.length||team.roles.length!==expected.roles.length||team.roles.some(role=>!expected.roles.some(item=>item.key===role.key)||!Number.isInteger(role.minimum)||role.minimum<0||role.minimum>2000))throw Error('Revise os mínimos de equipe, liderança e função.');
