@@ -1,12 +1,14 @@
 import {createRoot} from 'react-dom/client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import Home from './Home';
 import {apiFetch,readResponse,setUnitContext,setRosterSurface,rosterSurface,rosterActiveElement} from './bridge';
 import './style.css';
 import './integration.css';
 type Unit={id:string;name?:string;trade_name?:string;company_id?:string};
 type Options={companies:Unit[];branches:Unit[];canEdit:boolean};
+function unitContextLabel(company:string,branch:string,options:Options|null){const c=options?.companies.find(row=>row.id===company),b=options?.branches.find(row=>row.id===branch);return `${b?.name||''} · ${c?.trade_name||c?.name||''}`;}
 function App(){
+ const unitPanel=useRef<HTMLDetailsElement>(null);
  useEffect(()=>{
   let overflow:string|null=null;
   const observe=()=>{const open=Boolean(rosterSurface().querySelector('[role="dialog"]'));if(open&&overflow===null){overflow=document.body.style.overflow;document.body.style.overflow='hidden';}else if(!open&&overflow!==null){document.body.style.overflow=overflow;overflow=null;}};
@@ -37,7 +39,7 @@ function App(){
   if(!options||!company||!branch)return;setError('');setPreview(null);setSaving(true);
   const c=options.companies.find(row=>row.id===company)!,b=options.branches.find(row=>row.id===branch)!;
   setUnitContext({companyId:company,branchId:branch,companyName:c.trade_name||c.name||'',branchName:b.name||'',canEdit:options.canEdit,officialVersion:'',onSaving:setSaving});
-  try{const result=await readResponse(await apiFetch('/state'));setPending(result.pending||[]);setHasMigrationPending(Boolean(result.hasMigrationPending));setLoaded(`${company}/${branch}/${Date.now()}`);}
+  try{const result=await readResponse(await apiFetch('/state'));setPending(result.pending||[]);setHasMigrationPending(Boolean(result.hasMigrationPending));setLoaded(`${company}/${branch}/${Date.now()}`);unitPanel.current?.removeAttribute('open');}
   catch(e){setLoaded('');setError((e as Error).message);}finally{setSaving(false);}
  }
  useEffect(()=>{
@@ -54,13 +56,13 @@ function App(){
   catch(e){setError((e as Error).message);}finally{setSaving(false);}
  }
  return <div className={`beta-roster ${options&&!options.canEdit?'beta-readonly':''}`}>
-  <section className="beta-unit" aria-label="Unidade do planejamento">
+  <details ref={unitPanel} className="beta-unit-picker" open={!loaded}><summary><strong title={loaded?unitContextLabel(company,branch,options):undefined}>{loaded?`Unidade: ${unitContextLabel(company,branch,options)}`:'Selecionar unidade'}</strong><span>{loaded?'Trocar / atualizar':'Empresa e filial'}</span></summary><section className="beta-unit" aria-label="Unidade do planejamento">
    <label>Empresa<select aria-label="Empresa da escala" value={company} disabled={saving} onChange={e=>{setCompany(e.target.value);setBranch('');setLoaded('');setPreview(null);}}><option value="">Selecione a empresa</option>{options?.companies.map(row=><option key={row.id} value={row.id}>{row.trade_name||row.name}</option>)}</select></label>
    <label>Filial<select aria-label="Filial da escala" value={branch} disabled={saving||!company} onChange={e=>{setBranch(e.target.value);setLoaded('');setPreview(null);}}><option value="">Selecione a filial</option>{options?.branches.filter(row=>row.company_id===company).map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
    <button disabled={saving||!company||!branch} onClick={load}>{saving?'Aguarde…':loaded?'Atualizar unidade':'Carregar unidade'}</button>
    {options&&!options.canEdit&&<strong>Somente consulta — seu perfil não permite editar escalas.</strong>}
-  </section>
-  <p className="beta-safety">Planejamento 5x2 separado das escalas, horários e relatórios oficiais da Senior.</p>
+  </section></details>
+  <p className="beta-safety">Planejamento 5x2 · sem alterar ponto ou controle térmico.</p>
   {!loaded&&options&&<div className="beta-welcome"><h2>Planeje a escala da sua equipe</h2><p>Selecione empresa e filial para consultar colaboradores, organizar jornadas e folgas ou importar o planejamento anterior.</p></div>}
   {error&&<div className="error" role="alert">{error} <a href="/" target="_top">Voltar ao sistema Beta</a></div>}
   {!options&&!error&&<p className="beta-initial">Carregando acessos do usuário…</p>}

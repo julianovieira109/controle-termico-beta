@@ -212,3 +212,33 @@ body{background:var(--roster-bg)}
 @media(max-width:600px){.beta-roster .simulator-panel>.simple-roster{padding:14px}.beta-roster .simple-roster-turn{justify-content:flex-start}}
 
 .beta-roster .simple-roster-turn{flex-direction:row;width:fit-content;margin:12px 0 12px auto}@media(max-width:600px){.beta-roster .simple-roster-turn{margin-left:0}}
+
+/* Compact daily workspace: secondary controls stay behind explicit disclosures. */
+.beta-unit-picker{background:var(--roster-surface);border:1px solid var(--roster-line);border-radius:10px;margin-bottom:6px}
+.beta-unit-picker>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:11px 14px;font-size:13px;list-style:none}
+.beta-unit-picker>summary strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.beta-unit-picker>summary span{flex:0 0 auto;font-size:11px;color:var(--roster-muted)}
+.beta-unit-picker .beta-unit{border:0;border-top:1px solid var(--roster-line);border-radius:0;padding:12px 14px}.beta-safety{font-size:11px;margin:4px 2px 8px}
+.beta-roster .roster-navigation{display:flex;align-items:center;gap:6px;background:var(--roster-surface);border:1px solid var(--roster-line);border-radius:10px;padding:5px;position:relative}
+.beta-roster .roster-navigation .roster-tabs{flex:1;min-width:0;display:flex;flex-wrap:nowrap;overflow-x:auto;border:0;border-radius:0;padding:0;gap:4px;background:transparent}
+.beta-roster .roster-navigation .roster-tabs button{padding:8px 11px;min-height:36px;font-size:12px}
+.roster-nav-more{position:relative;flex:0 0 auto}.roster-nav-more>summary,.roster-extra-actions>summary,.roster-filter-more>summary{cursor:pointer;padding:9px 11px;border:1px solid var(--roster-line);border-radius:8px;font-size:12px;white-space:nowrap;list-style:none}
+.roster-nav-more>div{position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:235px;padding:6px;background:var(--roster-surface);border:1px solid var(--roster-line);border-radius:10px;box-shadow:0 8px 22px #102c4220}
+.beta-roster .roster-nav-more button{display:flex;align-items:center;gap:9px;width:100%;border:0;text-align:left;background:transparent;font-size:12px}.roster-nav-more button span{margin-left:auto}
+.beta-roster .roster-status{justify-content:flex-end;min-height:24px;padding:4px 2px;font-size:11px}.beta-roster .roster-status .saved{font-size:11px}
+.beta-roster .compact-title{margin:4px 0 8px;min-height:38px}.beta-roster .compact-title h1{font-size:19px;margin:0}.beta-roster .compact-title .actions{gap:6px}
+.beta-roster .compact-title .actions button,.beta-roster .compact-title .actions summary{font-size:12px;min-height:35px;padding:8px 11px}
+.roster-extra-actions{position:relative}.roster-extra-actions>div{position:absolute;right:0;top:calc(100% + 6px);z-index:70;max-height:70vh;overflow:auto;width:min(610px,calc(100vw - 48px));padding:10px;border:1px solid var(--roster-line);border-radius:10px;background:var(--roster-surface);box-shadow:0 8px 22px #102c4220}
+.beta-roster .roster-extra-actions>div>button{display:block;width:100%;text-align:left;margin-bottom:5px}.roster-extra-actions .roster-journey-tools{margin-top:8px}.roster-extra-actions .roster-journey-tools>summary{font-size:12px}
+.roster-summary{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--roster-muted);padding:2px 2px 9px}.roster-summary strong{color:var(--roster-text)}
+.beta-roster .roster-summary button{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;background:transparent;min-height:25px;padding:2px 4px;font-size:12px;color:#9a6409}
+.beta-roster .toolbar{padding:10px 12px;gap:8px;align-items:center}.beta-roster .periodControls{gap:8px}.beta-roster .weekCaption{font-size:10px}
+.beta-roster .compact-tools{gap:7px;flex:1;justify-content:flex-end}.beta-roster .compact-tools select{max-width:200px;min-width:0;font-size:12px}.beta-roster .compact-tools .search{width:180px;max-width:100%;min-width:0}.beta-roster .compact-tools .search input{width:100%;font-size:12px}
+.roster-filter-more{display:flex;align-items:center;gap:6px}.roster-filter-more[open]{display:flex}.roster-filter-more>select{margin-top:5px;width:130px}
+.beta-roster .clear-roster-filters{padding:5px 7px;font-size:11px;min-height:28px;border:0;color:var(--roster-primary)}
+.beta-roster .subtoolbar{padding:8px 12px}.beta-roster .legend{gap:12px;flex-wrap:wrap;font-size:11px}.beta-roster .tableFoot{font-size:11px;padding:8px 12px}
+.roster-data-tools,.roster-subsection{margin-top:12px;padding:10px 12px;border:1px solid var(--roster-line);border-radius:9px;background:var(--roster-surface)}
+.roster-data-tools>summary,.roster-subsection>summary{font-size:12px;font-weight:600;cursor:pointer;color:var(--roster-muted)}.roster-data-tools .below{margin-top:10px}.roster-data-tools .note{margin:0;padding:10px;font-size:12px}.roster-data-tools .backups{padding:8px 0}.roster-data-tools .backups small{font-size:11px}
+.beta-roster .leaderPlanner{padding:16px}.leaderPlanner>.leaderHint:first-child{display:none}.beta-roster .leaderStats{display:flex;gap:20px;flex-wrap:wrap;padding:10px 0;margin:10px 0;border-bottom:1px solid var(--roster-line)}
+.beta-roster .leaderStats>div{padding:0;min-height:0;border:0;background:transparent;display:flex;align-items:baseline;gap:8px}.beta-roster .leaderStats strong{font-size:19px}.beta-roster .leaderStats small{font-size:12px}
+.beta-roster .leadershipReview{margin:10px 0;padding:8px 10px;background:var(--roster-soft);font-size:11px}.beta-roster .leadershipReview button{font-size:11px;padding:6px 9px;min-height:30px}.beta-roster .beta-pending{padding:8px 12px;margin:8px 0;font-size:12px}
+@media(max-width:800px){.beta-roster .compact-title .actions{width:auto}.beta-roster .compact-title .actions>button{flex:0 1 auto}.beta-roster .toolbar{display:flex;flex-direction:column;align-items:stretch}.beta-roster .compact-tools{justify-content:flex-start}.beta-roster .compact-tools .search{flex:1 1 160px}.beta-roster .compact-tools>select{flex:1 1 145px;max-width:none}.beta-roster .roster-navigation .roster-tabs button{padding:8px;font-size:11px}.beta-unit-picker>summary span{font-size:10px}}
