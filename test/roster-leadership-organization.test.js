@@ -48,7 +48,7 @@ test('aviso encerra a cobertura noturna à meia-noite do último dia, sem prolon
  const lead=employee(1,{...extras,notice}),worker=employee(2,{...extras,role:'OPERADOR'}),s=state([lead,worker]);
  const end=rules.hourlyCoverage(s,s.employees,'2026-11-29',rules.isLeader);
  const next=rules.hourlyCoverage(s,s.employees,'2026-11-30',rules.isLeader);
- assert.equal(end.checked,true);assert.equal(next.checked,true);assert.ok(next.gapMinutes>0);assert.ok(next.gapText.includes('00:00'));
+ assert.equal(end.checked,true);assert.equal(next.checked,true);assert.equal(next.gapMinutes,300);assert.equal(next.gapText,'01:00–06:00');
  const lone=rules.hourlyCoverage(state([lead]),[lead],'2026-11-30',rules.isLeader);assert.equal(lone.hasOperation,false);
  assert.equal(lead.schedule,'20:00-00:00-01:00-06:00');
 });
