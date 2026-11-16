@@ -119,3 +119,7 @@ A disponibilidade horária em aviso é limitada a 24:00 do último dia civil de 
 ## Tela compacta
 
 Unidade recolhida após carregar, com filial explícita e controles de troca disponíveis. A navegação mantém três abas principais; Mais abre áreas secundárias e preserva uma aba contextual para a área ativa, com IDs/aria-controls e teclado coerentes. Contagens substituem cartões repetidos. Há um único filtro de turno/área, coordenador e busca visíveis, situação sob demanda e limpar filtros. PDF permanece direto; Ações reúne exportação CSV, geração/definição de folgas e jornadas em lote. Backup/JSON e explicações ficam em um disclosure. Liderança conserva equipe e funções visíveis, com revezamento e cobertura em seções expansíveis; avisos conhecidos/horários incompletos aparecem no resumo. Não há migração de dados ou mudança nas regras de escala/aviso.
+
+### Relatório para apresentação à direção
+
+O PDF semanal/mensal passa a abrir com resumo do período, totais por turno/área e distribuição diária da equipe. As tabelas detalhadas priorizam matrícula, nome, função de liderança e folgas, sem repetir cargos operacionais ou áreas não definidas. O filtro aparece no resumo; a legenda, paginação, emissão e base salva ficam no rodapé. Totais de situações representam marcações, não pessoas únicas. Revisões continuam sinalizadas. Não há migração ou alteração dos dados; basta gerar novamente o PDF.
