@@ -1,10 +1,29 @@
-import {useState} from 'react';
-import {referenceProposal,specialSchedule} from '../lib/planning-reference';
-import {journeyTimes,duration} from '../lib/journeys';
-import {businessToday} from '../lib/business-date';
+import {useMemo,useState} from 'react';
+import {compareSchedules,comparisonCsv,comparisonHours} from '../lib/schedule-comparison';
+import {duration} from '../lib/journeys';
+import {businessToday,validDay} from '../lib/business-date';
 import type {Employee} from '../lib/roster';
 export default function PlanningGuide({employees}:{employees:Employee[]}){
- const [hours,setHours]=useState<40|42|44>(40);
- const entries=[...new Map(employees.map(employee=>[employee.code+'|'+employee.schedule,employee])).values()];
- return <details className="planning-guide"><summary>Sugestões 5x2 baseadas nas escalas oficiais</summary><div><p><strong>Sugestão inicial: 40h por semana em cinco dias, com duas folgas.</strong> Compare também 42h e 44h. A referência mantém a entrada e o intervalo descritos na Senior e calcula somente uma proposta de saída. Nenhuma sugestão é aplicada automaticamente.</p><label>Carga para comparar<select aria-label="Carga para comparar" value={hours} onChange={event=>setHours(Number(event.target.value) as 40|42|44)}>{[40,42,44].map(value=><option key={value} value={value}>{value}h — {duration(value*12)} de trabalho por dia</option>)}</select></label><div className="dataScroll"><table className="dataTable"><thead><tr><th>Escala Senior</th><th>Horário oficial preservado</th><th>Entrada sugerida</th><th>Saída proposta</th></tr></thead><tbody>{entries.map(employee=>{const journey=referenceProposal(employee,hours,businessToday());return <tr key={employee.code+'|'+employee.schedule}><td>{employee.code||'Não informado'}<small>{employee.officialShift||employee.shift}</small></td><td>{employee.schedule||'Horário não informado'}</td><td>{journey?.start||'Conferir jornada'}</td><td>{journey?journeyTimes(journey).labels[3]:specialSchedule(employee)?'Jornada especial / reduzida — revisão individual':'Horário incompleto ou incompatível — conferir'}</td></tr>;})}</tbody></table></div><ul><li>Planejar cinco dias de trabalho e duas folgas; preferir folgas consecutivas quando a cobertura permitir.</li><li>Conferir descanso entre jornadas, dias consecutivos de trabalho e cobertura por turno/coordenador antes de aplicar.</li><li>Manter aprendizes e jornadas reduzidas fora das aplicações coletivas.</li></ul><p>Simulação em horas de relógio. Regras noturnas, descansos legais e convenção coletiva precisam de conferência antes da adoção. As alterações oficiais continuam pela importação dos relatórios da Senior.</p></div></details>;
+ const [date,setDate]=useState(businessToday),[shift,setShift]=useState(''),[coordinator,setCoordinator]=useState(''),[query,setQuery]=useState('');
+ const comparison=useMemo(()=>validDay(date)?compareSchedules(employees,date):[],[employees,date]);
+ const rows=comparison.filter(({employee:e})=>(!shift||(e.officialShift||e.shift)===shift)&&(!coordinator||(e.coordinatorId||'unassigned')===coordinator)&&`${e.id} ${e.name}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')));
+ const shifts=[...new Set(comparison.map(({employee:e})=>e.officialShift||e.shift))].sort();
+ const coordinators=[...new Map(comparison.map(({employee:e})=>[e.coordinatorId||'unassigned',e.coordinatorName||'Sem vínculo informado'])).entries()];
+ function download(){const url=URL.createObjectURL(new Blob([comparisonCsv(rows,date)],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=`Sugestoes_5x2_40h_42h_44h_${date}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+ return <section className="planning-guide" aria-label="Comparação de novos horários 5x2">
+  <h2>Sugestões de novos horários: 40h, 42h e 44h</h2>
+  <p>Compare as três alternativas para cada colaborador, mantendo a entrada e o intervalo do horário atual. Cada opção considera cinco dias de trabalho e duas folgas. Turno e líder/coordenador vinculado são mantidos como referência.</p>
+  <p><strong>Esta comparação apenas sugere horários.</strong> Não grava jornadas ou folgas e não altera o ponto nem o controle térmico.</p>
+  <div className="operational-controls">
+   <label>Data de referência<input aria-label="Data de referência das sugestões" type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
+   <label>Turno<select aria-label="Turno das sugestões" value={shift} onChange={e=>setShift(e.target.value)}><option value="">Todos os turnos</option>{shifts.map(value=><option key={value}>{value}</option>)}</select></label>
+   <label>Líder / coordenador vinculado<select aria-label="Líder ou coordenador das sugestões" value={coordinator} onChange={e=>setCoordinator(e.target.value)}><option value="">Todos os vínculos</option>{coordinators.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
+   <label>Colaborador<input aria-label="Buscar colaborador nas sugestões" placeholder="Nome ou matrícula" value={query} onChange={e=>setQuery(e.target.value)}/></label>
+  </div>
+  {!validDay(date)&&<p role="alert">Informe uma data válida para gerar as sugestões.</p>}
+  <div className="dataScroll"><table className="dataTable"><thead><tr><th>Colaborador</th><th>Turno</th><th>Líder / coordenador vinculado</th><th>Horário atual</th>{comparisonHours.map(hours=><th key={hours}>{hours}h por semana<small>5 dias de {duration(hours*12)}</small></th>)}</tr></thead><tbody>{rows.map(({employee,options})=><tr key={employee.id}><td><strong>{employee.name}</strong><small>Matrícula {employee.id} · Escala {employee.code||'não informada'}</small></td><td>{employee.officialShift||employee.shift}</td><td>{employee.coordinatorName||'Sem vínculo informado'}</td><td>{employee.schedule||'Horário não informado'}</td>{options.map(option=><td key={option.hours}>{option.text}</td>)}</tr>)}</tbody></table></div>
+  {!rows.length&&validDay(date)&&<p>Nenhum colaborador com vínculo na data e nos filtros selecionados.</p>}
+  <div className="operational-actions"><button type="button" disabled={!rows.length||!validDay(date)} onClick={download}>Baixar as três sugestões (CSV)</button><span>{rows.length} colaboradores · entrada / intervalo / saída em cada opção</span></div>
+  <p>Horários noturnos indicam quando a saída ocorre no dia seguinte. Horários incompletos, aprendizes e jornadas reduzidas ficam para revisão individual. As datas das duas folgas são organizadas separadamente em Escalas e folgas. Cálculo em horas de relógio, sem conversão noturna; confira cobertura da equipe e regras aplicáveis antes de adotar um horário.</p>
+ </section>;
 }

@@ -1598,9 +1598,10 @@
               <p>Se a tela mostra propostas e alertas, a sugestão já foi gerada. Confira os alertas agrupados por equipe e motivo; eles continuam disponíveis antes da gravação e um resumo fica registrado em Ajustes e histórico. Pessoas fora do lote e planejamentos existentes ficam preservados.</p>
               <p>Abra <strong>Alertas para revisar</strong> para consultar os motivos agrupados por equipe. O mesmo problema pode ocorrer em várias datas; não são necessariamente problemas ou pessoas diferentes. <strong>Revisar limites desta equipe</strong> abre os parâmetros correspondentes. Falta de liderança requer conferir a aba Liderança e a cobertura habilitada; horário incompleto depende de conferir os dados recebidos da Senior. Depois de ajustar informações ou limites que reflitam a operação, gere outra prévia.</p>
               <p><strong>Baixar prévia para conferência</strong> exporta as propostas e alertas sem gravar. Para guardar a sugestão, marque a confirmação e use <strong>Salvar rascunho na 5x2</strong>, mesmo com alertas. É necessário ter propostas elegíveis e permissão <strong>roster.manage</strong>. Conflitos de edição exigem atualizar a unidade. Use Ctrl+F5 após esta atualização; não é necessário reimportar pontos.</p>
-              <h4>Sugestões baseadas na Senior</h4>
-              <p>Em <strong>Jornadas → Sugestões 5x2 baseadas nas escalas oficiais</strong>, compare <strong>40h (8h/dia), 42h (8h24/dia) e 44h (8h48/dia)</strong> em cinco dias. A sugestão inicial é 40h, com duas folgas e preferência por dias consecutivos quando a cobertura permitir. A simulação conserva entrada e intervalo reais do cadastro e propõe a saída. O <strong>3º turno usa a escala 56</strong> como referência recebida da Senior, sem substituir o horário oficial por um modelo fixo.</p>
-              <p>Horários incompletos, aprendizes e jornadas reduzidas exigem revisão individual, sem completar minutos por suposição nem aplicar jornadas coletivas. O cálculo usa horas de relógio; regras noturnas, descanso entre jornadas e convenção coletiva precisam de conferência antes da adoção. <strong>Aplicar no planejamento → Confirmar proposta 5x2</strong> salva apenas a proposta, nunca a escala oficial. Somente o fluxo de atualização Senior altera a referência oficial.</p>
+              <h4>Sugestões de novos horários: 40h, 42h e 44h</h4>
+              <p>Em <strong>Menu principal → Escala 5x2</strong>, carregue a unidade e clique em <strong>Sugerir horários 40h / 42h / 44h</strong>. Na aba Jornadas, a comparação é gerada para cada colaborador com vínculo na data de referência. As três opções aparecem lado a lado: <strong>40h = 5 dias de 8h; 42h = 5 dias de 8h24; 44h = 5 dias de 8h48</strong>, com duas folgas organizadas separadamente em Escalas e folgas.</p>
+              <p>A sugestão mantém a entrada e o intervalo do horário oficial atual e calcula a nova saída. A tabela mostra nome, matrícula, escala, turno e líder/coordenador vinculado, conforme os dados disponíveis, sem atribuir liderança por suposição. Filtre turno, vínculo ou colaborador e escolha a data de referência. Horários incompletos, aprendizes e jornadas reduzidas ficam para revisão individual; saídas no dia seguinte são identificadas.</p>
+              <p><strong>Baixar as três sugestões (CSV)</strong> exporta o comparativo dos filtros atuais. Consulta exige <strong>roster.view</strong>. Gerar e baixar sugestões não grava jornadas ou folgas e não altera o ponto, o controle térmico ou as escalas oficiais. Não é necessário reimportar dados; use Ctrl+F5 após atualizar. Para guardar uma jornada escolhida apenas na 5x2, abra separadamente <strong>Ajustar e guardar uma jornada no planejamento 5x2</strong>, conforme sua permissão de edição. Cálculos usam horas de relógio, sem conversão noturna; confira cobertura e regras aplicáveis antes da adoção.</p>
               <h4>Conferir pendências</h4>
               <p>A aba <strong>Pendências</strong> separa ocorrências de <strong>Cadastro e folgas, Jornadas e Liderança</strong>, com filtros e ações para resolver cada tipo. Uma pessoa pode ter mais de uma ocorrência: o total de ocorrências não é o total de colaboradores. Pendências de vínculo e importação aparecem separadas, acima das abas. Uma unidade sem planejamento mostra uma orientação para configurar jornadas/folgas ou importar o arquivo anterior; o sistema não inventa esses dados.</p>
               <h4>Migrar o backup da escala anterior</h4>
@@ -3030,7 +3031,7 @@
     <form id="wf-form" class="wf-form"><label for="wf-input">Seu pedido ou resposta</label><div class="wf-entry"><input id="wf-input" maxlength="1000" autocomplete="off" placeholder="Ex.: BH do João ou cadastrar colaborador" required><button id="wf-send" type="submit">Enviar</button></div><small>Escreva “ajuda” para ver sugestões ou “cancelar” para encerrar o pedido. Nenhuma alteração é gravada sem confirmação.</small></form>
   </dialog>
   <script src="/js/core.js?v=1.0.31-beta.122"></script>
-  <script src="/js/help-manual.js?v=1.0.31-beta.123"></script>
+  <script src="/js/help-manual.js?v=1.0.31-beta.124"></script>
   <script src="/js/admin-access.js?v=1.0.31-beta.30"></script>
   <script src="/js/competence-compare.js?v=1.0.31-beta.88"></script>
   <script src="/js/employees-imports.js?v=1.0.31-beta.105"></script>
@@ -3049,6 +3050,6 @@
   <script src="/js/justification-archive.js?v=7"></script>
   <script src="/js/system-command-parser.js?v=1"></script>
   <script src="/js/workflow-assistant.js?v=1"></script>
-  <script src="/js/roster-module.js?v=3"></script>
+  <script src="/js/roster-module.js?v=4"></script>
 </body>
 </html>
