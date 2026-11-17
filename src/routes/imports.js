@@ -3214,8 +3214,7 @@ router.post("/shift-confirm",async(req,res,next)=>{
 
     assertScope(req,companyId,branchId);
 
-    const isEmployeesByScaleReport=reportFormat==="FPRE011_EMPREGADOS_POR_ESCALA"
-      || (rows.length>0&&rows.every(row=>row?.effectiveDate===null||row?.effectiveDate===undefined||row?.effectiveDate===""));
+    const isEmployeesByScaleReport=reportFormat==="FPRE011_EMPREGADOS_POR_ESCALA";
     const officialScheduleReference=isEmployeesByScaleReport
       ?buildOfficialShiftScheduleReference(rows)
       :{updates:[],conflicts:[]};
