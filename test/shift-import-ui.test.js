@@ -18,7 +18,9 @@ function functionCode(text,name){
 function preview(overrides={}){
   return {
     companyId:'company',branchId:'branch',fileName:'Escala.pdf',total:1,
-    diagnostics:{unresolvedCount:0,unresolvedRegistrations:[]},
+    reportFormat:'FPRE011_EMPREGADOS_POR_ESCALA',
+    officialScheduleReference:{updates:[],conflicts:[]},
+    diagnostics:{unresolvedCount:0,unresolvedRegistrations:[],reportFormat:'FPRE011_EMPREGADOS_POR_ESCALA'},
     unknownCodes:[],
     newShiftProposals:[{code:'0009',displayCode:'0009',suggestedName:'Aprendiz',description:'14:00-18:00',canCreate:true}],
     rows:[{registration:'123',employeeId:'employee',shiftCode:'0009',result:'CODIGO_NAO_CONFIGURADO',nameMatches:true,pdfName:'Colaborador'}],
@@ -93,6 +95,7 @@ for(const description of ['14:00-18:00','08:00-12:00','22:00-02:00','08:00-12:00
     assert.equal(h.requests[0].body.newShifts[0].description,ShiftSchedule.validateDescription(description).description);
     assert.equal(h.requests[0].body.newShifts[0].code,'9');
     assert.equal(h.requests[0].body.rows[0].selected,true);
+    assert.equal(h.requests[0].body.reportFormat,'FPRE011_EMPREGADOS_POR_ESCALA');
   });
 }
 
@@ -203,6 +206,20 @@ test('trocar empresa ou filial depois da leitura impede usar a prévia anterior'
   await h.confirm();
   assert.equal(h.requests.length,0);
   assert.ok(h.notices.some(notice=>notice.message.includes('Leia o PDF novamente')));
+});
+
+
+test('conflito de horário no relatório original Senior bloqueia confirmação do 5x2',async()=>{
+  const data=preview({
+    officialScheduleReference:{updates:[],conflicts:[{code:'46',reason:'Horários diferentes'}]}
+  });
+  const h=harness(data);
+  h.render();
+  assert.equal(h.element('shift-import-confirm').disabled,true);
+  assert.match(h.element('shift-import-feedback').innerHTML,/Referência 5x2 bloqueada/);
+  h.fields[0].select.checked=true;
+  await h.confirm();
+  assert.equal(h.requests.length,0);
 });
 
 test('prévia escapa os valores externos de propostas, linhas e diagnóstico',()=>{
