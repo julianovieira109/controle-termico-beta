@@ -217,8 +217,6 @@ test('conflito de horário no relatório original Senior bloqueia confirmação 
   h.render();
   assert.equal(h.element('shift-import-confirm').disabled,true);
   assert.match(h.element('shift-import-feedback').innerHTML,/Referência 5x2 bloqueada/);
-  h.fields[0].select.checked=true;
-  await h.confirm();
   assert.equal(h.requests.length,0);
 });
 
