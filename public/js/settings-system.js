@@ -1667,12 +1667,16 @@ function renderShiftImportPreview(data){
 
   $("shift-import-feedback").innerHTML=shiftImportIntelligenceCard(data.intelligence);
   const unresolvedShiftRegistrations=Array.isArray(data.diagnostics?.unresolvedRegistrations)?data.diagnostics.unresolvedRegistrations:[];
+  const scheduleConflicts=Array.isArray(data.officialScheduleReference?.conflicts)?data.officialScheduleReference.conflicts:[];
   if(unresolvedShiftRegistrations.length){
     $("shift-import-feedback").innerHTML+=`
       <div class="import-warning"><b>Não confirme:</b> ${unresolvedShiftRegistrations.length} matrícula(s) não foram montadas: ${unresolvedShiftRegistrations.map(escapeHtml).join(", ")}.</div>
     `;
   }
-  $("shift-import-confirm").disabled=unresolvedShiftRegistrations.length>0||Number(data.diagnostics?.unresolvedCount||0)>0;
+  if(scheduleConflicts.length){
+    $("shift-import-feedback").innerHTML+=`\n      <div class="import-warning"><b>Referência 5x2 bloqueada:</b> o relatório original da Senior possui ${scheduleConflicts.length} código(s) com horários conflitantes ou incompletos. O sistema não escolherá um horário automaticamente.</div>\n    `;
+  }
+  $("shift-import-confirm").disabled=unresolvedShiftRegistrations.length>0||Number(data.diagnostics?.unresolvedCount||0)>0||scheduleConflicts.length>0;
 
   const proposals=Array.isArray(data.newShiftProposals)?data.newShiftProposals:[];
   const proposalPanel=$("shift-new-proposals");
@@ -2021,6 +2025,7 @@ if($("shift-import-confirm")){
             unresolvedCount:shiftImportPreview.diagnostics?.unresolvedCount||0,
             unresolvedRegistrations:shiftImportPreview.diagnostics?.unresolvedRegistrations||[]
           },
+          reportFormat:shiftImportPreview.reportFormat||shiftImportPreview.diagnostics?.reportFormat||null,
           newShifts,
           rows
         })
