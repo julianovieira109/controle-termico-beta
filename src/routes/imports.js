@@ -2445,6 +2445,45 @@ function buildUnknownShiftProposals(rows=[],unknownCodes=[]){
 }
 
 
+function buildOfficialShiftScheduleReference(rows=[]){
+  const groups=new Map();
+  for(const row of Array.isArray(rows)?rows:[]){
+    const code=normalizeSeniorShiftCode(row?.shiftCode);
+    if(!code)continue;
+    const schedule=row.schedule||extractSeniorSchedule(row.rawLine,row.rawShiftCode||row.shiftCode);
+    const group=groups.get(code)||{code,total:0,schedules:new Map(),invalid:[]};
+    group.total++;
+    if(schedule?.complete){
+      const key=String(schedule.raw||schedule.normalizedDescription||schedule.rawDescription||"").trim();
+      if(key){
+        const current=group.schedules.get(key)||{key,description:String(schedule.rawDescription||schedule.description||key).trim().slice(0,180),normalizedDescription:schedule.normalizedDescription||null,schedule:schedule.raw||null,type:schedule.type||null,occurrences:0};
+        current.occurrences++;
+        group.schedules.set(key,current);
+      }
+    }else if(schedule?.sourceOnlyAllowed&&schedule?.rawDescription){
+      const source=String(schedule.rawDescription).replace(/\s+/g," ").trim().slice(0,180);
+      const key="SOURCE_ONLY:"+source;
+      const current=group.schedules.get(key)||{key,description:source,normalizedDescription:null,schedule:null,type:"SOURCE_ONLY",occurrences:0};
+      current.occurrences++;
+      group.schedules.set(key,current);
+    }else{
+      group.invalid.push(schedule?.reason||"Horário da escala não pôde ser identificado com segurança.");
+    }
+    groups.set(code,group);
+  }
+  const updates=[],conflicts=[];
+  for(const group of groups.values()){
+    const schedules=[...group.schedules.values()];
+    if(group.invalid.length||schedules.length!==1){
+      conflicts.push({code:group.code,total:group.total,schedules:schedules.map(item=>item.description),reasons:[...new Set(group.invalid)],reason:group.invalid.length?"Há linha(s) da escala Senior sem horário seguro para este código.":"O mesmo código aparece com horários diferentes no relatório Senior."});
+      continue;
+    }
+    updates.push({code:group.code,...schedules[0],total:group.total,source:"SENIOR_FPRE011"});
+  }
+  return {updates,conflicts};
+}
+
+
 function parseEmployeesByScaleColumnarBlocks(source){
   const output=[];
   const pages=String(source||"").split(/\f|\u000c/g);
@@ -2837,6 +2876,8 @@ router.post("/shift-preview",upload.single("file"),async(req,res,next)=>{
     );
     const parsingDiagnostics=buildShiftParsingDiagnostics(extracted.text,parsed);
     const newShiftProposals=buildUnknownShiftProposals(parsed,unknownCodes);
+    const reportFormat=/Empregados por Escala/i.test(String(extracted.text||""))?"FPRE011_EMPREGADOS_POR_ESCALA":"ESCALA_HISTORICA";
+    const officialScheduleReference=reportFormat==="FPRE011_EMPREGADOS_POR_ESCALA"?buildOfficialShiftScheduleReference(parsed):{updates:[],conflicts:[]};
 
     // Segurança extra para ESCALAS:
     // se o cabeçalho/filename não identificar a operação, usamos as matrículas
@@ -3071,6 +3112,8 @@ router.post("/shift-preview",upload.single("file"),async(req,res,next)=>{
       detectedCodes,
       unknownCodes,
       newShiftProposals,
+      reportFormat,
+      officialScheduleReference,
       total:rows.length,
       ready:rows.filter(row=>row.result==="ATUALIZAR").length,
       alreadyConfigured:rows.filter(row=>row.result==="JA_CONFIGURADO").length,
@@ -3092,7 +3135,9 @@ router.post("/shift-preview",upload.single("file"),async(req,res,next)=>{
           code:shift.effective_senior_code,
           name:shift.name
         })),
-        reportFormat:/Empregados por Escala/i.test(String(extracted.text||""))?"FPRE011_EMPREGADOS_POR_ESCALA":"ESCALA_HISTORICA",
+        reportFormat,
+        officialScheduleUpdates:officialScheduleReference.updates.length,
+        officialScheduleConflicts:officialScheduleReference.conflicts,
         detectedCodes,
         parsedRows:parsed.length,
         sample:String(extracted.text||"").replace(/\s+/g," ").slice(0,500)
@@ -3124,6 +3169,7 @@ router.post("/shift-confirm",async(req,res,next)=>{
       intelligence=null,
       detectedOperationalBranch=null,
       parsingDiagnostics=null,
+      reportFormat=null,
       newShifts=[]
     }=req.body||{};
 
@@ -3145,6 +3191,12 @@ router.post("/shift-confirm",async(req,res,next)=>{
     }
 
     assertScope(req,companyId,branchId);
+
+    const isEmployeesByScaleReport=reportFormat==="FPRE011_EMPREGADOS_POR_ESCALA";
+    const officialScheduleReference=isEmployeesByScaleReport?buildOfficialShiftScheduleReference(rows):{updates:[],conflicts:[]};
+    if(officialScheduleReference.conflicts.length){
+      return res.status(409).json({error:"A referência de horário da escala Senior possui divergências.",detail:"O mesmo código de escala não pode alimentar a sugestão 5x2 com horários conflitantes ou incompletos. Confira o relatório original da Senior.",scheduleConflicts:officialScheduleReference.conflicts});
+    }
 
     if(Array.isArray(newShifts)&&newShifts.length&&!req.scope.isAdmin){
       return res.status(403).json({
@@ -3229,6 +3281,18 @@ router.post("/shift-confirm",async(req,res,next)=>{
       results.push({result:"TURNO_CADASTRADO",shiftCode:code,shiftName:created.rows[0].name});
     }
 
+    let officialSchedulesUpdated=0,officialSchedulesUnchanged=0;
+    if(isEmployeesByScaleReport){
+      for(const reference of officialScheduleReference.updates){
+        const existingShift=await client.query(`SELECT id,name,description FROM shifts WHERE company_id=$1 AND (CASE WHEN BTRIM(senior_code) ~ '^[0-9]+$' THEN (BTRIM(senior_code)::numeric)::text ELSE UPPER(BTRIM(senior_code)) END)=$2 AND active=TRUE LIMIT 1`,[companyId,reference.code]);
+        if(!existingShift.rows[0])continue;
+        if(String(existingShift.rows[0].description||"").trim()===String(reference.description||"").trim()){officialSchedulesUnchanged++;continue;}
+        await client.query(`UPDATE shifts SET description=$3 WHERE id=$1 AND company_id=$2`,[existingShift.rows[0].id,companyId,reference.description]);
+        officialSchedulesUpdated++;
+        results.push({result:"REFERENCIA_ESCALA_SENIOR_ATUALIZADA",shiftCode:reference.code,shiftName:existingShift.rows[0].name,schedule:reference.description});
+      }
+    }
+
     for(const row of rows){
       if(row.selected===false)continue;
 
@@ -3303,6 +3367,10 @@ router.post("/shift-confirm",async(req,res,next)=>{
         failed,
         createdShifts,
         approvedNewShifts,
+        reportFormat:isEmployeesByScaleReport?"FPRE011_EMPREGADOS_POR_ESCALA":reportFormat,
+        officialSchedulesUpdated,
+        officialSchedulesUnchanged,
+        officialScheduleReference:officialScheduleReference.updates,
         readerUsed,
         optimizedPath,
         intelligence,
@@ -3314,12 +3382,14 @@ router.post("/shift-confirm",async(req,res,next)=>{
     transactionStarted=false;
 
     await audit(req,"IMPORT_SHIFTS","employees",null,{
-      fileName,total:rows.length,updated,alreadyConfigured,notFound,failed,createdShifts
+      fileName,total:rows.length,updated,alreadyConfigured,notFound,failed,createdShifts,
+      officialSchedulesUpdated,officialSchedulesUnchanged,
+      scheduleSource:isEmployeesByScaleReport?"SENIOR_FPRE011":null
     });
 
     res.json({
-      message:`Novos turnos cadastrados: ${createdShifts}. Cadastros atualizados com turno: ${updated}. Já estavam no turno correto: ${alreadyConfigured}. Colaboradores não localizados: ${notFound}. Nenhum colaborador novo foi criado.`,
-      createdShifts,updated,alreadyConfigured,notFound,failed,results
+      message:`Novos turnos cadastrados: ${createdShifts}. Referências oficiais de horário atualizadas pela escala Senior: ${officialSchedulesUpdated}. Cadastros atualizados com turno: ${updated}. Já estavam no turno correto: ${alreadyConfigured}. Colaboradores não localizados: ${notFound}. Nenhum colaborador novo foi criado.`,
+      createdShifts,officialSchedulesUpdated,officialSchedulesUnchanged,updated,alreadyConfigured,notFound,failed,results
     });
   }catch(error){
     if(transactionStarted&&client)await client.query("ROLLBACK").catch(()=>{});

@@ -5,8 +5,8 @@ const path=require('node:path');
 const Module=require('node:module');
 
 function loadImportApi(existing=[],options={}){
-  const queries=[],created=[],updates=[],histories=[];
-  const shifts=new Map(existing.map(shift=>[shift.code,{id:shift.id||`shift-${shift.code}`,name:shift.name||`Turno ${shift.code}`,weekly_days_off:[]} ]));
+  const queries=[],created=[],updates=[],scheduleUpdates=[],histories=[];
+  const shifts=new Map(existing.map(shift=>[shift.code,{id:shift.id||`shift-${shift.code}`,name:shift.name||`Turno ${shift.code}`,description:shift.description||'',weekly_days_off:[]} ]));
   const client={
     release(){},
     async query(sql,values=[]){
@@ -17,6 +17,11 @@ function loadImportApi(existing=[],options={}){
       if(query.startsWith('INSERT INTO shifts')){
         const record={companyId:values[0],name:values[1],description:values[2],code:values[3],id:`created-${values[3]}`,weekly_days_off:values[4]};
         created.push(record);shifts.set(record.code,record);return {rows:[record]};
+      }
+      if(query.startsWith('UPDATE shifts')){
+        scheduleUpdates.push(values);
+        for(const shift of shifts.values())if(shift.id===values[0])shift.description=values[2];
+        return {rows:[]};
       }
       if(query.startsWith('UPDATE employees')){
         updates.push(values);
@@ -42,7 +47,7 @@ function loadImportApi(existing=[],options={}){
     await confirm({body:{companyId:'company-a',branchId:'branch-a',fileName:'turnos.pdf',rows:[{employeeId:'employee-a',registration:'1',shiftCode:'9',selected:true,result:'ATUALIZAR'}],...body},scope,user:{sub:'admin'}},res,error=>{output.error=error;output.status=error.status||500;});
     return output;
   }
-  return {...api,call,queries,created,updates,histories};
+  return {...api,call,queries,created,updates,scheduleUpdates,histories};
 }
 
 test('propostas do FPRE011 aceitam aprendizes de dois horários e preservam PRE para revisão',()=>{
@@ -250,6 +255,39 @@ test('a confirmação valida filial e empresa e trava criação antes de verific
   assert.equal(wrongBranch.created.length,0);
   assert.equal(wrongBranch.updates.length,0);
   assert.ok(wrongBranch.queries.some(({query})=>query==='ROLLBACK'));
+});
+
+
+test('FPRE011 atualiza o horário oficial de turno existente e alimenta a referência do 5x2',async()=>{
+  const api=loadImportApi([{code:'46',description:'05:00-10:00-11:00-13:20'}]);
+  const schedule=api.extractSeniorSchedule('06:00-12:00-13:00-14:20');
+  const result=await api.call({
+    reportFormat:'FPRE011_EMPREGADOS_POR_ESCALA',
+    rows:[{employeeId:'employee-a',registration:'1',shiftCode:'46',selected:true,result:'JA_CONFIGURADO',effectiveDate:null,schedule}]
+  });
+  assert.equal(result.status,200);
+  assert.equal(result.body.updated,0);
+  assert.equal(result.body.alreadyConfigured,1);
+  assert.equal(result.body.officialSchedulesUpdated,1);
+  assert.equal(api.scheduleUpdates.length,1);
+  assert.equal(api.scheduleUpdates[0][2],'06:00-12:00-13:00-14:20');
+  assert.equal(api.histories[0].reportFormat,'FPRE011_EMPREGADOS_POR_ESCALA');
+  assert.equal(api.histories[0].officialScheduleReference[0].source,'SENIOR_FPRE011');
+});
+
+test('FPRE011 não escolhe sozinho quando o mesmo código possui horários conflitantes',async()=>{
+  const api=loadImportApi([{code:'46',description:'06:00-12:00-13:00-14:20'}]);
+  const result=await api.call({
+    reportFormat:'FPRE011_EMPREGADOS_POR_ESCALA',
+    rows:[
+      {employeeId:'employee-a',registration:'1',shiftCode:'46',selected:true,result:'JA_CONFIGURADO',effectiveDate:null,schedule:api.extractSeniorSchedule('06:00-12:00-13:00-14:20')},
+      {employeeId:'employee-b',registration:'2',shiftCode:'46',selected:true,result:'JA_CONFIGURADO',effectiveDate:null,schedule:api.extractSeniorSchedule('06:30-12:00-13:00-14:50')}
+    ]
+  });
+  assert.equal(result.status,409);
+  assert.match(result.body.error,/referência de horário/);
+  assert.equal(api.scheduleUpdates.length,0);
+  assert.ok(!api.queries.some(({query})=>query==='BEGIN'));
 });
 
 test('falha ao obter conexão é encaminhada ao tratamento de erro sem promessa rejeitada solta',async()=>{
