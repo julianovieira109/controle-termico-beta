@@ -78,7 +78,7 @@ test('aplica cada uma das três cargas em todos os turnos mantendo referências 
   assert.equal(result.count,3);assert.equal(result.excluded.length,0);
   assert.deepEqual(result.state.employees.map(e=>rules.selectedJourney(e,date).start),['06:00','14:00','20:00']);
   for(const e of result.state.employees)assert.equal(rules.selectedJourney(e,date).hours,hours);
-  assert.doesNotThrow(()=>service.protect(result.state,state));
+  assert.throws(()=>service.protect(result.state,state),/somente simulação/);
   assert.deepEqual(state,before);
   for(let i=0;i<employees.length;i++){
    const {journeys,...other}=result.state.employees[i];assert.deepEqual(other,employees[i]);
