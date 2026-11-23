@@ -7,6 +7,9 @@ export function legalWeeklyLimit(date:string):40|42|44{
  if(!validDay(date))throw Error('Informe uma data válida para a sugestão.');
  return date>='2027-12-16'?40:date>='2026-12-16'?42:44;
 }
+export function requiresCollectiveAgreement(hours:40|42|44,date:string){
+ return validDay(date)&&hours===42&&date>='2026-12-16'&&date<'2027-12-16';
+}
 export function legalNote(hours:40|42|44,date:string){
  const limit=legalWeeklyLimit(date);
  if(hours>limit)return `Indisponível nesta vigência: limite normal de ${limit}h semanais pela EC 141/2026.`;
