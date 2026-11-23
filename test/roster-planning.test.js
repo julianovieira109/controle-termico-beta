@@ -75,8 +75,8 @@ test('separa equipes por turno, coordenador e grupo de folgas sem mesclar respon
 });
 test('proposta usa a referência real da Senior, incluindo a escala 0056 às 22h',()=>{
  const employee=source({code:'56',schedule:'22:00-00:00-01:00-06:00',shift:'3º',officialShift:'3º Turno',role:'OPERADOR'});
- const ref=rules.referenceSchedule(employee);assert.equal(ref.start,'22:00');assert.equal(ref.breakAfter,120);assert.equal(ref.breakMinutes,60);assert.equal(ref.daily,420);assert.equal(ref.nightReduced,true);assert.ok(ref.creditedDaily>470&&ref.creditedDaily<472);
- const proposal=rules.referenceProposal(employee,40,'2026-12-01');assert.equal(proposal.start,'22:00');assert.equal(proposal.nightReduced,true);assert.equal(rules.journeyTimes(proposal).labels[3],'06:09');assert.equal(employee.schedule,'22:00-00:00-01:00-06:00');
+ const ref=rules.referenceSchedule(employee);assert.equal(ref.start,'22:00');assert.equal(ref.breakAfter,120);assert.equal(ref.breakMinutes,60);assert.equal(ref.daily,420);assert.equal(ref.nightReduced,true);assert.equal(ref.nightExtension,true);assert.ok(ref.creditedDaily>479&&ref.creditedDaily<481);
+ const proposal=rules.referenceProposal(employee,40,'2026-12-01');assert.equal(proposal.start,'22:00');assert.equal(proposal.nightReduced,true);assert.equal(proposal.nightExtension,true);assert.equal(rules.journeyTimes(proposal).labels[3],'06:00');assert.equal(employee.schedule,'22:00-00:00-01:00-06:00');
  assert.equal(rules.referenceProposal(source({schedule:'06:00-12:00-13:00-14:20'}),44,'2026-12-01').breakAfter,360);
  assert.equal(rules.referenceProposal(source({schedule:'08:00-12PRE13:30PRE18:00'}),40,'2026-12-01'),undefined);
  assert.equal(rules.referenceProposal(source({schedule:'14:00-18:00',role:'APRENDIZ'}),40,'2026-12-01'),undefined);
@@ -91,7 +91,7 @@ test('projeção substitui a referência antiga 20h pela escala 0056 atual da Se
  assert.equal(employee.journeys[0].start,'20:00');
  const proposal=rules.referenceProposal(employee,40,'2026-11-23');
  assert.equal(proposal.start,'22:00');
- assert.equal(rules.journeyTimes(proposal).labels[3],'06:09');
+ assert.equal(rules.journeyTimes(proposal).labels[3],'06:00');
 });
 test('regra nova de 5x2 exige duas folgas, preserva legado e permite exceção por data',()=>{
  const before={employees:[source({officialEmployeeId:'employee-a'})],overrides:[],history:[]};
