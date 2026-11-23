@@ -12,10 +12,15 @@ test('pendência reconferida é aplicada ao novo vínculo explícito e removida 
  const second=service.applyImport(service.previewImport(backup,expanded,first,{}),expanded,first,false);
  assert.equal(second.pending.length,0);assert.equal(second.state.employees.find(e=>e.officialEmployeeId==='b').included,true);assert.equal(second.state.overrides[0].id,'2');
 });
-test('vínculo retirado da unidade continua visível como pendência após salvar outros dados',()=>{
+test('vínculo desligado ou retirado da lista ativa sai automaticamente do planejamento e das pendências',()=>{
  const rows=[official('a','001','ALICE')],input={employees:[source('1','ALICE')],overrides:[],history:[]};
  const first=service.applyImport(service.previewImport(input,rows,{},{}),rows,{},false);
- const projection=service.project([],first),stored=service.serialize(projection.state,first,projection);
- assert.equal(service.project([],stored).pending.length,1);assert.equal(stored.detached.length,1);
- assert.equal(service.project(rows,stored).state.employees[0].included,true);
+ const inactive=[{...rows[0],status:'DEMITIDO',termination_date:'2026-11-20'}];
+ const projection=service.project(inactive,first),stored=service.serialize(projection.state,first,projection);
+ assert.equal(projection.state.employees.length,0);
+ assert.equal(projection.pending.length,0);
+ assert.equal(stored.detached.length,1);
+ const restored=service.project(rows,stored);
+ assert.equal(restored.state.employees.length,1);
+ assert.equal(restored.state.employees[0].included,true);
 });
