@@ -27,5 +27,5 @@ if(!a.includes('Simular escala 5x2'))throw Error('PlanningGuide não renderizou'
 if(!b.includes('Carga semanal'))throw Error('JourneyPlanner não renderizou');
 console.log('OK: simulador renderizou',a.length,b.length);
 `);
-await build({entryPoints:[entry],outfile:output,bundle:true,platform:'node',format:'cjs',target:'node22',jsx:'automatic',logLevel:'silent'});
+await build({entryPoints:[entry],outfile:output,bundle:true,platform:'node',format:'cjs',target:'node22',jsx:'automatic',nodePaths:[path.join(root,'node_modules')],logLevel:'silent'});
 await import('file://'+output+'?v='+Date.now());
