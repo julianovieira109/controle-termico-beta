@@ -1,4 +1,4 @@
-name: Diagnostico simulador Beta105
+name: Validacao temporaria Beta105 simulador
 on:
   push:
     branches:
@@ -6,9 +6,9 @@ on:
 permissions:
   contents: read
 jobs:
-  render:
+  checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,4 +16,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: node tools/check-simulator-render.mjs
+      - run: npm test
+      - run: npm run check:sizes
+      - run: npm run audit:startup
