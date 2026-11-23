@@ -38,7 +38,7 @@ export default function PlanningGuide({state,busy,save,reloadOfficial,onApplied}
    <label>A partir de<input aria-label="Início da sugestão" type="date" disabled={busy||saving||generating} value={date} onChange={e=>{const next=e.target.value;setDate(next);if(validDay(next)){const limit=legalWeeklyLimit(next);if(hours>limit)setHours(limit);}reset();}}/></label>
    <button type="button" className="primary" disabled={busy||saving||generating||!validDay(date)} onClick={generate}>{generating?'Gerando…':'Gerar sugestão'}</button>
   </div>
-  <p className="simple-roster-note">Somente planejamento 5x2. Antes de gerar, o simulador recarrega a escala e o horário oficiais da Senior. Em jornada noturna, aplica a hora reduzida de 52min30s entre 22h e 5h. Ponto e controle térmico permanecem preservados.</p>
+  <p className="simple-roster-note">Somente planejamento 5x2. Antes de gerar, o simulador recarrega a escala e o horário oficiais da Senior. Em jornada noturna, aplica a hora reduzida de 52min30s entre 22h e 5h e, na escala 0056 integralmente noturna, também à prorrogação após 5h. Ponto e controle térmico permanecem preservados.</p>
   {validDay(date)&&<p className="simple-roster-note"><strong>Vigência:</strong> limite normal de {weeklyLimit}h semanais.{selectedLegalNote?' '+selectedLegalNote:''}</p>}
   {!validDay(date)&&<p role="alert">Informe uma data válida.</p>}
   {error&&<p role="alert" className="error">{error}</p>}{message&&<p role="status" className="importSuccess">{message}</p>}
