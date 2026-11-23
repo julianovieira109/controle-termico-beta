@@ -16,12 +16,40 @@ test('compara 40/42/44 por pessoa mantendo entrada, intervalo, turno e vínculo 
  }
  assert.deepEqual(employees,before);
 });
-test('escala 0056 aplica a hora noturna reduzida nas três cargas',()=>{
+test('escala 0056 aplica redução noturna também na prorrogação após 5h',()=>{
  const row=rules.compareSchedules([person('3',{code:'56',schedule:'22:00-00:00-01:00-06:00',shift:'3º',officialShift:'3º Turno'})],date)[0];
  assert.deepEqual(row.options.map(o=>rules.journeyTimes(o.journey).labels),[
-  ['22:00','00:00','01:00','06:09'],['22:00','00:00','01:00','06:33'],['22:00','00:00','01:00','06:57']
+  ['22:00','00:00','01:00','06:00'],['22:00','00:00','01:00','06:21'],['22:00','00:00','01:00','06:42']
  ]);
- assert.ok(row.options.every(o=>o.journey.nightReduced===true));
+ assert.ok(row.options.every(o=>o.journey.nightReduced===true&&o.journey.nightExtension===true));
+});
+test('demais escalas ativas preservam a referência Senior e tratam corretamente trechos noturnos',()=>{
+ const cases=[
+  {code:'26',schedule:'08:00-12:00-13:00-18:00',expected:['17:00','17:24','17:48'],night:false},
+  {code:'46',schedule:'06:00-11:00-12:00-14:20',expected:['15:00','15:24','15:48'],night:false},
+  {code:'64',schedule:'07:00-12:00-13:00-16:00',expected:['16:00','16:24','16:48'],night:false},
+  {code:'92',schedule:'07:00-11:00-12:00-17:00',expected:['16:00','16:24','16:48'],night:false},
+  {code:'96',schedule:'14:00-18:00-19:00-22:20',expected:['22:53','23:14','23:35'],night:true},
+  {code:'116',schedule:'04:00-08:00-09:00-12:20',expected:['12:52','13:16','13:40'],night:true}
+ ];
+ for(const item of cases){
+  const row=rules.compareSchedules([person(item.code,{code:item.code,schedule:item.schedule})],date)[0];
+  assert.deepEqual(row.options.map(o=>rules.journeyTimes(o.journey).labels[3]),item.expected,item.code);
+  assert.equal(row.options.every(o=>Boolean(o.journey.nightReduced)===item.night),true,item.code);
+  assert.equal(row.options.some(o=>o.journey.nightExtension===true),false,item.code);
+ }
+});
+test('escala 0007 usa os horários numéricos normalizados da Senior',()=>{
+ const row=rules.compareSchedules([person('7',{code:'7',schedule:'08:00-12:00-13:30-18:00'})],date)[0];
+ assert.deepEqual(row.options.map(option=>rules.journeyTimes(option.journey).labels),[
+  ['08:00','12:00','13:30','17:30'],
+  ['08:00','12:00','13:30','17:54'],
+  ['08:00','12:00','13:30','18:18']
+ ]);
+});
+test('escala 0106 de aprendiz continua fora da sugestão automática',()=>{
+ const row=rules.compareSchedules([person('106',{code:'106',schedule:'08:00-12:00-12:15-14:15',role:'JOVEM APRENDIZ'})],date)[0];
+ assert.ok(row.options.every(option=>!option.journey&&/individual/.test(option.text)));
 });
 test('dados incompletos e jornadas especiais não bloqueiam sugestões dos demais',()=>{
  const rows=rules.compareSchedules([person('1'),person('2',{schedule:'Não informado'}),person('3',{role:'APRENDIZ',schedule:'14:00-18:00'})],date);
@@ -83,7 +111,7 @@ test('EC 141 limita opções pela vigência e remove jornada futura obsoleta bas
  const result=rules.applyComparisonHours(state,40,'2026-11-23');
  assert.equal(result.state.employees[0].journeys.some(j=>j.effectiveDate==='2026-12-31'),false);
  assert.equal(rules.selectedJourney(result.state.employees[0],'2026-11-23').start,'22:00');
- assert.equal(rules.journeyTimes(rules.selectedJourney(result.state.employees[0],'2026-11-23')).labels[3],'06:09');
+ assert.equal(rules.journeyTimes(rules.selectedJourney(result.state.employees[0],'2026-11-23')).labels[3],'06:00');
 });
 test('sem elegíveis não produz alterações para aplicação coletiva',()=>{
  const state={employees:[person('1',{schedule:'Não informado'})],overrides:[],history:[]};
