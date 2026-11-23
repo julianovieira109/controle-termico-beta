@@ -41,11 +41,12 @@ function project(rows,stored={}){
  const overrides=employees.flatMap(employee=>(byOfficial.get(employee.officialEmployeeId)?.overrides||[]).map(o=>({...o,id:employee.id})));
  const detached=saved.employees.filter(employee=>!employees.some(e=>e.officialEmployeeId===employee.officialEmployeeId));
  const visibleDetached=[...new Map([...(stored.detached||[]).map(entry=>entry.employee),...detached].filter(employee=>!employees.some(e=>e.officialEmployeeId===employee.officialEmployeeId)).map(employee=>[employee.officialEmployeeId,employee])).values()];
- const state=rules.normalizeRoster({employees,overrides,history:saved.history||[],appliedImports:saved.appliedImports||[]});
+ const state=rules.normalizeRoster({employees,overrides,history:saved.history||[],appliedImports:saved.appliedImports||[],legalConfirmations:saved.legalConfirmations||[]});
  return {state,detached,pending:[...available.pending,...visibleDetached.map(e=>({id:e.id,name:e.name,reason:'Vínculo anterior não está disponível no cadastro desta unidade; planejamento preservado para conferência.'})),...(stored.pending||[]).map(p=>({id:p.id,name:p.name,reason:p.reason}))]};
 }
 function protect(next,before){
  valid(next);
+ const confirmations=next.legalConfirmations||[];
  const byId=new Map(before.employees.map(e=>[e.id,e]));
  if(next.employees.length!==before.employees.length)throw fail('Cadastre ou altere vínculos em Colaboradores no Beta. O planejamento não cria nem remove cadastros oficiais.');
  for(const employee of next.employees){
@@ -56,6 +57,13 @@ function protect(next,before){
   for(const rule of employee.restRules||[]){
    const old=previous.restRules?.find(item=>item.effectiveDate===rule.effectiveDate);
    if(JSON.stringify(rule)!==JSON.stringify(old)&&rule.included!==false&&rules.days.filter(day=>rules.weeklyStatus(employee,day,rule.effectiveDate)==='F').length!==2)throw fail('A regra 5x2 precisa de duas folgas semanais. Edite as duas folgas ou registre a exceção somente nesta data.');
+  }
+  for(const journey of employee.journeys||[]){
+   const oldJourney=previous.journeys?.find(item=>item.effectiveDate===journey.effectiveDate);
+   if(JSON.stringify(journey)!==JSON.stringify(oldJourney)&&rules.requiresCollectiveAgreement(journey.hours,journey.effectiveDate)){
+    const confirmed=confirmations.some(item=>item.kind==='COLLECTIVE_AGREEMENT_42H_5X2'&&item.hours===42&&item.effectiveDate===journey.effectiveDate&&typeof item.reference==='string'&&item.reference.trim());
+    if(!confirmed)throw fail('Para aplicar 42h em 5x2 nesta vigência, confirme o respaldo em ACT/CCT e informe a referência do instrumento coletivo.');
+   }
   }
   for(const [day,value] of Object.entries(employee.weeklyPattern||{}))if(value==='A'&&previous.weeklyPattern?.[day]!=='A')throw fail('Ausências novas devem ser registradas somente por data, sem recorrência.');
   for(const rule of employee.restRules||[])for(const [day,value] of Object.entries(rule.pattern))if(value==='A'&&rules.weeklyStatus(previous,day,rule.effectiveDate)!=='A')throw fail('Ausências novas não podem virar uma regra semanal.');
@@ -94,7 +102,8 @@ function applyImport(preview,rows,stored,allowPartial){
   const source=bySource.get(mapping.sourceId);
   return {...employee,...pick(source,planningFields),fixedWednesday:employee.fixedWednesday||registration(source.id)==='11077'&&name(source.name).includes('ELIZABETY')};
  });
- const state=rules.normalizeRoster({employees,overrides:[...current.state.overrides.filter(o=>!matchedIds.has(o.id)),...preview.input.overrides.filter(o=>mappings.has(o.id)).map(o=>({...o,id:mappings.get(o.id)}))],history:[...current.state.history,...preview.input.history].slice(0,500),appliedImports:[...new Set([...(current.state.appliedImports||[]),...(preview.input.appliedImports||[])])]});
+ const confirmations=[...(current.state.legalConfirmations||[]),...(preview.input.legalConfirmations||[])];
+ const state=rules.normalizeRoster({employees,overrides:[...current.state.overrides.filter(o=>!matchedIds.has(o.id)),...preview.input.overrides.filter(o=>mappings.has(o.id)).map(o=>({...o,id:mappings.get(o.id)}))],history:[...current.state.history,...preview.input.history].slice(0,500),appliedImports:[...new Set([...(current.state.appliedImports||[]),...(preview.input.appliedImports||[])])],legalConfirmations:[...new Map(confirmations.map(item=>[item.kind+'|'+item.effectiveDate+'|'+item.reference,item])).values()]});
  valid(state);
  const matchedSources=new Set(matched.map(row=>registration(row.sourceId)+'|'+name(row.sourceName)));
  const pendingEntries=[...(stored.pending||[]).filter(row=>!matchedSources.has(registration(row.id)+'|'+name(row.name))),...pending.map(row=>({id:row.sourceId,name:row.sourceName,reason:row.reason,source:bySource.get(row.sourceId),overrides:preview.input.overrides.filter(o=>o.id===row.sourceId)}))];
