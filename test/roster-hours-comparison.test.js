@@ -39,9 +39,13 @@ test('demais escalas ativas preservam a referência Senior e tratam corretamente
   assert.equal(row.options.some(o=>o.journey.nightExtension===true),false,item.code);
  }
 });
-test('escala 0007 permanece bloqueada quando a Senior não fornece quatro horários completos',()=>{
- const row=rules.compareSchedules([person('7',{code:'7',schedule:'08:0012PRE13:30PRE18:00'})],date)[0];
- assert.ok(row.options.every(option=>!option.journey&&/incompleto|incompatível/.test(option.text)));
+test('escala 0007 usa os horários numéricos normalizados da Senior',()=>{
+ const row=rules.compareSchedules([person('7',{code:'7',schedule:'08:00-12:00-13:30-18:00'})],date)[0];
+ assert.deepEqual(row.options.map(option=>rules.journeyTimes(option.journey).labels),[
+  ['08:00','12:00','13:30','17:30'],
+  ['08:00','12:00','13:30','17:54'],
+  ['08:00','12:00','13:30','18:18']
+ ]);
 });
 test('escala 0106 de aprendiz continua fora da sugestão automática',()=>{
  const row=rules.compareSchedules([person('106',{code:'106',schedule:'08:00-12:00-12:15-14:15',role:'JOVEM APRENDIZ'})],date)[0];
