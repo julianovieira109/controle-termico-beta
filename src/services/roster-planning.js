@@ -51,7 +51,7 @@ function protect(next,before){
  for(const employee of next.employees){
   const previous=byId.get(employee.id);
   if(!previous||officialFields.some(key=>JSON.stringify(employee[key]??null)!==JSON.stringify(previous[key]??null)))throw fail('Nome, matrícula, vínculo, cargo e horários oficiais são somente leitura. Recarregue o cadastro Beta.',409);
-  if(employee.journeys?.length)throw fail('Jornadas da escala 5x2 são somente simulação e não podem ser gravadas no planejamento.',409);
+  if(JSON.stringify(employee.journeys||[])!==JSON.stringify(previous.journeys||[]))throw fail('Jornadas da escala 5x2 são somente simulação e não podem ser gravadas no planejamento.',409);
   const changedBase=JSON.stringify([employee.off1,employee.off2,employee.included,employee.weeklyPattern])!==JSON.stringify([previous.off1,previous.off2,previous.included,previous.weeklyPattern]);
   if(changedBase&&!employee.restRules?.length&&employee.included&&rules.days.filter(day=>(employee.weeklyPattern?.[day]||(day===employee.off1||day===employee.off2?'F':'T'))==='F').length!==2)throw fail('A regra 5x2 precisa de duas folgas semanais. Edite as duas folgas ou registre a exceção somente nesta data.');
   for(const rule of employee.restRules||[]){
