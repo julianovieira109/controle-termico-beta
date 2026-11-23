@@ -790,6 +790,35 @@ SELECT user_id,CASE permission_key WHEN 'employees.view' THEN 'roster.view' ELSE
 FROM user_permissions WHERE permission_key IN ('employees.view','employees.manage')
 ON CONFLICT(user_id,permission_key) DO NOTHING;
 
+-- Beta.103: normaliza somente a referência existente da escala Senior 0007
+-- no formato conhecido do FPRE011. Nenhum ponto, BH ou ocorrência é alterado.
+UPDATE shifts
+SET description='08:00-12:00-13:30-18:00'
+WHERE active=TRUE
+  AND BTRIM(senior_code) ~ '^[0-9]+
+
+(async()=>{
+  try{
+    await pool.query(sql);
+    const archiveSql=fs.readFileSync(path.join(__dirname,"migrations","20261113_acervo_justificativas.sql"),"utf8");
+    await pool.query(archiveSql);
+    console.log("Migrações do Controle Térmico concluídas.");
+  }catch(error){
+    console.error("Falha nas migrações V1.34:",{
+      message:error.message,
+      code:error.code,
+      detail:error.detail,
+      position:error.position
+    });
+    process.exitCode=1;
+  }finally{
+    await pool.end();
+  }
+})();
+
+  AND (BTRIM(senior_code)::numeric)::text='7'
+  AND REGEXP_REPLACE(description,'\\s','','g') ILIKE '%08:0012PRE13:30PRE18:00%';
+
 `;
 
 (async()=>{
