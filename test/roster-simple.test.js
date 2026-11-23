@@ -8,7 +8,7 @@ test('simulação compõe jornada e duas folgas para cada carga sem gravar nem a
   const before=fixture(),snapshot=structuredClone(before),result=rules.simpleRoster(before,hours,date);
   assert.equal(result.count,6);assert.equal(result.excluded.length,0);
   for(const employee of result.state.employees){assert.equal(rules.selectedJourney(employee,date).hours,hours);assert.equal(rules.weeklyStatus(employee,'Dom',date),'F');assert.equal(['Seg','Ter','Qua','Qui','Sex','Sab','Dom'].filter(day=>rules.weeklyStatus(employee,day,date)==='F').length,2);}
-  assert.doesNotThrow(()=>service.protect(result.state,before));assert.deepEqual(before,snapshot);
+  assert.throws(()=>service.protect(result.state,before),/somente simulação/);assert.deepEqual(before,snapshot);
  }
 });
 test('simulação preserva folgas existentes, jornadas futuras, exceções e pessoas especiais',()=>{
@@ -21,13 +21,13 @@ test('simulação preserva folgas existentes, jornadas futuras, exceções e pes
  assert.deepEqual(result.state.employees[0].restRules,before.employees[0].restRules);
  assert.deepEqual(result.state.employees[1].journeys.at(-1),before.employees[1].journeys[0]);
  assert.deepEqual(result.state.employees.slice(6),before.employees.slice(6));assert.deepEqual(result.state.overrides,before.overrides);
- assert.doesNotThrow(()=>service.protect(result.state,before));
+ assert.throws(()=>service.protect(result.state,before),/somente simulação/);
 });
 test('liderança sem cobertura gera avisos e mantém rascunho disponível',()=>{
  const before=fixture();for(const employee of before.employees)employee.role='OPERADOR';
  const result=rules.simpleRoster(before,40,date),alerts=rules.simpleRosterAlerts(result.state,result.ids,date);
  assert.ok(result.count>0);assert.ok(alerts.some(text=>/liderança/.test(text)));
- assert.doesNotThrow(()=>service.protect(result.state,before));
+ assert.throws(()=>service.protect(result.state,before),/somente simulação/);
 });
 test('cobertura de liderança desconta o intervalo e avalia o dia seguinte',()=>{
  const before=fixture();for(const employee of before.employees){employee.shift='3º';employee.schedule=employee.role==='LÍDER'?'20:00-00:00-01:00-06:00':'20:00-00:00-00:30-06:00';}
@@ -46,7 +46,7 @@ test('cadastro sem coordenador ou cargo recebe horário e duas folgas com aviso,
  const result=rules.simpleRoster(before,40,date);
  for(const employee of result.state.employees){assert.equal(rules.restRule(employee,date).included,true);assert.equal(rules.weeklyRestDays(employee,date).length,2);assert.equal(employee.coordinatorId,undefined);assert.equal(employee.role,'');}
  assert.ok(rules.simpleRosterAlerts(result.state,result.ids,date).some(a=>/não vinculado/.test(a)));
- assert.doesNotThrow(()=>service.protect(result.state,before));
+ assert.throws(()=>service.protect(result.state,before),/somente simulação/);
 });
 test('planejamento futuro não bloqueia sugestão anterior e mantém todas as regras e jornadas futuras',()=>{
  const before=fixture(),future='2026-12-31';
@@ -56,5 +56,5 @@ test('planejamento futuro não bloqueia sugestão anterior e mantém todas as re
   const employee=result.state.employees[i];assert.equal(rules.restRule(employee,date).included,true);assert.equal(rules.weeklyRestDays(employee,date).length,2);
   assert.deepEqual(rules.restRule(employee,future),rules.restRule(before.employees[i],future));assert.deepEqual(rules.selectedJourney(employee,future),rules.selectedJourney(before.employees[i],future));
  }
- assert.deepEqual(before,snapshot);assert.doesNotThrow(()=>service.protect(result.state,before));
+ assert.deepEqual(before,snapshot);assert.throws(()=>service.protect(result.state,before),/somente simulação/);
 });

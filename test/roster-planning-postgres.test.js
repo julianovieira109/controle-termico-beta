@@ -51,6 +51,21 @@ if(!connectionString){test('PostgreSQL de planejamento: habilite ROSTER_TEST_DAT
   const result=await request('PUT','/state',{...current,action:'Planejamento teste'});assert.equal(result.status,200);assert.equal(result.data.version,1);assert.equal(await snapshot(),before);
   const audit=(await db.query("SELECT * FROM audit_logs WHERE entity='roster_plans'")).rows;assert.equal(audit.length,1);assert.equal(audit[0].user_id,fixture.actor);assert.equal(audit[0].details.branchId,fixture.a);assert.equal(audit[0].details.changes.employees[0].before.included,false);assert.equal(audit[0].details.changes.employees[0].after.included,true);
  });
+ test('simulador 5x2 não pode gravar planejamento nem alterar dados oficiais',async()=>{
+  const before=await snapshot(),current=(await request('GET','/state')).data;
+  current.state.employees[0].included=true;current.state.employees[0].off1='Dom';current.state.employees[0].off2='Seg';
+  for(const action of [
+   'Simulador simples 5x2: 40h, vigência 2026-11-23',
+   'Jornada 42h — opção 1, vigência 2026-12-16',
+   'Rascunho de sugestão 5x2: teste legado'
+  ]){
+   const result=await request('PUT','/state',{...current,action});
+   assert.equal(result.status,409);assert.match(result.data.error,/somente simulador/i);
+  }
+  assert.equal((await db.query('SELECT COUNT(*)::int n FROM roster_plans')).rows[0].n,0);
+  assert.equal((await db.query('SELECT COUNT(*)::int n FROM audit_logs')).rows[0].n,0);
+  assert.equal(await snapshot(),before);
+ });
  test('versões concorrentes não sobrescrevem o primeiro salvamento',async()=>{
   const current=(await request('GET','/state')).data;
   const results=await Promise.all([request('PUT','/state',{...current,action:'Pedido 1'}),request('PUT','/state',{...current,action:'Pedido 2'})]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);assert.equal((await db.query('SELECT COUNT(*)::int n FROM roster_plans')).rows[0].n,1);

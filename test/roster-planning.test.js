@@ -12,7 +12,7 @@ test('leitura não inventa planejamento nem aplica listas históricas',()=>{
 test('migração preserva cadastro oficial e importa somente planejamento',()=>{
  const backup={state:{employees:[source()],overrides:[{id:'11447',date:'2026-11-13',status:'A',reason:'Planejado'}],history:[{at:'2026-11-01',action:'Histórico original'}],appliedImports:['source-1']}};
  const preview=service.previewImport(backup,[official()],{},scope);const payload=service.applyImport(preview,[official()],{},false);
- const employee=payload.state.employees[0];assert.equal(employee.name,official().full_name);assert.equal(employee.role,'OPERADOR');assert.equal(employee.schedule,official().shift_description);assert.equal(employee.officialEmployeeId,'employee-a');assert.equal(employee.journeys[0].start,'06:00');assert.equal(employee.off1,'Dom');assert.equal(payload.state.overrides.length,1);assert.equal(payload.state.history[0].action,'Histórico original');assert.deepEqual(payload.state.appliedImports,['source-1']);
+ const employee=payload.state.employees[0];assert.equal(employee.name,official().full_name);assert.equal(employee.role,'OPERADOR');assert.equal(employee.schedule,official().shift_description);assert.equal(employee.officialEmployeeId,'employee-a');assert.equal(employee.journeys,undefined);assert.equal(employee.off1,'Dom');assert.equal(payload.state.overrides.length,1);assert.equal(payload.state.history[0].action,'Histórico original');assert.deepEqual(payload.state.appliedImports,['source-1']);
 });
 test('não localizados, nomes divergentes e matrículas ambíguas não são vinculados',()=>{
  const backup={employees:[source(),source({id:'999',name:'OUTRO'})],overrides:[],history:[]};
@@ -33,9 +33,9 @@ test('readmissão ou reaproveitamento de matrícula não transfere planejamento 
  const saved=service.serialize(result.state,previous,result);assert.equal(saved.detached[0].employee.officialEmployeeId,'employee-a');assert.equal(saved.detached[0].overrides.length,1);
  const restored=service.project([official()],saved);assert.equal(restored.state.employees[0].included,true);assert.equal(restored.state.overrides.length,1);
 });
-test('alterar somente matrícula do mesmo UUID preserva exceções e jornadas',()=>{
+test('alterar somente matrícula do mesmo UUID preserva exceções e descarta jornadas simuladas',()=>{
  const saved=service.applyImport(service.previewImport({employees:[source()],overrides:[{id:'11447',date:'2026-11-13',status:'F',reason:'Origem'}],history:[]},[official()],{},scope),[official()],{},false);
- const next=service.project([official({registration:'000099999'})],saved);assert.equal(next.state.employees[0].id,'99999');assert.equal(next.state.overrides[0].id,'99999');assert.equal(next.state.employees[0].journeys.length,1);
+ const next=service.project([official({registration:'000099999'})],saved);assert.equal(next.state.employees[0].id,'99999');assert.equal(next.state.overrides[0].id,'99999');assert.equal(next.state.employees[0].journeys,undefined);
 });
 test('PUT rejeita alteração de campos oficiais e ausência recorrente nova',()=>{
  const current=service.project([official()]).state;
@@ -88,7 +88,7 @@ test('projeção substitui a referência antiga 20h pela escala 0056 atual da Se
  const employee=projected.state.employees[0];
  assert.equal(employee.code,'0056');
  assert.equal(employee.schedule,'22:00-00:00-01:00-06:00');
- assert.equal(employee.journeys[0].start,'20:00');
+ assert.equal(employee.journeys,undefined);
  const proposal=rules.referenceProposal(employee,40,'2026-11-23');
  assert.equal(proposal.start,'22:00');
  assert.equal(rules.journeyTimes(proposal).labels[3],'06:00');
