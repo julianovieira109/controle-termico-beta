@@ -16,9 +16,11 @@ test('compara 40/42/44 por pessoa mantendo entrada, intervalo, turno e vínculo 
  }
  assert.deepEqual(employees,before);
 });
-test('noturno mantém cálculo após meia-noite e exibe somente horários nas três cargas',()=>{
- const row=rules.compareSchedules([person('3',{schedule:'20:00-00:00-01:00-06:00',shift:'3º'})],date)[0];
- assert.deepEqual(row.options.map(o=>rules.journeyTimes(o.journey).labels[3]),['05:00','05:24','05:48']);
+test('escala 0056 usa a referência oficial Senior 22:00-00:00-01:00-06:00 nas três cargas',()=>{
+ const row=rules.compareSchedules([person('3',{code:'56',schedule:'22:00-00:00-01:00-06:00',shift:'3º',officialShift:'3º Turno'})],date)[0];
+ assert.deepEqual(row.options.map(o=>rules.journeyTimes(o.journey).labels),[
+  ['22:00','00:00','01:00','07:00'],['22:00','00:00','01:00','07:24'],['22:00','00:00','01:00','07:48']
+ ]);
 });
 test('dados incompletos e jornadas especiais não bloqueiam sugestões dos demais',()=>{
  const rows=rules.compareSchedules([person('1'),person('2',{schedule:'Não informado'}),person('3',{role:'APRENDIZ',schedule:'14:00-18:00'})],date);
