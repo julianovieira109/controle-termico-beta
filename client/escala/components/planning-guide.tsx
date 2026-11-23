@@ -6,7 +6,7 @@ import {businessToday,moveDay,validDay} from '../lib/business-date';
 import {days,restRule,status,withWeeklyFolgas,type State} from '../lib/roster';
 import {readOnly} from '../bridge';
 type Simulation=ReturnType<typeof simpleRoster>&{source:State;hours:40|42|44;date:string};
-export default function PlanningGuide({state,busy,save,onApplied}:{state:State;busy:boolean;save:(state:State,action:string)=>Promise<boolean>;onApplied?:(date:string)=>void}){
+export default function PlanningGuide({state,busy,save,reloadOfficial,onApplied}:{state:State;busy:boolean;save:(state:State,action:string)=>Promise<boolean>;reloadOfficial:()=>Promise<State|null>;onApplied?:(date:string)=>void}){
  const [hours,setHours]=useState<40|42|44>(40),[date,setDate]=useState(businessToday);
  const [draft,setDraft]=useState<Simulation|null>(null),[saving,setSaving]=useState(false),[generating,setGenerating]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(''),[query,setQuery]=useState(''),[turn,setTurn]=useState('');
  const [edit,setEdit]=useState<{id:string;off1:string;off2:string;start:string}|null>(null);
@@ -17,7 +17,7 @@ export default function PlanningGuide({state,busy,save,onApplied}:{state:State;b
  const rows=preview?.state.employees.filter(e=>preview.ids.includes(e.id)&&(!turn||e.shift===turn)&&`${e.name} ${e.id} ${e.officialShift||e.shift} ${e.coordinatorName||''}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')))||[];
  const comparison=useMemo(()=>validDay(date)?compareSchedules(state.employees,date):[],[state,date]);
  function reset(){setEdit(null);setMessage('');setError('');}
- async function generate(){if(generating||busy||saving)return;reset();setGenerating(true);setDraft(null);await new Promise(resolve=>setTimeout(resolve,0));try{setDraft({...simpleRoster(state,hours,date),source:state,hours,date});}catch(e){setError((e as Error).message);}finally{setGenerating(false);}}
+ async function generate(){if(generating||busy||saving)return;reset();setGenerating(true);setDraft(null);await new Promise(resolve=>setTimeout(resolve,0));try{const latest=await reloadOfficial();if(!latest)throw Error('Não foi possível atualizar a referência oficial da Senior. Recarregue os dados e tente novamente.');setDraft({...simpleRoster(latest,hours,date),source:latest,hours,date});}catch(e){setError((e as Error).message);}finally{setGenerating(false);}}
  async function saveDraft(openSchedule=false){if(!preview?.count||busy||saving||lock.current||readOnly())return;lock.current=true;setSaving(true);setError('');try{
   if(await save(preview.state,`Simulador simples 5x2: ${hours}h, vigência ${date}; ${preview.count} colaboradores; ${alerts.length} alertas para revisão. Somente rascunho no planejamento. ${alerts.join(' | ').slice(0,3000)}`)){setDraft(null);setEdit(null);setMessage('Rascunho salvo no planejamento 5x2.');if(openSchedule)onApplied?.(preview.date);}else setError('Não foi possível salvar. Confira o aviso e atualize a unidade se necessário.');
  }catch(e){setError((e as Error).message);}finally{lock.current=false;setSaving(false);}}
@@ -36,7 +36,7 @@ export default function PlanningGuide({state,busy,save,onApplied}:{state:State;b
    <label>A partir de<input aria-label="Início da sugestão" type="date" disabled={busy||saving||generating} value={date} onChange={e=>{setDate(e.target.value);reset();}}/></label>
    <button type="button" className="primary" disabled={busy||saving||generating||!validDay(date)} onClick={generate}>{generating?'Gerando…':'Gerar sugestão'}</button>
   </div>
-  <p className="simple-roster-note">Somente planejamento 5x2. Ponto e controle térmico permanecem preservados.</p>
+  <p className="simple-roster-note">Somente planejamento 5x2. Antes de gerar, o simulador recarrega a escala e o horário oficiais da Senior. Ponto e controle térmico permanecem preservados.</p>
   {!validDay(date)&&<p role="alert">Informe uma data válida.</p>}
   {error&&<p role="alert" className="error">{error}</p>}{message&&<p role="status" className="importSuccess">{message}</p>}
   {preview&&<>

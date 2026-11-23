@@ -73,14 +73,25 @@ test('separa equipes por turno, coordenador e grupo de folgas sem mesclar respon
  const grouped=rules.groupRoster([first,second,third],'2026-11-13');assert.equal(grouped.length,1);assert.equal(grouped[0].groups.length,3);assert.equal(new Set(grouped[0].groups.map(g=>g.coordinatorName)).size,3);
  assert.equal(rules.sectionOf(source({area:'ADM'})),'ADM');
 });
-test('proposta usa entrada e intervalo reais da Senior, incluindo terceiro turno às 20h',()=>{
- const employee=source({schedule:'20:00-00:00-01:00-06:00',role:'OPERADOR'});
- assert.deepEqual(rules.referenceSchedule(employee),{start:'20:00',breakAfter:240,breakMinutes:60,daily:540});
- const proposal=rules.referenceProposal(employee,40,'2026-12-01');assert.equal(proposal.start,'20:00');assert.equal(rules.journeyTimes(proposal).labels[3],'05:00');assert.equal(employee.schedule,'20:00-00:00-01:00-06:00');
+test('proposta usa a referência real da Senior, incluindo a escala 0056 às 22h',()=>{
+ const employee=source({code:'56',schedule:'22:00-00:00-01:00-06:00',shift:'3º',officialShift:'3º Turno',role:'OPERADOR'});
+ assert.deepEqual(rules.referenceSchedule(employee),{start:'22:00',breakAfter:120,breakMinutes:60,daily:420});
+ const proposal=rules.referenceProposal(employee,40,'2026-12-01');assert.equal(proposal.start,'22:00');assert.equal(rules.journeyTimes(proposal).labels[3],'07:00');assert.equal(employee.schedule,'22:00-00:00-01:00-06:00');
  assert.equal(rules.referenceProposal(source({schedule:'06:00-12:00-13:00-14:20'}),44,'2026-12-01').breakAfter,360);
  assert.equal(rules.referenceProposal(source({schedule:'08:00-12PRE13:30PRE18:00'}),40,'2026-12-01'),undefined);
  assert.equal(rules.referenceProposal(source({schedule:'14:00-18:00',role:'APRENDIZ'}),40,'2026-12-01'),undefined);
  assert.equal(rules.specialSchedule(source({schedule:'08:00-12:00-12:15-14:15'})),true);
+});
+test('projeção substitui a referência antiga 20h pela escala 0056 atual da Senior antes de nova sugestão',()=>{
+ const stored={state:{employees:[source({officialEmployeeId:'employee-a',code:'56',schedule:'20:00-00:00-01:00-06:00',shift:'3º',officialShift:'3º Turno',journeys:[{hours:40,option:1,start:'20:00',breakAfter:240,breakMinutes:60,effectiveDate:'2026-11-16'}]})],overrides:[],history:[]}};
+ const projected=service.project([official({shift_name:'3º Turno',shift_senior_code:'0056',shift_description:'22:00-00:00-01:00-06:00'})],stored);
+ const employee=projected.state.employees[0];
+ assert.equal(employee.code,'0056');
+ assert.equal(employee.schedule,'22:00-00:00-01:00-06:00');
+ assert.equal(employee.journeys[0].start,'20:00');
+ const proposal=rules.referenceProposal(employee,40,'2026-11-23');
+ assert.equal(proposal.start,'22:00');
+ assert.equal(rules.journeyTimes(proposal).labels[3],'07:00');
 });
 test('regra nova de 5x2 exige duas folgas, preserva legado e permite exceção por data',()=>{
  const before={employees:[source({officialEmployeeId:'employee-a'})],overrides:[],history:[]};
