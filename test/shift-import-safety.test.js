@@ -50,7 +50,7 @@ function loadImportApi(existing=[],options={}){
   return {...api,call,queries,created,updates,scheduleUpdates,histories};
 }
 
-test('propostas do FPRE011 aceitam aprendizes de dois horários e preservam PRE para revisão',()=>{
+test('FPRE011 trata 0007 por números e preserva PRE incompleto das demais escalas',()=>{
   const api=loadImportApi();
   const source=`Empregados por Escala\n000010462 TESTE APRENDIZ 0009 - 14:00 - 18:00 APRENDIZsgAsx-E\n000009444 TESTE MANHA 0005 - 08:00-12:00 - APRENDIZsgAsx\n000006532 TESTE PRE 0001 - 08:00-12PRE-13:PRE-17:00sgAs\n000002416 TESTE COMERCIAL 0007 - 08:0012PRE13:30PRE18:00sgAsb-E`;
   const rows=api.parseSeniorShiftRows(source,['9','5','1','7']);
@@ -60,22 +60,36 @@ test('propostas do FPRE011 aceitam aprendizes de dois horários e preservam PRE 
     assert.equal(proposals.get(code).canCreate,true);
     assert.equal(proposals.get(code).type,'CONTINUOUS');
     assert.equal(proposals.get(code).hasMealBreak,false);
-    assert.ok(proposals.get(code).rawDescription);
   }
-  for(const code of ['1','7']){
-    assert.equal(proposals.get(code).canCreate,true);
-    assert.equal(proposals.get(code).requiresReview,true);
-    assert.equal(proposals.get(code).type,'SOURCE_ONLY');
-    assert.equal(proposals.get(code).hasMealBreak,null);
-    assert.equal(proposals.get(code).scheduleNeedsReview,true);
-    assert.equal(proposals.get(code).preserveSource,true);
-    assert.equal(proposals.get(code).description,proposals.get(code).rawDescription);
-    assert.equal(proposals.get(code).normalizedDescription,null);
-    assert.match(proposals.get(code).rawDescription,/PRE/);
-    assert.match(proposals.get(code).reason,/exatamente como veio/);
-  }
+  const seven=proposals.get('7');
+  assert.equal(seven.canCreate,true);
+  assert.equal(seven.requiresReview,false);
+  assert.equal(seven.type,'SPLIT');
+  assert.equal(seven.schedule,'08:00-12:00-13:30-18:00');
+  assert.equal(seven.normalizedDescription,'08:00 às 12:00 / 13:30 às 18:00');
+  assert.doesNotMatch(seven.description,/PRE/);
+
+  const one=proposals.get('1');
+  assert.equal(one.canCreate,true);
+  assert.equal(one.requiresReview,true);
+  assert.equal(one.type,'SOURCE_ONLY');
+  assert.equal(one.hasMealBreak,null);
+  assert.equal(one.scheduleNeedsReview,true);
+  assert.equal(one.preserveSource,true);
+  assert.match(one.rawDescription,/PRE/);
 });
 
+test('extractSeniorSchedule normaliza somente a escala 0007 no formato PRE conhecido',()=>{
+  const api=loadImportApi();
+  const seven=api.extractSeniorSchedule('08:0012PRE13:30PRE18:00sgAsb-E','0007');
+  assert.equal(seven.complete,true);
+  assert.deepEqual(seven.times,['08:00','12:00','13:30','18:00']);
+  assert.equal(seven.raw,'08:00-12:00-13:30-18:00');
+
+  const generic=api.extractSeniorSchedule('08:0012PRE13:30PRE18:00sgAsb-E','0001');
+  assert.equal(generic.complete,false);
+  assert.equal(generic.sourceOnlyAllowed,true);
+});
 test('código com horários divergentes exige revisão mesmo quando um horário é mais frequente',()=>{
   const api=loadImportApi();
   const rows=['08:00-12:00','08:00-12:00','14:00-18:00'].map(description=>({shiftCode:'9',schedule:api.extractSeniorSchedule(description)}));
