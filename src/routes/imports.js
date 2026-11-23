@@ -2369,6 +2369,14 @@ function extractSeniorSchedule(value,rawCode=""){
     if(match)scheduleSource=source.slice(match.index+match[0].length);
   }
 
+  // A escala Senior 0007 chega no FPRE011 como
+  // 08:0012PRE13:30PRE18:00. Por decisão operacional,
+  // PRE é apenas separador e "12" representa 12:00.
+  if(normalizedCode==="7"&&/08:00\s*12PRE\s*13:30PRE\s*18:00/i.test(scheduleSource)){
+    scheduleSource=scheduleSource
+      .replace(/08:00\s*12PRE\s*13:30PRE\s*18:00/i,"08:00-12:00-13:30-18:00");
+  }
+
   const validation=ShiftSchedule.validateDescription(scheduleSource);
   const times=validation.markings;
 
