@@ -16,11 +16,12 @@ test('compara 40/42/44 por pessoa mantendo entrada, intervalo, turno e vínculo 
  }
  assert.deepEqual(employees,before);
 });
-test('escala 0056 usa a referência oficial Senior 22:00-00:00-01:00-06:00 nas três cargas',()=>{
+test('escala 0056 aplica a hora noturna reduzida nas três cargas',()=>{
  const row=rules.compareSchedules([person('3',{code:'56',schedule:'22:00-00:00-01:00-06:00',shift:'3º',officialShift:'3º Turno'})],date)[0];
  assert.deepEqual(row.options.map(o=>rules.journeyTimes(o.journey).labels),[
-  ['22:00','00:00','01:00','07:00'],['22:00','00:00','01:00','07:24'],['22:00','00:00','01:00','07:48']
+  ['22:00','00:00','01:00','06:09'],['22:00','00:00','01:00','06:33'],['22:00','00:00','01:00','06:57']
  ]);
+ assert.ok(row.options.every(o=>o.journey.nightReduced===true));
 });
 test('dados incompletos e jornadas especiais não bloqueiam sugestões dos demais',()=>{
  const rows=rules.compareSchedules([person('1'),person('2',{schedule:'Não informado'}),person('3',{role:'APRENDIZ',schedule:'14:00-18:00'})],date);
@@ -71,6 +72,18 @@ test('aplicação preserva jornadas de outras vigências, exceções e pessoas n
  assert.deepEqual(state,before);
  assert.throws(()=>rules.applyComparisonHours(state,36,date),/Escolha uma jornada/);
  assert.throws(()=>rules.applyComparisonHours(state,40,'2026-02-30'),/data válida/);
+});
+test('EC 141 limita opções pela vigência e remove jornada futura obsoleta baseada em referência antiga',()=>{
+ assert.equal(rules.legalWeeklyLimit('2026-12-15'),44);
+ assert.equal(rules.legalWeeklyLimit('2026-12-16'),42);
+ assert.equal(rules.legalWeeklyLimit('2027-12-16'),40);
+ assert.throws(()=>rules.applyComparisonHours({employees:[person('1')],overrides:[],history:[]},44,'2026-12-16'),/no máximo 42h/);
+ const oldFuture={hours:40,option:1,start:'20:00',breakAfter:240,breakMinutes:60,effectiveDate:'2026-12-31'};
+ const state={employees:[person('56',{code:'56',schedule:'22:00-00:00-01:00-06:00',shift:'3º',journeys:[oldFuture]})],overrides:[],history:[]};
+ const result=rules.applyComparisonHours(state,40,'2026-11-23');
+ assert.equal(result.state.employees[0].journeys.some(j=>j.effectiveDate==='2026-12-31'),false);
+ assert.equal(rules.selectedJourney(result.state.employees[0],'2026-11-23').start,'22:00');
+ assert.equal(rules.journeyTimes(rules.selectedJourney(result.state.employees[0],'2026-11-23')).labels[3],'06:09');
 });
 test('sem elegíveis não produz alterações para aplicação coletiva',()=>{
  const state={employees:[person('1',{schedule:'Não informado'})],overrides:[],history:[]};

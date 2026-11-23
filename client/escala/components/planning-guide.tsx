@@ -1,5 +1,5 @@
 import {useMemo,useRef,useState} from 'react';
-import {compareSchedules,comparisonCsv,comparisonHours} from '../lib/schedule-comparison';
+import {compareSchedules,comparisonCsv,comparisonHours,legalWeeklyLimit,legalNote} from '../lib/schedule-comparison';
 import {simpleRoster,simpleRosterAlerts} from '../lib/simple-roster';
 import {duration,journeyText,selectedJourney,isJourney} from '../lib/journeys';
 import {businessToday,moveDay,validDay} from '../lib/business-date';
@@ -12,6 +12,8 @@ export default function PlanningGuide({state,busy,save,reloadOfficial,onApplied}
  const [edit,setEdit]=useState<{id:string;off1:string;off2:string;start:string}|null>(null);
  const lock=useRef(false);
  const preview=draft&&draft.source===state&&draft.hours===hours&&draft.date===date?draft:null;
+ const weeklyLimit=validDay(date)?legalWeeklyLimit(date):44;
+ const selectedLegalNote=validDay(date)?legalNote(hours,date):'';
  const week=useMemo(()=>validDay(date)?Array.from({length:7},(_,i)=>moveDay(date,i)):[],[date]);
  const alerts=useMemo(()=>preview?simpleRosterAlerts(preview.state,preview.ids,date):[],[preview,date]);
  const rows=preview?.state.employees.filter(e=>preview.ids.includes(e.id)&&(!turn||e.shift===turn)&&`${e.name} ${e.id} ${e.officialShift||e.shift} ${e.coordinatorName||''}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')))||[];
@@ -32,11 +34,12 @@ export default function PlanningGuide({state,busy,save,reloadOfficial,onApplied}
  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`Sugestao_5x2_${all?'comparacao':hours+'h'}_${date}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  return <section className="planning-guide simple-roster" aria-label="Simulador simples 5x2">
   <h2>Simular escala 5x2</h2><p>Escolha a jornada, gere a semana e confira antes de lançar.</p>
-  <div className="simple-roster-controls"><fieldset><legend>Jornada semanal</legend><div className="simple-roster-hours">{comparisonHours.map(value=><button key={value} type="button" aria-pressed={hours===value} disabled={busy||saving||generating} onClick={()=>{setHours(value);reset();}}><strong>{value}h</strong><small>5 dias de {duration(value*12)}</small></button>)}</div></fieldset>
-   <label>A partir de<input aria-label="Início da sugestão" type="date" disabled={busy||saving||generating} value={date} onChange={e=>{setDate(e.target.value);reset();}}/></label>
+  <div className="simple-roster-controls"><fieldset><legend>Jornada semanal</legend><div className="simple-roster-hours">{comparisonHours.map(value=><button key={value} type="button" aria-pressed={hours===value} disabled={busy||saving||generating||value>weeklyLimit} title={value>weeklyLimit?`Indisponível nesta vigência: limite de ${weeklyLimit}h semanais.`:undefined} onClick={()=>{setHours(value);reset();}}><strong>{value}h</strong><small>{value>weeklyLimit?'Indisponível nesta vigência':`5 dias de ${duration(value*12)} legais`}</small></button>)}</div></fieldset>
+   <label>A partir de<input aria-label="Início da sugestão" type="date" disabled={busy||saving||generating} value={date} onChange={e=>{const next=e.target.value;setDate(next);if(validDay(next)){const limit=legalWeeklyLimit(next);if(hours>limit)setHours(limit);}reset();}}/></label>
    <button type="button" className="primary" disabled={busy||saving||generating||!validDay(date)} onClick={generate}>{generating?'Gerando…':'Gerar sugestão'}</button>
   </div>
-  <p className="simple-roster-note">Somente planejamento 5x2. Antes de gerar, o simulador recarrega a escala e o horário oficiais da Senior. Ponto e controle térmico permanecem preservados.</p>
+  <p className="simple-roster-note">Somente planejamento 5x2. Antes de gerar, o simulador recarrega a escala e o horário oficiais da Senior. Em jornada noturna, aplica a hora reduzida de 52min30s entre 22h e 5h. Ponto e controle térmico permanecem preservados.</p>
+  {validDay(date)&&<p className="simple-roster-note"><strong>Vigência:</strong> limite normal de {weeklyLimit}h semanais.{selectedLegalNote?' '+selectedLegalNote:''}</p>}
   {!validDay(date)&&<p role="alert">Informe uma data válida.</p>}
   {error&&<p role="alert" className="error">{error}</p>}{message&&<p role="status" className="importSuccess">{message}</p>}
   {preview&&<>
