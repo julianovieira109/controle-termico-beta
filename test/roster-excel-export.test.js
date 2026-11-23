@@ -5,6 +5,8 @@ const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'..','client/escala/lib/simulator-excel.ts'),'utf8');
 test('exportação do simulador gera Excel organizado com abas de resumo, comparação e revisão',()=>{
  assert.match(source,/exceljs/);
+ assert.match(source,/\.default\|\|module/);
+ assert.match(source,/typeof Workbook!==['"]function['"]/);
  assert.match(source,/workbook\.xlsx\.writeBuffer/);
  assert.match(source,/addWorksheet\('Resumo'/);
  assert.match(source,/addWorksheet\('Comparação'/);

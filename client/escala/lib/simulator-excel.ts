@@ -25,7 +25,11 @@ function dateLabel(date:string){return date.split('-').reverse().join('/');}
 function normalizeText(value:string){return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();}
 function reviewReason(row:ReturnType<typeof compareSchedules>[number]){const reasons:string[]=[];for(const option of row.options){if(option.allowed&&!option.journey)reasons.push(option.text);}if(!row.employee.coordinatorId)reasons.push('Líder / coordenador não vinculado.');return [...new Set(reasons)];}
 async function workbookBase(){
- const ExcelJS=await import('exceljs');const workbook=new ExcelJS.Workbook();workbook.creator='Controle Térmico';workbook.company=unitContext().companyName||'Controle Térmico';workbook.created=new Date();workbook.modified=new Date();return workbook;
+ const module=await import('exceljs');
+ const ExcelJS=(module as any).default||module;
+ const Workbook=(ExcelJS as any).Workbook||(module as any).Workbook;
+ if(typeof Workbook!=='function')throw Error('Não foi possível iniciar o gerador de Excel. Atualize a página e tente novamente.');
+ const workbook=new Workbook();workbook.creator='Controle Térmico';workbook.company=unitContext().companyName||'Controle Térmico';workbook.created=new Date();workbook.modified=new Date();return workbook;
 }
 function summarySheet(workbook:any,employees:Employee[],date:string,reviewCount:number,titleText:string){
  const context=unitContext(),sheet=workbook.addWorksheet('Resumo',{properties:{tabColor:{argb:argb(colors.blue)}}});sheet.views=[{showGridLines:false}];title(sheet,titleText,(context.companyName||'Empresa')+' · '+(context.branchName||'Filial')+' · Referência '+dateLabel(date),'H');
