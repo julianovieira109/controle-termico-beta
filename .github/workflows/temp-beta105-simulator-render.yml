@@ -1,0 +1,19 @@
+name: Diagnostico simulador Beta105
+on:
+  push:
+    branches:
+      - fix/simulador-tela-beta105
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node tools/check-simulator-render.mjs
