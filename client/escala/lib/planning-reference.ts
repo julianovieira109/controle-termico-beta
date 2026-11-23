@@ -1,8 +1,10 @@
 import {clockMinutes,creditedWorkMinutes,type Journey} from './journeys';
 import type {Employee} from './roster';
 function codeOf(employee:Pick<Employee,'code'>){return String(employee.code||'').replace(/^0+(?=\d)/,'');}
+const scheduleTimes=(schedule:string)=>schedule.match(/(?<!\d)(?:[01]\d|2[0-3]):[0-5]\d(?!\d)/g)||[];
+export function displaySchedule(schedule:string){const times=scheduleTimes(schedule);if(times.length===4)return times[0]+'–'+times[1]+' / '+times[2]+'–'+times[3];if(times.length===2)return times[0]+'–'+times[1];return schedule.trim()||'Horário não informado';}
 export function referenceSchedule(employee:Pick<Employee,'schedule'|'code'>){
- const times=employee.schedule.match(/(?<!\d)(?:[01]\d|2[0-3]):[0-5]\d(?!\d)/g)||[];
+ const times=scheduleTimes(employee.schedule);
  if(times.length!==4)return undefined;
  const points=times.map(clockMinutes);for(let i=1;i<4;i++)while(points[i]<=points[i-1])points[i]+=1440;
  const breakAfter=points[1]-points[0],breakMinutes=points[2]-points[1],daily=breakAfter+points[3]-points[2];
@@ -13,7 +15,7 @@ export function referenceSchedule(employee:Pick<Employee,'schedule'|'code'>){
 }
 export function specialSchedule(employee:Pick<Employee,'schedule'|'code'|'role'|'fixedWednesday'>){
  const role=(employee.role||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
- return employee.fixedWednesday===true||/APRENDIZ|ESTAGIARI/.test(role)||(employee.schedule.match(/(?<!\d)(?:[01]\d|2[0-3]):[0-5]\d(?!\d)/g)||[]).length===2||(referenceSchedule(employee)?.daily||Infinity)<=360;
+ return employee.fixedWednesday===true||/APRENDIZ|ESTAGIARI/.test(role)||scheduleTimes(employee.schedule).length===2||(referenceSchedule(employee)?.daily||Infinity)<=360;
 }
 export function commonReference(employees:Employee[]){
  if(!employees.length)return undefined;

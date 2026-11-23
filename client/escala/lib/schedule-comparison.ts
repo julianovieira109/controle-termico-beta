@@ -1,4 +1,4 @@
-import {referenceProposal,referenceSchedule,specialSchedule} from './planning-reference';
+import {displaySchedule,referenceProposal,referenceSchedule,specialSchedule} from './planning-reference';
 import {journeyText,isJourney,type Journey} from './journeys';
 import {availableForWork,type Employee} from './roster';
 import {validDay} from './business-date';
@@ -10,7 +10,7 @@ export function legalWeeklyLimit(date:string):40|42|44{
 export function legalNote(hours:40|42|44,date:string){
  const limit=legalWeeklyLimit(date);
  if(hours>limit)return `Indisponível nesta vigência: limite normal de ${limit}h semanais pela EC 141/2026.`;
- if(date>='2026-12-16'&&date<'2027-12-16'&&hours===42)return '42h/semana: a ampliação diária acima de 8h depende de convenção ou acordo coletivo, conforme EC 141/2026.';
+ if(date>='2026-12-16'&&date<'2027-12-16'&&hours===42)return '42h/semana: na ausência de acordo ou convenção coletiva até 15/12/2026, a cautelar do STF admite distribuição em 5 dias de até 8h24 durante a transição; conferir norma coletiva e atualizações aplicáveis.';
  if(hours>40)return 'Jornada distribuída em 5 dias: observar o regime de compensação aplicável.';
  return '';
 }
@@ -29,7 +29,7 @@ export function compareSchedules(employees:Employee[],date:string){
 export function comparisonCsv(rows:ReturnType<typeof compareSchedules>,date:string){
  const escape=(value:unknown)=>{let text=String(value??'');if(/^[=+@-]/.test(text))text="'"+text;return '"'+text.replaceAll('"','""')+'"';};
  const data=[['Status','Referência','Matrícula','Colaborador','Turno','Líder / coordenador vinculado','Horário atual','Carga semanal','Trabalho diário','Novo horário sugerido','Observação legal','Dias de trabalho','Dias de folga'],
- ...rows.flatMap(row=>row.options.map(option=>[option.allowed?'SUGESTÃO 5x2 — SEM APLICAÇÃO':'NÃO DISPONÍVEL NESTA VIGÊNCIA',date,row.employee.id,row.employee.name,row.employee.officialShift||row.employee.shift,row.employee.coordinatorName||'Sem vínculo informado',row.employee.schedule,option.hours+'h',option.hours===40?'8h':option.hours===42?'8h24':'8h48',option.text,option.legalNote,5,2]))];
+ ...rows.flatMap(row=>row.options.map(option=>[option.allowed?'SUGESTÃO 5x2 — SEM APLICAÇÃO':'NÃO DISPONÍVEL NESTA VIGÊNCIA',date,row.employee.id,row.employee.name,row.employee.officialShift||row.employee.shift,row.employee.coordinatorName||'Sem vínculo informado',displaySchedule(row.employee.schedule),option.hours+'h',option.hours===40?'8h':option.hours===42?'8h24':'8h48',option.text,option.legalNote,5,2]))];
  return '\uFEFF'+data.map(row=>row.map(escape).join(';')).join('\r\n');
 }
 function staleFutureOfficialJourney(employee:Employee,prior:Journey,date:string){

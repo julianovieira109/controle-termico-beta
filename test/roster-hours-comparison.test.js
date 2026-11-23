@@ -67,6 +67,7 @@ test('respeita vínculo na data, valida data e exporta três opções com texto 
  for(const hours of [40,42,44])assert.ok(csv.includes('"'+hours+'h"'));
  assert.ok(csv.includes('Responsável A'));
  assert.ok(csv.includes('SEM APLICAÇÃO'));
+ assert.ok(csv.includes('06:00–10:00 / 11:00–15:00'));
 });
 
 test('aplica cada uma das três cargas em todos os turnos mantendo referências individuais e dados oficiais',()=>{
@@ -105,6 +106,7 @@ test('EC 141 limita opções pela vigência e remove jornada futura obsoleta bas
  assert.equal(rules.legalWeeklyLimit('2026-12-15'),44);
  assert.equal(rules.legalWeeklyLimit('2026-12-16'),42);
  assert.equal(rules.legalWeeklyLimit('2027-12-16'),40);
+ assert.match(rules.legalNote(42,'2026-12-16'),/8h24/);
  assert.throws(()=>rules.applyComparisonHours({employees:[person('1')],overrides:[],history:[]},44,'2026-12-16'),/no máximo 42h/);
  const oldFuture={hours:40,option:1,start:'20:00',breakAfter:240,breakMinutes:60,effectiveDate:'2026-12-31'};
  const state={employees:[person('56',{code:'56',schedule:'22:00-00:00-01:00-06:00',shift:'3º',journeys:[oldFuture]})],overrides:[],history:[]};
