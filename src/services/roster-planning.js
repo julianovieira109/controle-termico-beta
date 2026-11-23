@@ -43,7 +43,6 @@ function project(rows,stored={}){
  });
  const overrides=employees.flatMap(employee=>(byOfficial.get(employee.officialEmployeeId)?.overrides||[]).map(o=>({...o,id:employee.id})));
  const detached=saved.employees.filter(employee=>!employees.some(e=>e.officialEmployeeId===employee.officialEmployeeId));
- const visibleDetached=[...new Map([...(stored.detached||[]).map(entry=>entry.employee),...detached].filter(employee=>!employees.some(e=>e.officialEmployeeId===employee.officialEmployeeId)).map(employee=>[employee.officialEmployeeId,employee])).values()];
  const state=rules.normalizeRoster({employees,overrides,history:saved.history||[],appliedImports:saved.appliedImports||[]});
  return {state,detached,pending:[...available.pending,...(stored.pending||[]).map(p=>({id:p.id,name:p.name,reason:p.reason}))]};
 }
