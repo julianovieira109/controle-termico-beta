@@ -54,6 +54,8 @@ router.get('/state',async(req,res,next)=>{try{
 router.put('/state',async(req,res,next)=>{
  let db;try{
   if(Buffer.byteLength(JSON.stringify(req.body))>3000000)throw service.fail('Planejamento maior que 3 MB.',413);
+  const requestedAction=String(req.body?.action||'');
+  if(/^(Simulador simples 5x2:|Jornada (?:40|42|44)h — opção|Rascunho de sugestão 5x2:)/.test(requestedAction))throw service.fail('O módulo de escala 5x2 é somente simulador. Sugestões não podem ser gravadas no planejamento nem alterar dados oficiais.',409);
   if(!Number.isInteger(req.body.version)||req.body.version<0)throw service.fail('Versão do planejamento inválida.');
   db=await pool.connect();await db.query('BEGIN');const scope=await unit(req,db,true),officialRows=await official(db,scope,true),current=await plan(db,scope,true);
   if(current.version!==req.body.version||service.officialVersion(officialRows)!==req.body.officialVersion)throw service.fail('O planejamento ou o cadastro Beta foi alterado. Recarregue antes de salvar.',409);
