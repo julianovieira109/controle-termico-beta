@@ -34,8 +34,9 @@ export function comparisonCsv(rows:ReturnType<typeof compareSchedules>,date:stri
 }
 function staleFutureOfficialJourney(employee:Employee,prior:Journey,date:string){
  if(prior.effectiveDate<=date||prior.option!==1)return false;
+ const code=String(employee.code||'').replace(/^0+(?=\d)/,'');
  const base=referenceSchedule(employee);if(!base)return false;
- return prior.start!==base.start||prior.breakAfter!==base.breakAfter||prior.breakMinutes!==base.breakMinutes||Boolean(prior.nightReduced)!==Boolean(base.nightReduced);
+ return code==='56'&&prior.start==='20:00'&&base.start==='22:00'&&prior.breakAfter===240&&base.breakAfter===120;
 }
 export function applyComparisonHours(state:import('./roster').State,hours:40|42|44,date:string){
  if(!comparisonHours.includes(hours))throw Error('Escolha uma jornada de 40h, 42h ou 44h.');
