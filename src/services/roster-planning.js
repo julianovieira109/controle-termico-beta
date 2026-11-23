@@ -21,7 +21,10 @@ function valid(state){
 }
 function eligible(rows){
  const groups=new Map(),pending=[];
- for(const row of rows){const id=registration(row.registration);if(!id){pending.push({id:row.id,name:row.full_name,reason:'Matrícula ausente ou fora do formato numérico de até 12 dígitos. Regularize no cadastro Beta.'});continue;}if(!groups.has(id))groups.set(id,[]);groups.get(id).push(row);}
+ for(const row of rows){
+  if(row.status!=='ATIVO')continue;
+  const id=registration(row.registration);if(!id){pending.push({id:row.id,name:row.full_name,reason:'Matrícula ausente ou fora do formato numérico de até 12 dígitos. Regularize no cadastro Beta.'});continue;}if(!groups.has(id))groups.set(id,[]);groups.get(id).push(row);
+ }
  const employees=[];
  for(const [id,group] of groups)if(group.length===1)employees.push({id,row:group[0]});else for(const row of group)pending.push({id:row.id,name:row.full_name,reason:'Matrícula ambígua na unidade (incluindo zeros à esquerda). Regularize no cadastro Beta.'});
  return {employees,pending};
@@ -42,7 +45,7 @@ function project(rows,stored={}){
  const detached=saved.employees.filter(employee=>!employees.some(e=>e.officialEmployeeId===employee.officialEmployeeId));
  const visibleDetached=[...new Map([...(stored.detached||[]).map(entry=>entry.employee),...detached].filter(employee=>!employees.some(e=>e.officialEmployeeId===employee.officialEmployeeId)).map(employee=>[employee.officialEmployeeId,employee])).values()];
  const state=rules.normalizeRoster({employees,overrides,history:saved.history||[],appliedImports:saved.appliedImports||[]});
- return {state,detached,pending:[...available.pending,...visibleDetached.map(e=>({id:e.id,name:e.name,reason:'Vínculo anterior não está disponível no cadastro desta unidade; planejamento preservado para conferência.'})),...(stored.pending||[]).map(p=>({id:p.id,name:p.name,reason:p.reason}))]};
+ return {state,detached,pending:[...available.pending,...(stored.pending||[]).map(p=>({id:p.id,name:p.name,reason:p.reason}))]};
 }
 function protect(next,before){
  valid(next);
