@@ -1,5 +1,14 @@
 # Escala 5x2 integrada ao Beta
 
+## Referência da escala original Senior — Beta.99
+
+A sugestão 5x2 usa como fonte de horário o relatório oficial **FPRE011.COL — Empregados por Escala**. As batidas do Cartão Ponto, os horários efetivamente realizados e os cálculos de ponto não definem o turno nem a jornada sugerida.
+
+Ao confirmar o FPRE011, o código Senior do turno continua vinculando o colaborador e o horário descrito no próprio relatório passa a sincronizar `shifts.description`, que é a referência protegida consumida pelo planejamento 5x2. Se o mesmo código aparecer com horários diferentes, incompletos ou inseguros no relatório, a sincronização é bloqueada para conferência; o sistema não escolhe nem completa horários.
+
+Relatórios históricos de escala não sobrescrevem essa referência automaticamente. O ponto permanece fonte apenas para conferência e indicadores de ponto; a geração/simulação 5x2 permanece separada.
+
+
 A área Menu principal → Escala 5x2 utiliza autenticação e filiais do Beta. A interface React foi adaptada do projeto entregue em `Projeto_Escala_5x2_Integracao_Controle_Termico_Beta.zip`; suas regras de calendário, jornadas, folgas e cobertura foram reaproveitadas. Não são publicados o backup recebido, os seeds pessoais, listas históricas nominativas ou credenciais do aplicativo original. Não se utiliza o banco D1 nem a autenticação Cloudflare do projeto original.
 
 ## Separação do cadastro oficial
