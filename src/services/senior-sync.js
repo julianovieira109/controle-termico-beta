@@ -61,9 +61,10 @@ function normalizeSeniorDay(day,{today=todaySaoPaulo()}={}){
   const scheduleDescription=clean(day?.horario?.descricao||day?.escala?.descricao);
   const situations=situationDescriptions(day);
   const incidents=incidentDescriptions(day);
-  const classificationText=[scheduleDescription,...situations,...incidents].join(" | ");
-  const explicit=NON_WORK_PATTERNS.find(([,pattern])=>pattern.test(classificationText));
-  const jornadaIncompleta=/JORNADA\s+INCOMPLETA/i.test(classificationText);
+  const officialClassificationText=[scheduleDescription,...situations].join(" | ");
+  const diagnosticText=[officialClassificationText,...incidents].join(" | ");
+  const explicit=NON_WORK_PATTERNS.find(([,pattern])=>pattern.test(officialClassificationText));
+  const jornadaIncompleta=/JORNADA\s+INCOMPLETA/i.test(diagnosticText);
 
   const reported=(Array.isArray(day?.marcacoes)?day.marcacoes:[])
     .map(item=>clean(item?.horaAcesso||item?.hora||item))
