@@ -7,9 +7,9 @@ const pool=require("../db/pool");
 const audit=require("../db/audit");
 const {authenticate,applyScope,requirePermission}=require("../middleware/auth");
 const {normalizeRegistration,normalizeSeniorEmployee,validatePayload}=require("../services/senior-sync");
+const {buildMonitorSnapshot}=require("../services/senior-monitor");
 
 const router=express.Router();
-router.use(authenticate,applyScope,requirePermission("imports.manage"));
 
 function forbidden(message){
   const error=new Error(message);
@@ -142,6 +142,204 @@ function zipStored(files){
   end.writeUInt16LE(0,20);
   return Buffer.concat([localBuffer,centralBuffer,end]);
 }
+
+async function writeSeniorPayload({client,userId,companyId,branchId,payload,matched,missing,source="SENIOR_API_READ_ONLY",monitor=false,monitorSummary=null}){
+  const fileName=monitor?`Senior Monitor - cálculo ${payload.calculationCode}`:`Senior API - cálculo ${payload.calculationCode}`;
+  const details={
+    source,
+    readOnly:true,
+    monitor:Boolean(monitor),
+    calculationCode:payload.calculationCode,
+    seniorCompanyNumber:payload.seniorCompanyNumber||null,
+    period:{start:payload.periodStart,end:payload.periodEnd},
+    periods:[{start:payload.periodStart,end:payload.periodEnd}],
+    employeesReceived:matched.length+missing.length,
+    employeesMatched:matched.length,
+    employeesMissing:missing.length,
+    ...(monitorSummary?{monitorSummary}:null)
+  };
+  const imported=await client.query(`
+    INSERT INTO employee_imports(
+      user_id,company_id,branch_id,import_type,file_name,total_found,total_created,total_updated,total_not_found,details
+    ) VALUES($1,$2,$3,'PONTO_SENIOR',$4,$5,0,$6,$7,$8::jsonb)
+    RETURNING id,created_at
+  `,[userId,companyId,branchId,fileName,matched.length+missing.length,matched.length,missing.length,JSON.stringify(details)]);
+  const importId=imported.rows[0].id;
+  const employeeIds=matched.map(item=>item.system.id);
+
+  const deleted=await client.query(`
+    DELETE FROM employee_point_days
+    WHERE employee_id=ANY($1::uuid[]) AND company_id=$2 AND branch_id=$3
+      AND work_date BETWEEN $4::date AND $5::date
+    RETURNING id
+  `,[employeeIds,companyId,branchId,payload.periodStart,payload.periodEnd]);
+
+  let savedDays=0,eligibleDays=0,reviewDays=0;
+  for(const {senior,system} of matched){
+    for(const day of senior.days){
+      if(day.date<payload.periodStart||day.date>payload.periodEnd)continue;
+      await client.query(`
+        INSERT INTO employee_point_days(
+          employee_id,import_id,company_id,branch_id,work_date,schedule_code,markings,point_state,occurrence,
+          eligible_for_automatic_rest,source_file,work_minutes,bh_negative_minutes,bh_positive_minutes,he_100_minutes,
+          absence_minutes,night_additional_minutes,travel_minutes,bh_source,bh_validated,imported_at
+        ) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,NOW())
+        ON CONFLICT(employee_id,work_date) DO UPDATE SET
+          import_id=EXCLUDED.import_id,company_id=EXCLUDED.company_id,branch_id=EXCLUDED.branch_id,
+          schedule_code=EXCLUDED.schedule_code,markings=EXCLUDED.markings,point_state=EXCLUDED.point_state,
+          occurrence=EXCLUDED.occurrence,eligible_for_automatic_rest=EXCLUDED.eligible_for_automatic_rest,
+          source_file=EXCLUDED.source_file,work_minutes=EXCLUDED.work_minutes,bh_negative_minutes=EXCLUDED.bh_negative_minutes,
+          bh_positive_minutes=EXCLUDED.bh_positive_minutes,he_100_minutes=EXCLUDED.he_100_minutes,
+          absence_minutes=EXCLUDED.absence_minutes,night_additional_minutes=EXCLUDED.night_additional_minutes,
+          travel_minutes=EXCLUDED.travel_minutes,bh_source=EXCLUDED.bh_source,bh_validated=EXCLUDED.bh_validated,imported_at=NOW()
+      `,[
+        system.id,importId,companyId,branchId,day.date,day.scheduleCode,JSON.stringify(day.markings),day.state,day.occurrence,
+        day.eligibleForAutomaticRest,fileName,day.workMinutes,day.bhNegativeMinutes,day.bhPositiveMinutes,day.he100Minutes,
+        day.absenceMinutes,day.nightAdditionalMinutes,day.travelMinutes,day.bhSource,day.bhValidated
+      ]);
+      savedDays++;
+      if(day.eligibleForAutomaticRest)eligibleDays++;
+      if(["REVIEW","NO_MARKINGS","FALTA"].includes(day.state))reviewDays++;
+    }
+  }
+  const postWrite={
+    source,savedDays,eligibleDays,reviewDays,replacedDays:deleted.rowCount||0,
+    missingEmployees:missing.map(item=>({registration:item.registration,name:item.name}))
+  };
+  await client.query(`UPDATE employee_imports SET details=details||$2::jsonb WHERE id=$1`,[importId,JSON.stringify({postWriteAudit:postWrite})]);
+  return {importId,createdAt:imported.rows[0].created_at,savedDays,eligibleDays,reviewDays,replacedDays:deleted.rowCount||0};
+}
+
+async function loadMonitorByToken(token){
+  if(!/^[0-9a-f-]{36}$/i.test(String(token||"")))return null;
+  const result=await pool.query(`
+    SELECT id,user_id,company_id,branch_id,active,token_id,schedule_hours,last_summary
+    FROM senior_monitor_configs
+    WHERE token_id=$1::uuid AND active=TRUE
+    LIMIT 1
+  `,[token]);
+  return result.rows[0]||null;
+}
+
+router.post("/monitor/ingest",async(req,res,next)=>{
+  const client=await pool.connect();
+  try{
+    const token=String(req.headers["x-senior-monitor-token"]||"").trim();
+    const config=await loadMonitorByToken(token);
+    if(!config)return res.status(401).json({error:"Monitor Senior não autorizado ou desativado."});
+
+    if(req.body?.error){
+      const errorMessage=String(req.body.error||"Falha na leitura da Senior.").slice(0,2000);
+      await pool.query(`
+        UPDATE senior_monitor_configs
+        SET last_run_at=NOW(),last_status='ERROR',last_error=$2,updated_at=NOW()
+        WHERE id=$1
+      `,[config.id,errorMessage]);
+      return res.status(202).json({success:false,status:"ERROR"});
+    }
+
+    const payload=validatePayload(req.body?.payload||{});
+    const employees=normalizeEmployees(payload);
+    const {matched,missing}=await matchEmployees(config.company_id,config.branch_id,employees);
+    if(!matched.length)throw Object.assign(new Error("Nenhuma matrícula da leitura automática foi localizada na filial configurada."),{status:409});
+
+    const monitorSummary=buildMonitorSnapshot(matched.map(item=>item.senior),config.last_summary||{});
+    await client.query("BEGIN");
+    const write=await writeSeniorPayload({
+      client,userId:config.user_id,companyId:config.company_id,branchId:config.branch_id,
+      payload,matched,missing,source:"SENIOR_API_READ_ONLY",monitor:true,monitorSummary
+    });
+    await client.query(`
+      UPDATE senior_monitor_configs
+      SET last_run_at=NOW(),last_success_at=NOW(),last_status='OK',last_error=NULL,last_summary=$2::jsonb,updated_at=NOW()
+      WHERE id=$1
+    `,[config.id,JSON.stringify(monitorSummary)]);
+    await client.query("COMMIT");
+
+    await audit({user:{sub:config.user_id},ip:req.ip},"AUTO_SYNC_SENIOR_API","employee_point_days",write.importId,{
+      companyId:config.company_id,branchId:config.branch_id,calculationCode:payload.calculationCode,
+      employees:matched.length,missing:missing.length,savedDays:write.savedDays,
+      newIssues:monitorSummary.newIssueCount,changedDays:monitorSummary.changedDayCount,readOnlySource:true
+    });
+
+    res.json({
+      success:true,status:"OK",employees:matched.length,missing:missing.length,
+      savedDays:write.savedDays,newIssues:monitorSummary.newIssueCount,
+      changedDays:monitorSummary.changedDayCount,currentIssues:monitorSummary.currentIssueCount
+    });
+  }catch(error){
+    try{await client.query("ROLLBACK");}catch{}
+    const token=String(req.headers["x-senior-monitor-token"]||"").trim();
+    try{
+      const config=await loadMonitorByToken(token);
+      if(config)await pool.query(`
+        UPDATE senior_monitor_configs
+        SET last_run_at=NOW(),last_status='ERROR',last_error=$2,updated_at=NOW()
+        WHERE id=$1
+      `,[config.id,String(error.message||"Erro no monitor.").slice(0,2000)]);
+    }catch{}
+    if(error.status)return res.status(error.status).json({error:error.message});
+    next(error);
+  }finally{
+    client.release();
+  }
+});
+
+router.use(authenticate,applyScope,requirePermission("imports.manage"));
+
+router.get("/monitor-config",async(req,res,next)=>{
+  try{
+    const companyId=String(req.query.companyId||"").trim();
+    const branchId=String(req.query.branchId||"").trim();
+    if(!companyId||!branchId)return res.status(400).json({error:"Informe empresa e filial."});
+    assertScope(req,companyId,branchId);
+    const result=await pool.query(`
+      SELECT active,schedule_hours,last_run_at,last_success_at,last_status,last_error,last_summary,updated_at
+      FROM senior_monitor_configs
+      WHERE user_id=$1 AND company_id=$2 AND branch_id=$3
+      LIMIT 1
+    `,[req.user.sub,companyId,branchId]);
+    res.json({configured:Boolean(result.rows[0]),config:result.rows[0]||{
+      active:false,schedule_hours:[0,2,4,6,8,10,12,14,16,18,20,22],last_summary:{}
+    }});
+  }catch(error){next(error);}
+});
+
+router.post("/monitor-config",async(req,res,next)=>{
+  try{
+    const companyId=String(req.body?.companyId||"").trim();
+    const branchId=String(req.body?.branchId||"").trim();
+    const active=req.body?.active===true;
+    if(!companyId||!branchId)return res.status(400).json({error:"Selecione empresa e filial."});
+    assertScope(req,companyId,branchId);
+    const scope=await scopeInfo(companyId,branchId);
+    if(!scope)return res.status(404).json({error:"Empresa ou filial não localizada."});
+    const hours=[0,2,4,6,8,10,12,14,16,18,20,22];
+
+    const result=await pool.query(`
+      INSERT INTO senior_monitor_configs(user_id,company_id,branch_id,active,token_id,schedule_hours,updated_at)
+      VALUES($1,$2,$3,$4,gen_random_uuid(),$5::smallint[],NOW())
+      ON CONFLICT(user_id,company_id,branch_id) DO UPDATE SET
+        active=EXCLUDED.active,
+        token_id=gen_random_uuid(),
+        schedule_hours=EXCLUDED.schedule_hours,
+        last_error=NULL,
+        updated_at=NOW()
+      RETURNING active,token_id,schedule_hours,last_run_at,last_success_at,last_status,last_error,last_summary
+    `,[req.user.sub,companyId,branchId,active,hours]);
+    await audit(req,active?"ENABLE_SENIOR_MONITOR":"DISABLE_SENIOR_MONITOR","senior_monitor_configs",null,{
+      companyId,branchId,scheduleHours:hours,readOnlySenior:true
+    });
+    res.json({
+      success:true,
+      active:result.rows[0].active,
+      monitorToken:active?result.rows[0].token_id:null,
+      scheduleHours:result.rows[0].schedule_hours,
+      companyId,branchId,
+      message:active?"Monitor Senior 24h ativado a cada 2 horas.":"Monitor Senior desativado."
+    });
+  }catch(error){next(error);}
+});
 
 router.get("/status",async(req,res,next)=>{
   try{
