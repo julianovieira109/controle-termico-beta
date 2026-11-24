@@ -54,6 +54,14 @@ async function postMonitorResult(config,body){
   return data;
 }
 
+function currentDateSaoPaulo(){
+  const parts=new Intl.DateTimeFormat("en-CA",{
+    timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(new Date());
+  const get=type=>parts.find(part=>part.type===type)?.value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 async function runMonitor(){
   const {seniorMonitor}=await chrome.storage.local.get("seniorMonitor");
   if(!seniorMonitor?.active||!seniorMonitor?.monitorToken){
@@ -64,6 +72,14 @@ async function runMonitor(){
     const collected=await collectSenior();
     if(!collected?.ok){
       const error=collected?.error||"Falha na leitura automática da Senior.";
+      try{await postMonitorResult(seniorMonitor,{error});}catch{}
+      const result={ok:false,error,startedAt,finishedAt:new Date().toISOString()};
+      await chrome.storage.local.set({seniorMonitorLast:result});
+      return result;
+    }
+    const today=currentDateSaoPaulo();
+    if(today<collected.payload.periodStart||today>collected.payload.periodEnd){
+      const error=`A competência aberta na Senior (${collected.payload.periodStart} a ${collected.payload.periodEnd}) não inclui o dia atual (${today}). Selecione a competência atual na Senior.`;
       try{await postMonitorResult(seniorMonitor,{error});}catch{}
       const result={ok:false,error,startedAt,finishedAt:new Date().toISOString()};
       await chrome.storage.local.set({seniorMonitorLast:result});
