@@ -274,12 +274,12 @@ async function downloadSeniorConnector(){
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
     link.href=url;
-    link.download="Controle-Termico-Conector-Senior-Beta109.zip";
+    link.download="Controle-Termico-Conector-Senior-Beta110.zip";
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),2000);
-    seniorSyncSetStatus("Conector baixado. Extraia o ZIP, carregue a pasta em edge://extensions e depois atualize esta página.","success");
+    seniorSyncSetStatus("Conector 24h baixado. Substitua/recarregue a extensão em edge://extensions e depois atualize esta página.","success");
   }catch(error){
     seniorSyncSetStatus(error.message,"error");
   }finally{
