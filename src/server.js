@@ -40,7 +40,7 @@ app.use("/api/imports",require("./routes/imports"));
 app.use("/api/reconciliation",require("./routes/reconciliation"));
 app.use("/api/catalogs",require("./routes/catalogs"));
 app.use("/api/settings",require("./routes/settings"));
-app.use("/api/reports",require("./routes/reports"));
+app.use("/api/reports",require("./routes/reports"));\napp.use("/api/senior-sync",require("./routes/senior-sync"));
 app.use("/api/calendar",require("./routes/calendar"));
 app.use("/api/system",require("./routes/system"));
 
