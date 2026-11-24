@@ -1,7 +1,7 @@
 "use strict";
 
 function announce(){
-  window.postMessage({type:"CT_SENIOR_CONNECTOR_READY",version:"1.1.0"},"*");
+  window.postMessage({type:"CT_SENIOR_CONNECTOR_READY",version:"1.1.1"},"*");
 }
 announce();
 
