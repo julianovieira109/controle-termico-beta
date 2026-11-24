@@ -30,6 +30,9 @@ async function setImportModule(tab=activeImportModule){
     if(target==="point"){
       preparePointImportSelectors();
       await loadPointImportHistory();
+    }else if(target==="senior"){
+      if(typeof window.prepareSeniorSync!=="function")throw new Error("Módulo Senior Direto não carregado.");
+      await window.prepareSeniorSync();
     }else if(target==="employees"){
       await preparePdfImport({scopeLoaded:true});
     }else if(target==="bh"){
