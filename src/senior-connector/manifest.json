@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Controle Térmico — Conector Senior",
+  "version": "1.0.0",
+  "description": "Lê o Gestão do Ponto Senior pela sessão já autenticada e entrega somente dados de ponto ao Controle Térmico Beta.",
+  "permissions": ["tabs", "scripting"],
+  "host_permissions": ["https://*.seniorcloud.com.br/*"],
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [
+    {
+      "matches": ["https://controle-termico-beta.onrender.com/*", "http://localhost/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
