@@ -1,8 +1,10 @@
 "use strict";
 
 let seniorConnectorReady=false;
+let seniorConnectorVersion="";
 let seniorSyncPayload=null;
 let seniorSyncRequest=null;
+const seniorConnectorRequests=new Map();
 
 function seniorSyncSetStatus(message,type=""){
   const el=$("senior-sync-status");
@@ -14,8 +16,11 @@ function seniorSyncSetStatus(message,type=""){
 function seniorSyncUpdateConnectorState(){
   const badge=$("senior-connector-state");
   if(!badge)return;
-  badge.textContent=seniorConnectorReady?"Conector detectado":"Conector não detectado";
-  badge.className=`point-import-badge ${seniorConnectorReady?"":"warning"}`;
+  const monitorReady=seniorConnectorReady&&seniorConnectorVersion==="1.1.0";
+  badge.textContent=!seniorConnectorReady
+    ?"Conector não detectado"
+    :monitorReady?"Conector 24h detectado":"Atualização do conector necessária";
+  badge.className=`point-import-badge ${monitorReady?"":"warning"}`;
 }
 
 function seniorSyncFillBranches(){
@@ -27,6 +32,7 @@ function seniorSyncFillBranches(){
     .map(branch=>`<option value="${escapeHtml(branch.id)}">${escapeHtml(branch.name)}</option>`).join("");
   if(allowed.length===1)select.value=allowed[0].id;
   loadSeniorSyncHistory();
+  loadSeniorMonitorConfig();
 }
 
 function seniorSyncFillCompanies(){
@@ -96,16 +102,163 @@ function requestSeniorCollection(){
   });
 }
 
+function requestSeniorConnectorMessage(requestType,resultType,payload={},timeoutMs=120000){
+  return new Promise((resolve,reject)=>{
+    const requestId=(crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`);
+    const timer=setTimeout(()=>{
+      seniorConnectorRequests.delete(requestId);
+      reject(new Error("O Conector Senior não respondeu ao comando do monitor."));
+    },timeoutMs);
+    seniorConnectorRequests.set(requestId,{
+      resultType,
+      resolve:result=>{clearTimeout(timer);seniorConnectorRequests.delete(requestId);resolve(result);}
+    });
+    window.postMessage({type:requestType,requestId,...payload},"*");
+  });
+}
+
+function monitorDateTime(value){
+  if(!value)return "—";
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?"—":date.toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+}
+
+function renderSeniorMonitor(serverData={},extensionData=null){
+  const config=serverData?.config||{};
+  const active=config.active===true;
+  const last=config.last_summary||{};
+  if($("senior-monitor-state")){
+    $("senior-monitor-state").textContent=active
+      ?(config.last_status==="ERROR"?"Falha de conexão":"Monitor 24h ativo")
+      :"Monitor desativado";
+  }
+  if($("senior-monitor-last"))$("senior-monitor-last").textContent=monitorDateTime(config.last_run_at);
+  if($("senior-monitor-next"))$("senior-monitor-next").textContent=extensionData?.nextRunAt
+    ?monitorDateTime(extensionData.nextRunAt):active?"Aguardando conector":"—";
+  if($("senior-monitor-new"))$("senior-monitor-new").textContent=String(last.newIssueCount||0);
+  if($("senior-monitor-current"))$("senior-monitor-current").textContent=String(last.currentIssueCount||0);
+  if($("senior-monitor-changed"))$("senior-monitor-changed").textContent=String(last.changedDayCount||0);
+  if($("senior-monitor-error")){
+    $("senior-monitor-error").textContent=config.last_error||"";
+    $("senior-monitor-error").hidden=!config.last_error;
+  }
+  if($("senior-monitor-enable"))$("senior-monitor-enable").hidden=active;
+  if($("senior-monitor-disable"))$("senior-monitor-disable").hidden=!active;
+  if($("senior-monitor-run"))$("senior-monitor-run").disabled=!active;
+  if($("senior-monitor-schedule"))$("senior-monitor-schedule").textContent=
+    "00h · 02h · 04h · 06h · 08h · 10h · 12h · 14h · 16h · 18h · 20h · 22h";
+}
+
+async function loadSeniorMonitorConfig(){
+  const companyId=$("senior-sync-company")?.value||"";
+  const branchId=$("senior-sync-branch")?.value||"";
+  if(!companyId||!branchId){
+    renderSeniorMonitor({config:{active:false,last_summary:{}}});
+    return;
+  }
+  try{
+    const server=await api(`/api/senior-sync/monitor-config?companyId=${encodeURIComponent(companyId)}&branchId=${encodeURIComponent(branchId)}`);
+    let extensionStatus=null;
+    if(seniorConnectorReady&&seniorConnectorVersion==="1.1.0"){
+      try{
+        const ext=await requestSeniorConnectorMessage("CT_SENIOR_MONITOR_STATUS_REQUEST","CT_SENIOR_MONITOR_STATUS_RESULT",{},8000);
+        if(ext?.ok)extensionStatus=ext.status;
+      }catch{}
+    }
+    renderSeniorMonitor(server,extensionStatus);
+  }catch(error){
+    seniorSyncSetStatus(error.message||"Não foi possível consultar o monitor Senior.","error");
+  }
+}
+
+async function setSeniorMonitor(active){
+  const companyId=$("senior-sync-company")?.value||"";
+  const branchId=$("senior-sync-branch")?.value||"";
+  if(!companyId||!branchId){
+    seniorSyncSetStatus("Selecione empresa e filial antes de configurar o monitor.","error");
+    return;
+  }
+  if(active&&(!seniorConnectorReady||seniorConnectorVersion!=="1.1.0")){
+    seniorSyncSetStatus("Atualize o Conector Senior para a versão 24h antes de ativar o monitor.","error");
+    return;
+  }
+  const button=active?$("senior-monitor-enable"):$("senior-monitor-disable");
+  try{
+    setButtonLoading(button,true,active?"Ativando":"Desativando");
+    const result=await api("/api/senior-sync/monitor-config",{
+      method:"POST",
+      body:JSON.stringify({companyId,branchId,active})
+    });
+    const ext=await requestSeniorConnectorMessage(
+      "CT_SENIOR_MONITOR_CONFIG_REQUEST",
+      "CT_SENIOR_MONITOR_CONFIG_RESULT",
+      {config:{
+        active,
+        monitorToken:result.monitorToken||"",
+        baseUrl:location.origin
+      }},
+      15000
+    );
+    if(!ext?.ok)throw new Error(ext?.error||"O Edge não confirmou a configuração do monitor.");
+    seniorSyncSetStatus(result.message||"Configuração do monitor atualizada.","success");
+    await loadSeniorMonitorConfig();
+  }catch(error){
+    if(active){
+      try{
+        await api("/api/senior-sync/monitor-config",{
+          method:"POST",
+          body:JSON.stringify({companyId,branchId,active:false})
+        });
+      }catch{}
+    }
+    seniorSyncSetStatus(error.message||"Não foi possível configurar o monitor Senior.","error");
+  }finally{
+    setButtonLoading(button,false);
+  }
+}
+
+async function runSeniorMonitorNow(){
+  const button=$("senior-monitor-run");
+  try{
+    setButtonLoading(button,true,"Verificando");
+    seniorSyncSetStatus("Executando uma leitura automática agora...");
+    const result=await requestSeniorConnectorMessage(
+      "CT_SENIOR_MONITOR_RUN_REQUEST",
+      "CT_SENIOR_MONITOR_RUN_RESULT",
+      {},
+      180000
+    );
+    if(!result?.ok)throw new Error(result?.error||"A verificação automática falhou.");
+    seniorSyncSetStatus(`Monitor atualizado: ${result.server?.newIssues||0} nova(s) pendência(s) e ${result.server?.changedDays||0} dia(s) alterado(s).`,"success");
+    await loadSeniorMonitorConfig();
+    await loadSeniorSyncHistory();
+    if(typeof refreshImportRelatedViews==="function")await refreshImportRelatedViews();
+  }catch(error){
+    seniorSyncSetStatus(error.message||"Falha na verificação automática.","error");
+    await loadSeniorMonitorConfig();
+  }finally{
+    setButtonLoading(button,false);
+  }
+}
+
+
 window.addEventListener("message",event=>{
   if(event.source!==window)return;
   const message=event.data||{};
   if(message.type==="CT_SENIOR_CONNECTOR_READY"){
     seniorConnectorReady=true;
+    seniorConnectorVersion=String(message.version||"");
     seniorSyncUpdateConnectorState();
+    loadSeniorMonitorConfig();
     return;
   }
   if(message.type==="CT_SENIOR_COLLECT_RESULT"&&seniorSyncRequest&&message.requestId===seniorSyncRequest.requestId){
     seniorSyncRequest.resolve(message.result||{ok:false,error:"Resposta vazia do conector."});
+    return;
+  }
+  const pending=seniorConnectorRequests.get(message.requestId);
+  if(pending&&message.type===pending.resultType){
+    pending.resolve(message.result||{ok:false,error:"Resposta vazia do conector."});
   }
 });
 
@@ -203,12 +356,17 @@ async function prepareSeniorSync(){
   seniorSyncUpdateConnectorState();
   window.postMessage({type:"CT_SENIOR_CONNECTOR_PING"},"*");
   await loadSeniorSyncHistory();
+  await loadSeniorMonitorConfig();
 }
 
 window.prepareSeniorSync=prepareSeniorSync;
 
 if($("senior-sync-company"))$("senior-sync-company").onchange=seniorSyncFillBranches;
-if($("senior-sync-branch"))$("senior-sync-branch").onchange=loadSeniorSyncHistory;
+if($("senior-sync-branch"))$("senior-sync-branch").onchange=()=>{loadSeniorSyncHistory();loadSeniorMonitorConfig();};
 if($("senior-connector-download"))$("senior-connector-download").onclick=downloadSeniorConnector;
 if($("senior-sync-read"))$("senior-sync-read").onclick=readSeniorAndPreview;
 if($("senior-sync-confirm"))$("senior-sync-confirm").onclick=confirmSeniorSync;
+
+if($("senior-monitor-enable"))$("senior-monitor-enable").onclick=()=>setSeniorMonitor(true);
+if($("senior-monitor-disable"))$("senior-monitor-disable").onclick=()=>setSeniorMonitor(false);
+if($("senior-monitor-run"))$("senior-monitor-run").onclick=runSeniorMonitorNow;
