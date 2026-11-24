@@ -186,6 +186,28 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Beta.110: monitor automático da Senior. Guarda somente a configuração
+-- do Controle Térmico; credenciais e sessão da Senior permanecem no Edge.
+CREATE TABLE IF NOT EXISTS senior_monitor_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  token_id UUID NOT NULL DEFAULT gen_random_uuid(),
+  schedule_hours SMALLINT[] NOT NULL DEFAULT ARRAY[8,10,12,14,16,18]::SMALLINT[],
+  last_run_at TIMESTAMPTZ,
+  last_success_at TIMESTAMPTZ,
+  last_status VARCHAR(30),
+  last_error TEXT,
+  last_summary JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id,company_id,branch_id)
+);
+CREATE INDEX IF NOT EXISTS idx_senior_monitor_scope
+  ON senior_monitor_configs(company_id,branch_id,active);
+
 CREATE TABLE IF NOT EXISTS user_branches (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
