@@ -142,9 +142,44 @@ chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{
   }
 });
 
+function isTransientSeniorFrameError(error){
+  const message=String(error?.message||error||"");
+  return /Frame with ID .* was removed|No frame with id|The frame was removed|No tab with id|tab was closed|Cannot access contents of the page/i.test(message);
+}
+
+function delay(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+
+async function findReadySeniorTab(){
+  for(let attempt=0;attempt<12;attempt++){
+    const tabs=await chrome.tabs.query({});
+    const seniorTab=tabs.find(tab=>/^https:\/\/[^/]*seniorcloud\.com\.br(?::\d+)?\/gestaoponto-frontend\//i.test(tab.url||""));
+    if(seniorTab?.id){
+      try{
+        const current=await chrome.tabs.get(seniorTab.id);
+        if(current?.status==="complete")return current;
+      }catch{}
+    }
+    await delay(500);
+  }
+  return null;
+}
+
 async function collectSenior(){
-  const tabs=await chrome.tabs.query({});
-  const seniorTab=tabs.find(tab=>/^https:\/\/[^/]*seniorcloud\.com\.br(?::\d+)?\/gestaoponto-frontend\//i.test(tab.url||""));
+  let lastError=null;
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      return await collectSeniorOnce();
+    }catch(error){
+      lastError=error;
+      if(!isTransientSeniorFrameError(error)||attempt===2)throw error;
+      await delay(1200*(attempt+1));
+    }
+  }
+  throw lastError||new Error("Falha temporária ao acessar a aba da Senior.");
+}
+
+async function collectSeniorOnce(){
+  const seniorTab=await findReadySeniorTab();
   if(!seniorTab?.id){
     return {ok:false,error:"Abra o Gestão do Ponto Senior em uma aba do Edge e mantenha a sessão autenticada."};
   }
