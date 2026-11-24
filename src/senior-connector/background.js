@@ -1,11 +1,129 @@
 "use strict";
 
+const MONITOR_ALARM="ct-senior-monitor-2h";
+
+function nextEvenHourTimestamp(now=new Date()){
+  const next=new Date(now);
+  next.setMinutes(0,0,0);
+  let hour=next.getHours();
+  if(now.getMinutes()>0||now.getSeconds()>0||now.getMilliseconds()>0)hour+=1;
+  if(hour%2!==0)hour+=1;
+  if(hour>=24){
+    next.setDate(next.getDate()+1);
+    hour=0;
+  }
+  next.setHours(hour,0,0,0);
+  if(next.getTime()<=now.getTime())next.setHours(next.getHours()+2);
+  return next.getTime();
+}
+
+async function scheduleMonitor(){
+  await chrome.alarms.clear(MONITOR_ALARM);
+  const {seniorMonitor}=await chrome.storage.local.get("seniorMonitor");
+  if(!seniorMonitor?.active||!seniorMonitor?.monitorToken)return;
+  await chrome.alarms.create(MONITOR_ALARM,{
+    when:nextEvenHourTimestamp(),
+    periodInMinutes:120
+  });
+}
+
+async function monitorStatus(){
+  const {seniorMonitor,seniorMonitorLast}=await chrome.storage.local.get(["seniorMonitor","seniorMonitorLast"]);
+  const alarm=await chrome.alarms.get(MONITOR_ALARM);
+  return {
+    active:Boolean(seniorMonitor?.active),
+    nextRunAt:alarm?.scheduledTime||null,
+    lastLocalRun:seniorMonitorLast||null
+  };
+}
+
+async function postMonitorResult(config,body){
+  const baseUrl=String(config?.baseUrl||"https://controle-termico-beta.onrender.com").replace(/\/$/,"");
+  const response=await fetch(baseUrl+"/api/senior-sync/monitor/ingest",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "x-senior-monitor-token":config.monitorToken
+    },
+    body:JSON.stringify(body)
+  });
+  const raw=await response.text();
+  let data={};
+  try{data=raw?JSON.parse(raw):{};}catch{data={};}
+  if(!response.ok)throw new Error(data.error||"Controle Térmico recusou a leitura automática.");
+  return data;
+}
+
+async function runMonitor(){
+  const {seniorMonitor}=await chrome.storage.local.get("seniorMonitor");
+  if(!seniorMonitor?.active||!seniorMonitor?.monitorToken){
+    return {ok:false,error:"Monitor Senior não está configurado."};
+  }
+  const startedAt=new Date().toISOString();
+  try{
+    const collected=await collectSenior();
+    if(!collected?.ok){
+      const error=collected?.error||"Falha na leitura automática da Senior.";
+      try{await postMonitorResult(seniorMonitor,{error});}catch{}
+      const result={ok:false,error,startedAt,finishedAt:new Date().toISOString()};
+      await chrome.storage.local.set({seniorMonitorLast:result});
+      return result;
+    }
+    const server=await postMonitorResult(seniorMonitor,{payload:collected.payload});
+    const result={ok:true,server,startedAt,finishedAt:new Date().toISOString()};
+    await chrome.storage.local.set({seniorMonitorLast:result});
+    return result;
+  }catch(error){
+    const message=error?.message||String(error);
+    try{await postMonitorResult(seniorMonitor,{error:message});}catch{}
+    const result={ok:false,error:message,startedAt,finishedAt:new Date().toISOString()};
+    await chrome.storage.local.set({seniorMonitorLast:result});
+    return result;
+  }
+}
+
+chrome.runtime.onInstalled.addListener(()=>{scheduleMonitor().catch(()=>{});});
+chrome.runtime.onStartup.addListener(()=>{scheduleMonitor().catch(()=>{});});
+chrome.alarms.onAlarm.addListener(alarm=>{
+  if(alarm.name===MONITOR_ALARM)runMonitor().catch(()=>{});
+});
+
 chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{
-  if(message?.type!=="CT_SENIOR_COLLECT")return;
-  collectSenior()
-    .then(result=>sendResponse(result))
-    .catch(error=>sendResponse({ok:false,error:error?.message||String(error)}));
-  return true;
+  if(message?.type==="CT_SENIOR_COLLECT"){
+    collectSenior()
+      .then(result=>sendResponse(result))
+      .catch(error=>sendResponse({ok:false,error:error?.message||String(error)}));
+    return true;
+  }
+  if(message?.type==="CT_SENIOR_MONITOR_CONFIGURE"){
+    (async()=>{
+      const config=message.config||{};
+      if(config.active){
+        await chrome.storage.local.set({seniorMonitor:{
+          active:true,
+          monitorToken:String(config.monitorToken||""),
+          baseUrl:String(config.baseUrl||"https://controle-termico-beta.onrender.com")
+        }});
+      }else{
+        await chrome.storage.local.remove(["seniorMonitor","seniorMonitorLast"]);
+      }
+      await scheduleMonitor();
+      sendResponse({ok:true,status:await monitorStatus()});
+    })().catch(error=>sendResponse({ok:false,error:error?.message||String(error)}));
+    return true;
+  }
+  if(message?.type==="CT_SENIOR_MONITOR_STATUS"){
+    monitorStatus()
+      .then(status=>sendResponse({ok:true,status}))
+      .catch(error=>sendResponse({ok:false,error:error?.message||String(error)}));
+    return true;
+  }
+  if(message?.type==="CT_SENIOR_MONITOR_RUN"){
+    runMonitor()
+      .then(result=>sendResponse(result))
+      .catch(error=>sendResponse({ok:false,error:error?.message||String(error)}));
+    return true;
+  }
 });
 
 async function collectSenior(){
