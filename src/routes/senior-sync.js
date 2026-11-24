@@ -52,7 +52,7 @@ async function matchEmployees(companyId,branchId,seniorEmployees){
   const result=await pool.query(`
     SELECT id,registration,full_name,status
     FROM employees
-    WHERE company_id=$1 AND branch_id=$2
+    WHERE company_id=$1 AND branch_id=$2 AND status='ATIVO'
       AND REGEXP_REPLACE(COALESCE(registration,''),'^0+','','g')=ANY($3::text[])
   `,[companyId,branchId,registrations]);
   const byRegistration=new Map(result.rows.map(row=>[normalizeRegistration(row.registration),row]));
