@@ -944,6 +944,40 @@
       </div>
       <p id="imports-feedback" class="feedback" role="status"></p>
       <button type="button" class="secondary" id="imports-retry" hidden>Tentar novamente</button>
+        <div id="senior-sync-panel" class="panel no-print point-import-panel" role="tabpanel" aria-labelledby="imports-senior-tab" hidden>
+          <div class="panel-head">
+            <div>
+              <h3>Sincronização direta com a Senior</h3>
+              <p class="hint">Lê a competência aberta no Gestão do Ponto usando a sessão já autenticada no Edge. A Senior é consultada somente por GET; senha, cookie e token não são enviados ao Controle Térmico.</p>
+            </div>
+            <span id="senior-connector-state" class="point-import-badge warning">Conector não detectado</span>
+          </div>
+          <div class="point-import-steps"><span><b>1</b> Conecte</span><span><b>2</b> Confira</span><span><b>3</b> Confirme</span></div>
+          <div class="point-review-lock-note">
+            <strong>Fonte oficial: Senior · modo somente leitura</strong>
+            <span>O conector apenas coleta matrícula, nome, data, escala, horário, marcações, situações, incidentes e afastamentos. Nenhuma marcação, cálculo, assinatura, BH ou cadastro é alterado na Senior.</span>
+          </div>
+          <div class="form-grid">
+            <label>Empresa<select id="senior-sync-company"></select></label>
+            <label>Filial<select id="senior-sync-branch"></select></label>
+            <div class="full actions">
+              <button type="button" class="secondary" id="senior-connector-download">Baixar Conector Senior</button>
+              <button type="button" class="primary" id="senior-sync-read">Ler Senior e conferir</button>
+            </div>
+            <p class="hint full">Primeiro uso: baixe o ZIP, extraia, abra <strong>edge://extensions</strong>, ative o modo de desenvolvedor e use <strong>Carregar sem compactação</strong>. Depois mantenha a Senior aberta e logada e atualize esta página.</p>
+            <p id="senior-sync-status" class="feedback full" role="status" aria-live="polite"></p>
+          </div>
+          <div id="senior-sync-preview" hidden>
+            <div class="panel-head"><div><h3>Prévia da sincronização</h3><p id="senior-sync-period" class="hint"></p></div></div>
+            <div id="senior-sync-summary" class="cards"></div>
+            <div id="senior-sync-missing"></div>
+            <div class="actions"><button type="button" class="primary" id="senior-sync-confirm">Confirmar sincronização</button></div>
+          </div>
+          <details>
+            <summary>Histórico de sincronizações diretas</summary>
+            <div id="senior-sync-history"><p class="hint">Selecione empresa e filial para consultar o histórico.</p></div>
+          </details>
+        </div>
         <div class="panel no-print" id="bh-import-panel" role="tabpanel" aria-labelledby="imports-bh-tab" hidden>
           <h3>Banco de Horas Senior</h3><p>Importe o Analítico para conferir movimentos ou o Sintético para conferir saldo na data. A leitura usa as datas de cada bloco do arquivo, sem exigir semana, mês ou fechamento. Os cortes são escolhidos depois nos relatórios gerenciais. O BH não altera o ponto nem libera divergências de horas trabalhadas.</p>
           <div class="bh-controls"><label>Empresa<select id="bh-company"></select></label><label>Filial<select id="bh-branch"></select></label><label>PDF de BH (até 32 MB)<input id="bh-file" type="file" accept="application/pdf"></label><button id="bh-read" type="button">Ler e conferir BH</button></div>
