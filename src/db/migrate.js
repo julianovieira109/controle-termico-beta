@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS senior_monitor_configs (
   branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
   active BOOLEAN NOT NULL DEFAULT TRUE,
   token_id UUID NOT NULL DEFAULT gen_random_uuid(),
-  schedule_hours SMALLINT[] NOT NULL DEFAULT ARRAY[8,10,12,14,16,18]::SMALLINT[],
+  schedule_hours SMALLINT[] NOT NULL DEFAULT ARRAY[0,2,4,6,8,10,12,14,16,18,20,22]::SMALLINT[],
   last_run_at TIMESTAMPTZ,
   last_success_at TIMESTAMPTZ,
   last_status VARCHAR(30),
