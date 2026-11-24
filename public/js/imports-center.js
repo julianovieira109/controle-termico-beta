@@ -10,7 +10,7 @@ async function setImportModule(tab=activeImportModule){
     toast("Seu perfil não possui permissão para importar relatórios.","error");
     return;
   }
-  const panels={bh:"bh-import-panel",point:"imports-point-panel",employees:"employee-import-area",shifts:"shift-import-panel"};
+  const panels={bh:"bh-import-panel",point:"imports-point-panel",senior:"senior-sync-panel",employees:"employee-import-area",shifts:"shift-import-panel"};
   const target=Object.hasOwn(panels,tab)?tab:"point";
   activeImportModule=target;
   document.querySelectorAll("[data-import-tab]").forEach(button=>{
