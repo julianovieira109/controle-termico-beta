@@ -1,18 +1,30 @@
 {
   "manifest_version": 3,
   "name": "Controle Térmico — Conector Senior",
-  "version": "1.1.0",
-  "description": "Lê o Gestão do Ponto Senior pela sessão autenticada e monitora o ponto a cada 2 horas, 24h por dia.",
-  "permissions": ["tabs", "scripting", "alarms", "storage"],
+  "version": "1.1.1",
+  "description": "Lê o Gestão do Ponto Senior pela sessão autenticada e monitora o ponto a cada 2 horas, 24h por dia, com reconexão automática.",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "alarms",
+    "storage"
+  ],
   "host_permissions": [
     "https://*.seniorcloud.com.br/*",
     "https://controle-termico-beta.onrender.com/*"
   ],
-  "background": {"service_worker": "background.js"},
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://controle-termico-beta.onrender.com/*", "http://localhost/*"],
-      "js": ["bridge.js"],
+      "matches": [
+        "https://controle-termico-beta.onrender.com/*",
+        "http://localhost/*"
+      ],
+      "js": [
+        "bridge.js"
+      ],
       "run_at": "document_idle"
     }
   ]
