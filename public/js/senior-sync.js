@@ -16,7 +16,7 @@ function seniorSyncSetStatus(message,type=""){
 function seniorSyncUpdateConnectorState(){
   const badge=$("senior-connector-state");
   if(!badge)return;
-  const monitorReady=seniorConnectorReady&&seniorConnectorVersion==="1.1.0";
+  const monitorReady=seniorConnectorReady&&["1.1.0","1.1.1"].includes(seniorConnectorVersion);
   badge.textContent=!seniorConnectorReady
     ?"Conector não detectado"
     :monitorReady?"Conector 24h detectado":"Atualização do conector necessária";
@@ -159,7 +159,7 @@ async function loadSeniorMonitorConfig(){
   try{
     const server=await api(`/api/senior-sync/monitor-config?companyId=${encodeURIComponent(companyId)}&branchId=${encodeURIComponent(branchId)}`);
     let extensionStatus=null;
-    if(seniorConnectorReady&&seniorConnectorVersion==="1.1.0"){
+    if(seniorConnectorReady&&["1.1.0","1.1.1"].includes(seniorConnectorVersion)){
       try{
         const ext=await requestSeniorConnectorMessage("CT_SENIOR_MONITOR_STATUS_REQUEST","CT_SENIOR_MONITOR_STATUS_RESULT",{},8000);
         if(ext?.ok)extensionStatus=ext.status;
@@ -274,7 +274,7 @@ async function downloadSeniorConnector(){
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
     link.href=url;
-    link.download="Controle-Termico-Conector-Senior-Beta110.zip";
+    link.download="Controle-Termico-Conector-Senior-Beta111.zip";
     document.body.appendChild(link);
     link.click();
     link.remove();
