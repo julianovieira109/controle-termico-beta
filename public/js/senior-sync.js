@@ -249,6 +249,10 @@ window.addEventListener("message",event=>{
     seniorConnectorReady=true;
     seniorConnectorVersion=String(message.version||"");
     seniorSyncUpdateConnectorState();
+    const statusEl=$("senior-sync-status");
+    if(statusEl&&/Atualize o Conector Senior para a versão 24h/i.test(statusEl.textContent||"")){
+      seniorSyncSetStatus("Conector Senior 24h detectado e pronto para uso.","success");
+    }
     loadSeniorMonitorConfig();
     return;
   }
