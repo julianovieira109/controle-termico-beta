@@ -491,7 +491,7 @@ router.get("/connector.zip",(req,res,next)=>{
     const files=names.map(name=>({name,content:fs.readFileSync(path.join(root,name),"utf8")}));
     const archive=zipStored(files);
     res.set("Content-Type","application/zip");
-    res.set("Content-Disposition",'attachment; filename="Controle-Termico-Conector-Senior-Beta114.zip"');
+    res.set("Content-Disposition",'attachment; filename="Controle-Termico-Conector-Senior-Beta115.zip"');
     res.set("Cache-Control","no-store");
     res.send(archive);
   }catch(error){next(error);}
