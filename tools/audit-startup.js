@@ -11,5 +11,5 @@ for(const file of js){
   if(result.status!==0){console.error(`Sintaxe inválida: ${file}\n${result.stderr||result.stdout}`);process.exit(result.status||1);}
 }
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
-if(!/^1\.0\.45-beta\.\d+$/.test(pkg.version)){console.error(`Versão inesperada: ${pkg.version}`);process.exit(1);}
+if(!/^1\.0\.46-beta\.\d+$/.test(pkg.version)){console.error(`Versão inesperada: ${pkg.version}`);process.exit(1);}
 console.log(`OK: inicialização auditada. ${js.length} arquivos JavaScript passaram no node --check. Versão ${pkg.version}.`);
