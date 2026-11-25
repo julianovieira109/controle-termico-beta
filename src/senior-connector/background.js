@@ -178,6 +178,18 @@ async function collectSenior(){
   throw lastError||new Error("Falha temporária ao acessar a aba da Senior.");
 }
 
+async function seniorProbeInPage(){
+  return {
+    ok:true,
+    url:location.href,
+    title:document.title,
+    hasBody:Boolean(document.body),
+    textLength:(document.body?.innerText||"").length,
+    periodText:(document.body?.innerText||"").match(/\d{2}\/\d{2}\s+a\s+\d{2}\/\d{2}/)?.[0]||null,
+    resourceCount:performance.getEntriesByType("resource").length
+  };
+}
+
 async function seniorBootstrapInPage(){
   try{
   const clean=value=>String(value||"").replace(/\s+/g," ").trim();
@@ -464,6 +476,16 @@ async function collectSeniorOnce(){
     return {ok:false,error:"Abra o Gestão do Ponto Senior em uma aba do Edge e mantenha a sessão autenticada."};
   }
 
+  const probeExec=await chrome.scripting.executeScript({
+    target:{tabId:seniorTab.id},
+    world:"MAIN",
+    func:seniorProbeInPage
+  });
+  const probe=probeExec?.[0]?.result;
+  if(!probe?.ok){
+    return {ok:false,error:"O Edge abriu a aba da Senior, mas não conseguiu executar o teste mínimo dentro da página."};
+  }
+
   const bootstrapExec=await chrome.scripting.executeScript({
     target:{tabId:seniorTab.id},
     world:"MAIN",
@@ -474,7 +496,8 @@ async function collectSeniorOnce(){
     const diagnostic=bootstrap?.diagnostics
       ?` [recursos: ${bootstrap.diagnostics.resourceCount}, período visível: ${bootstrap.diagnostics.hasPeriodText?"sim":"não"}]`
       :"";
-    return {ok:false,error:(bootstrap?.error||"O Edge não conseguiu iniciar a coleta na aba da Senior.")+diagnostic};
+    const probeInfo=` [teste mínimo: ok, período: ${probe?.periodText||"não identificado"}, recursos: ${probe?.resourceCount??"?"}]`;
+    return {ok:false,error:(bootstrap?.error||"O Edge não conseguiu iniciar a coleta na aba da Senior.")+diagnostic+probeInfo};
   }
 
   const details=[];
