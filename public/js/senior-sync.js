@@ -178,7 +178,7 @@ async function setSeniorMonitor(active){
     seniorSyncSetStatus("Selecione empresa e filial antes de configurar o monitor.","error");
     return;
   }
-  if(active&&(!seniorConnectorReady||seniorConnectorVersion!=="1.1.0")){
+  if(active&&(!seniorConnectorReady||!["1.1.0","1.1.1"].includes(seniorConnectorVersion))){
     seniorSyncSetStatus("Atualize o Conector Senior para a versão 24h antes de ativar o monitor.","error");
     return;
   }
