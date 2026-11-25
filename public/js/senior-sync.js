@@ -16,10 +16,10 @@ function seniorSyncSetStatus(message,type=""){
 function seniorSyncUpdateConnectorState(){
   const badge=$("senior-connector-state");
   if(!badge)return;
-  const monitorReady=seniorConnectorReady&&["1.1.0","1.1.1","1.1.2","1.1.3"].includes(seniorConnectorVersion);
+  const monitorReady=seniorConnectorReady&&["1.1.0","1.1.1","1.1.2","1.1.3","1.1.4"].includes(seniorConnectorVersion);
   badge.textContent=!seniorConnectorReady
     ?"Conector não detectado"
-    :monitorReady?"Conector 24h detectado":"Atualização do conector necessária";
+    :monitorReady?`Conector 24h detectado · v${seniorConnectorVersion}`:`Atualização do conector necessária · v${seniorConnectorVersion||"?"}`;
   badge.className=`point-import-badge ${monitorReady?"":"warning"}`;
 }
 
@@ -159,7 +159,7 @@ async function loadSeniorMonitorConfig(){
   try{
     const server=await api(`/api/senior-sync/monitor-config?companyId=${encodeURIComponent(companyId)}&branchId=${encodeURIComponent(branchId)}`);
     let extensionStatus=null;
-    if(seniorConnectorReady&&["1.1.0","1.1.1","1.1.2","1.1.3"].includes(seniorConnectorVersion)){
+    if(seniorConnectorReady&&["1.1.0","1.1.1","1.1.2","1.1.3","1.1.4"].includes(seniorConnectorVersion)){
       try{
         const ext=await requestSeniorConnectorMessage("CT_SENIOR_MONITOR_STATUS_REQUEST","CT_SENIOR_MONITOR_STATUS_RESULT",{},8000);
         if(ext?.ok)extensionStatus=ext.status;
@@ -178,7 +178,7 @@ async function setSeniorMonitor(active){
     seniorSyncSetStatus("Selecione empresa e filial antes de configurar o monitor.","error");
     return;
   }
-  if(active&&(!seniorConnectorReady||!["1.1.0","1.1.1","1.1.2","1.1.3"].includes(seniorConnectorVersion))){
+  if(active&&(!seniorConnectorReady||!["1.1.0","1.1.1","1.1.2","1.1.3","1.1.4"].includes(seniorConnectorVersion))){
     seniorSyncSetStatus("Atualize o Conector Senior para a versão 24h antes de ativar o monitor.","error");
     return;
   }
@@ -278,7 +278,7 @@ async function downloadSeniorConnector(){
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
     link.href=url;
-    link.download="Controle-Termico-Conector-Senior-Beta115.zip";
+    link.download="Controle-Termico-Conector-Senior-Beta116.zip";
     document.body.appendChild(link);
     link.click();
     link.remove();
