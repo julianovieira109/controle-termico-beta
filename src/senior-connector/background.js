@@ -179,6 +179,7 @@ async function collectSenior(){
 }
 
 async function seniorBootstrapInPage(){
+  try{
   const clean=value=>String(value||"").replace(/\s+/g," ").trim();
   const jwtRegex=/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/;
   function scanValue(value,depth=0){
@@ -312,7 +313,6 @@ async function seniorBootstrapInPage(){
   return {
     ok:true,
     meta:{
-      assertion:assertion||null,
       seniorCompanyNumber:String(seniorCompanyNumber),
       calculationCode:String(calculationCode),
       periodStart,
@@ -320,14 +320,72 @@ async function seniorBootstrapInPage(){
     },
     collaborators
   };
+  }catch(error){
+    return {
+      ok:false,
+      error:error?.message||String(error),
+      diagnostics:{
+        url:location.href,
+        title:document.title,
+        resourceCount:performance.getEntriesByType("resource").length,
+        hasPeriodText:/\d{2}\/\d{2}\s+a\s+\d{2}\/\d{2}/.test(document.body?.innerText||"")
+      }
+    };
+  }
 }
 
 async function seniorDetailsBatchInPage(meta,batch){
+  try{
   const clean=value=>String(value||"").replace(/\s+/g," ").trim();
+  const jwtRegex=/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/;
+  function scanValue(value,depth=0){
+    if(depth>3||value==null)return null;
+    if(typeof value==="string"){
+      const direct=value.match(jwtRegex)?.[0];
+      if(direct)return direct;
+      if((value.startsWith("{")||value.startsWith("["))&&value.length<200000){
+        try{return scanValue(JSON.parse(value),depth+1);}catch{}
+      }
+      return null;
+    }
+    if(Array.isArray(value)){
+      for(const item of value){const found=scanValue(item,depth+1);if(found)return found;}
+      return null;
+    }
+    if(typeof value==="object"){
+      for(const [key,item] of Object.entries(value)){
+        if(/assert|token|auth|jwt/i.test(key)){
+          const found=scanValue(item,depth+1);
+          if(found)return found;
+        }
+      }
+      for(const item of Object.values(value)){
+        const found=scanValue(item,depth+1);
+        if(found)return found;
+      }
+    }
+    return null;
+  }
+  function findAssertion(){
+    for(const storage of [sessionStorage,localStorage]){
+      for(let i=0;i<storage.length;i++){
+        const found=scanValue(storage.getItem(storage.key(i)));
+        if(found)return found;
+      }
+    }
+    for(const key of Object.keys(window).filter(key=>/assert|token|auth|jwt|session/i.test(key)).slice(0,300)){
+      try{
+        const found=scanValue(window[key]);
+        if(found)return found;
+      }catch{}
+    }
+    return null;
+  }
+  const assertion=findAssertion();
   const apiRoot=location.origin+"/gestaoponto-backend/api";
   async function seniorGet(relative){
     const headers={Accept:"application/json"};
-    if(meta.assertion)headers.assertion=meta.assertion;
+    if(assertion)headers.assertion=assertion;
     const response=await fetch(apiRoot+relative,{method:"GET",credentials:"include",cache:"no-store",headers});
     if(!response.ok){
       if(response.status===401||response.status===403)throw new Error("A sessão da Senior não autorizou a leitura.");
@@ -395,6 +453,9 @@ async function seniorDetailsBatchInPage(meta,batch){
     };
   }));
   return {ok:true,details};
+  }catch(error){
+    return {ok:false,error:error?.message||String(error)};
+  }
 }
 
 async function collectSeniorOnce(){
@@ -410,7 +471,10 @@ async function collectSeniorOnce(){
   });
   const bootstrap=bootstrapExec?.[0]?.result;
   if(!bootstrap?.ok||!bootstrap?.meta||!Array.isArray(bootstrap?.collaborators)){
-    return {ok:false,error:"O Edge não conseguiu iniciar a coleta na aba da Senior."};
+    const diagnostic=bootstrap?.diagnostics
+      ?` [recursos: ${bootstrap.diagnostics.resourceCount}, período visível: ${bootstrap.diagnostics.hasPeriodText?"sim":"não"}]`
+      :"";
+    return {ok:false,error:(bootstrap?.error||"O Edge não conseguiu iniciar a coleta na aba da Senior.")+diagnostic};
   }
 
   const details=[];
@@ -425,7 +489,7 @@ async function collectSeniorOnce(){
     });
     const result=executed?.[0]?.result;
     if(!result?.ok||!Array.isArray(result?.details)){
-      throw new Error("O Edge perdeu uma etapa da leitura da Senior. A coleta será tentada novamente.");
+      throw new Error(result?.error||"O Edge perdeu uma etapa da leitura da Senior. A coleta será tentada novamente.");
     }
     details.push(...result.details);
     await delay(80);
