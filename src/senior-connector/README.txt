@@ -1,6 +1,6 @@
-CONTROLE TÉRMICO — CONECTOR SENIOR BETA.111
+CONTROLE TÉRMICO — CONECTOR SENIOR BETA.114
 
-MONITOR 24H COM RECONEXÃO AUTOMÁTICA
+MONITOR 24H COM COLETA EM BLOCOS E RECONEXÃO AUTOMÁTICA
 - O conector verifica a Senior a cada 2 horas, 24 horas por dia:
   00h, 02h, 04h, 06h, 08h, 10h, 12h, 14h, 16h, 18h, 20h e 22h.
 - O Edge precisa permanecer em execução.
